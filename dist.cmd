@@ -1,7 +1,7 @@
 @echo off
 @setlocal
 
-for /f "usebackq tokens=1,2" %%I in (`c:\Progra~1\Python24\python.exe -c "from version import appversion; print '%%4.2f %%d'%%(appversion, appversion*100)"`) do (set VERSION=%%I&set VER=%%J)
+for /f "usebackq tokens=1,2" %%I in (`c:\Progra~1\Python24\python.exe -c "from version import appversion; print '%%4.2f %%d'%%(appversion, round(appversion*100,0))"`) do (set VERSION=%%I&set VER=%%J)
 
 set RELEASE=1
 set RPM=%TMP%\fs2xplane
