@@ -1,15 +1,36 @@
+#
+# Copyright (c) 2005 Jonathan Harris
+# 
+# Mail: <x-plane@marginal.org.uk>
+# Web:  http://marginal.org.uk/x-planescenery/
+#
+# See FS2XPlane.html for usage.
+#
+# This software is licensed under a Creative Commons License
+#   Attribution-ShareAlike 2.5:
+#
+#   You are free:
+#     * to copy, distribute, display, and perform the work
+#     * to make derivative works
+#     * to make commercial use of the work
+#   Under the following conditions:
+#     * Attribution: You must give the original author credit.
+#     * Share Alike: If you alter, transform, or build upon this work, you
+#       may distribute the resulting work only under a license identical to
+#       this one.
+#   For any reuse or distribution, you must make clear to others the license
+#   terms of this work.
+#
+# This is a human-readable summary of the Legal Code (the full license):
+#   http://creativecommons.org/licenses/by-sa/2.5/legalcode
+#
+
 from math import sin, cos
-from os import unlink
-from os.path import exists, join
-from StringIO import StringIO
-import struct
-from struct import pack, unpack
+from os.path import basename
 from sys import maxint
-from tempfile import gettempdir
 import xml.parsers.expat
 
-import convbgl
-from convutil import d2r, r2d, m2f, NM2m, complexity, AptNav, Object, Point, Matrix
+from convutil import d2r, r2d, m2f, NM2m, complexity, AptNav, Object, Point, Matrix, FS2XError
 from convobjs import makeapronlight, maketaxilight, maketaxisign
 
 
@@ -37,6 +58,16 @@ surfaces={'ASPHALT':1, 'BITUMINOUS':1, 'MACADAM':1,
 
 # Set up XML parser for new-style scenery
 
+class FSData:
+    def __init__(self, attrs):
+        self.airport=[]
+        self.marker=[]
+        self.vor=[]
+        self.ndb=[]
+        self.sceneryobject=[]
+        self.exclusionrectangle=[]
+
+    
 class SceneryObject:
     def __init__(self, attrs):
         for k, v in attrs.iteritems():
@@ -46,7 +77,7 @@ class SceneryObject:
         self.libraryobject=[]
         self.windsock=[]
         self.beacon=[]
-    
+
     class BiasXYZ:
         def __init__(self, attrs):
             for k, v in attrs.iteritems():
@@ -141,117 +172,21 @@ class SceneryObject:
             output.misc.append((18, loc, lit))
 
 
-class ModelData:
-    def __init__(self, attrs):
-        for k, v in attrs.iteritems():
-            exec("self.%s=v" % k)
-    
-    def export(self, output):
-        mdlname=join(gettempdir(), self.sourceFile)
-        if int(self.fileOffset):
-            output.log("Can't parse object %s in %s" % (
-                self.name, self.filename))
-            if exists(mdlname): unlink(mdlname)
-            return
-        
-        data=''
-        bgldata=''
-        tbldata=''
-        scen=None
-        tran=None
-        try:
-            mdl=file(mdlname, 'rb')
-        except IOError:
-            output.log("Can't read object %s in %s" % (
-                self.name, self.filename))
-            return
-        try:
-            if mdl.read(4)!='RIFF': raise IOError
-            (mdlsize,)=unpack('<I', mdl.read(4))
-            if mdl.read(4)!='MDL9': raise IOError
-            while mdl.tell()<mdlsize:
-                c=mdl.read(4)
-                (size,)=unpack('<I', mdl.read(4))
-                if c=='EXTE':
-                    end=size+mdl.tell()
-                    while mdl.tell()<end:
-                        c=mdl.read(4)
-                        (size,)=unpack('<I', mdl.read(4))
-                        if c in ['TEXT','MATE','VERT']:
-                            data+=mdl.read(size-2)	# strip return
-                            if mdl.read(2)!='\x22\0':	raise IOError
-                        elif c=='BGL ':
-                            bgldata+=mdl.read(size)
-                            bgldata+='\0\0'		# add EOF
-                        elif c in ['TRAN', 'ANIP', 'ANIC', 'SCEN']:
-                            # Need to maintain offsets between ANIC and SCEN
-                            if c=='TRAN':
-                                tran=len(tbldata)+8
-                            elif c=='SCEN':
-                                scen=len(tbldata)+8
-                            tbldata+=pack('<I',size)+c+mdl.read(size)
-                        else:
-                            mdl.seek(size,1)
-                else:
-                    mdl.seek(size,1)
-            data+=bgldata	# BGL section must be after other instructions
-            if scen: scen+=len(data)	# Offset from first instruction
-            if tran: tran+=len(data)	# Offset from first instruction
-            data+=tbldata	# Table data must be last so not interpreted
-            if not data: raise IOError
-        except (IOError, struct.error):
-            output.log("Can't parse object %s in %s" % (
-                self.name, self.filename))
-            mdl.close()
-            if exists(mdlname): unlink(mdlname)
-            return
-        mdl.close()
-        unlink(mdlname)
-
-        # Write a bgl library file
-        bgl=StringIO()
-        for i in range(15):
-            bgl.write(pack('<I',0))
-        bgl.write(pack('<2H', 0, 0x80))		# offset to section 10
-        for i in range(16):
-            bgl.write(pack('<I',0))
-        # min and max uids should be at 0x56 and 0x5e
-        bgl.write(pack('<I',0x18))		# section 10: offset to obj
-        for i in range(0,32,8):
-            bgl.write(pack('<I', int(self.name[i:i+8],16)))
-        bgl.write(pack('<I',0))
-        for i in range(0,32,8):
-            bgl.write(pack('<I', int(self.name[i:i+8],16)))
-        bgl.write(pack('<B',0))			# pwr
-        bgl.write(pack('<2I',0x29,len(data)+0x29))	# sizes (no name)
-        bgl.write(pack('<4I',1,65536,0x400,0))	# size, scale, type(?), prop
-        bgl.write(data)
-        bgl.seek(0)
-
-        # XXX Write out for debugging
-        #f=file(join(gettempdir(), self.sourceFile[:-4]+'.bgl'), 'wb')
-        #f.write(bgl.read())
-        #f.close()
-        #bgl.seek(0)
-        
-        convbgl.Parse(bgl, "object %s in %s" % (self.name, self.filename),
-                      self.srcfile, output, scen, tran)
-        bgl.close()
-
-
 class ExclusionRectangle:
     def __init__(self, attrs):
         for k, v in attrs.iteritems():
             exec("self.%s=v" % k)
     
     def export(self, output):
+        bl=Point(float(self.latitudeMinimum), float(self.longitudeMinimum))
+        tr=Point(float(self.latitudeMaximum), float(self.longitudeMaximum))
         if (T(self, 'excludeAllObjects') or
             T(self, 'excludeGenericBuildingObjects') or
             T(self, 'excludeLibraryObjects')):
-            output.exc.append((Point(float(self.latitudeMinimum),
-                                     float(self.longitudeMinimum)),
-                               Point(float(self.latitudeMaximum),
-                                     float(self.longitudeMaximum))))
+            output.exc.append(('obj', bl, tr))
+            output.exc.append(('fac', bl, tr))
+            #output.exc.append(('for', bl, tr))
+            #output.exc.append(('net', bl, tr))
 
 
 class Airport:
@@ -591,7 +526,7 @@ class Airport:
             if len(number)<3: number+='x'
             for a in aptdat:
                 if a.code==10 and a.text[0:3]==number:
-                    output.fatal('Found duplicate definition of runway %s in %s' % (number.replace('x',''), self.filename))
+                    raise FS2XError('Found duplicate definition of runway %s in %s' % (number.replace('x',''), self.filename))
             aptdat.append(AptNav(10, loc, "%s %6.2f %6d %04d.%04d %04d.%04d %4d %d%d%d%d%d%d %02d %d %d %4.2f %d %04d.%04d" % (
                 number, heading, length,
                 displaced[0], displaced[1], overrun[0], overrun[1], width,
@@ -623,7 +558,7 @@ class Airport:
                 number=("H%d" % hno)
             for a in aptdat:
                 if a.code==10 and a.text[0:3]==number:
-                    output.fatal('Found duplicate definition of helipad %s in %s' % (number.replace('x',''), self.filename))
+                    raise FS2XError('Found duplicate definition of helipad %s in %s' % (number.replace('x',''), self.filename))
             aptdat.append(AptNav(10, loc, "%s %6.2f %6d %04d.%04d %04d.%04d %4d 111111 %02d %d %d %4.2f %d %04d.%04d" % (
                 number, heading, length, 0, 0, 0, 0, width,
                 surface, 0, 0, 0.25, 0, 0, 0)))
@@ -660,7 +595,7 @@ class Airport:
                 dupl=False
                 for a in aptdat:
                     if a.code==10 and loc.lat==a.loc.lat and loc.lon==a.loc.lon:
-                        output.log('Skipping duplicate of taxiway at [%10.6f, %11.6f] in %s' % (loc.lat, loc.lon, self.filename))
+                        output.log('Skipping duplicate of taxiway at (%10.6f, %11.6f) in %s' % (loc.lat, loc.lon, self.filename))
                         dupl=True
                         break
                 if dupl:
@@ -733,7 +668,7 @@ class Airport:
                     dupl=False
                     for a in aptdat:
                         if a.code==10 and loc.lat==a.loc.lat and loc.lon==a.loc.lon:
-                            output.log('Skipping duplicate of apron at [%10.6f, %11.6f] in %s' % (loc.lat, loc.lon, self.filename))
+                            output.log('Skipping duplicate of apron at (%10.6f, %11.6f) in %s' % (loc.lat, loc.lon, self.filename))
                             dupl=True
                             break
                     if dupl:
@@ -981,10 +916,29 @@ class Marker:
             float(self.heading), '---', name)))
 
 
+class Waypoint:
+    def __init__(self, attrs):
+        pass	# ignored
+
+
+class Boundary:
+    def __init__(self, attrs):
+        pass	# ignored
+
+
+class ModelData:
+    def __init__(self, attrs):
+        pass	# ignored - handled in library phase
+
+
+class Geopol:
+    def __init__(self, attrs):
+        pass	# ignored
+
+
 class Parse:
-    def __init__(self, fd, name, srcfile, output, scen, tran):
-        self.name=name
-        self.srcfile=srcfile
+    def __init__(self, fd, srcfile, output):
+        self.filename=basename(srcfile)
         self.elems=[]
         self.parents=[]
         self.parname=''	# parent class(es)
@@ -1001,18 +955,20 @@ class Parse:
             elem.export(self.output)
 
     def start_element(self, name, attrs):
-        try:
-            attrs['filename']=self.name
-            attrs['srcfile']=self.srcfile
-            elem=eval('%s%s(attrs)' % (self.parname, name))
-        except (NameError, AttributeError):
+        if name=='FSData':
             return
-        if self.parents:
-            exec("self.parents[-1].%s.append(elem)" % name.lower())
-        else:
-            self.elems.append(elem)
-        self.parents.append(elem)
-        self.parname+=(name+'.')
+        attrs['filename']=self.filename
+        try:
+            elem=eval('%s%s(attrs)' % (self.parname, name))
+            if self.parents:
+                exec("self.parents[-1].%s.append(elem)" % name.lower())
+            else:
+                self.elems.append(elem)
+            self.parents.append(elem)
+            self.parname+=(name+'.')
+        except (NameError, AttributeError):
+            #print "Skippping", self.parname, name
+            return
             
     def end_element(self, name):
         if self.parname[-(len(name)+1):-1]==name:

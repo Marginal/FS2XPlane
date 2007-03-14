@@ -1,3 +1,30 @@
+#
+# Copyright (c) 2005 Jonathan Harris
+# 
+# Mail: <x-plane@marginal.org.uk>
+# Web:  http://marginal.org.uk/x-planescenery/
+#
+# See FS2XPlane.html for usage.
+#
+# This software is licensed under a Creative Commons License
+#   Attribution-ShareAlike 2.5:
+#
+#   You are free:
+#     * to copy, distribute, display, and perform the work
+#     * to make derivative works
+#     * to make commercial use of the work
+#   Under the following conditions:
+#     * Attribution: You must give the original author credit.
+#     * Share Alike: If you alter, transform, or build upon this work, you
+#       may distribute the resulting work only under a license identical to
+#       this one.
+#   For any reuse or distribution, you must make clear to others the license
+#   terms of this work.
+#
+# This is a human-readable summary of the Legal Code (the full license):
+#   http://creativecommons.org/licenses/by-sa/2.5/legalcode
+#
+
 from convutil import Object
 
 def makeapronlight():
@@ -9,13 +36,13 @@ def makeapronlight():
     idx=[2,1,0,3,2,0]
     return Object("ApronLight.obj", "ApronEdgeLights",
                   'Resources/FS2X-ApronLight.png', vlight, [], vt, idx,
-                  [([(1,1,1),(0,0,0),(0,0,0)],0,6,False)])
+                  [([(1,1,1),(0,0,0),(0,0,0)],0,6,False)], 2)
     
 
 def maketaxilight():
     vlight=[(0,0.1,0, 0.75,0.75,0)]
     return Object("TaxiwayLight.obj", "TaxiwayPath.centerLineLighted",
-                  None, vlight, [], [], [], [])
+                  None, vlight, [], [], [], [], 0)
     
 
 def maketaxisign(label):
@@ -207,5 +234,5 @@ def maketaxisign(label):
                   [([(1,1,1),(0,0,0),(0,0,0)],
                     0,frameilen,False),
                    ([(1,1,1),(0,0,0),(1,1,1)],
-                    frameilen,len(idx)-frameilen,False)])
+                    frameilen,len(idx)-frameilen,False)], 0)
 

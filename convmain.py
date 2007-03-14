@@ -1,69 +1,119 @@
+#
+# Copyright (c) 2005 Jonathan Harris
+# 
+# Mail: <x-plane@marginal.org.uk>
+# Web:  http://marginal.org.uk/x-planescenery/
+#
+# See FS2XPlane.html for usage.
+#
+# This software is licensed under a Creative Commons License
+#   Attribution-ShareAlike 2.5:
+#
+#   You are free:
+#     * to copy, distribute, display, and perform the work
+#     * to make derivative works
+#     * to make commercial use of the work
+#   Under the following conditions:
+#     * Attribution: You must give the original author credit.
+#     * Share Alike: If you alter, transform, or build upon this work, you
+#       may distribute the resulting work only under a license identical to
+#       this one.
+#   For any reuse or distribution, you must make clear to others the license
+#   terms of this work.
+#
+# This is a human-readable summary of the Legal Code (the full license):
+#   http://creativecommons.org/licenses/by-sa/2.5/legalcode
+#
+
 from math import floor
 from os import curdir, mkdir, pardir, sep, stat, unlink, walk
 from os.path import basename, exists, isdir, join, normpath, splitext
 from shutil import copyfile
-from struct import unpack
+from StringIO import StringIO
+import struct	# for struct.error
+from struct import pack, unpack
 from sys import exit, platform
 from tempfile import gettempdir
 
-from convutil import banner, helper, complexities, AptNav, Object, Point
+from convutil import banner, helper, complexities, AptNav, Object, Point, FS2XError
 import convbgl
 import convxml
 
 class Output:
-    def __init__(self, mypath, xppath, fspath, status, log, fatal):
+    def __init__(self, mypath, fspath, lbpath, xppath, season, status, log,
+                 dumplib, debug):
 
-        self.debug=True
-        self.dumplib=False
+        self.dumplib=dumplib
+        self.debug=debug
         self.overlays=True
         self.docomplexity=False
-        
+
+        if dumplib:
+            self.fspath=None
+            if not lbpath:
+                self.lbpath=fspath
+            else:
+                self.lbpath=lbpath
+        else:
+            self.fspath=fspath
+            self.lbpath=lbpath
         self.xppath=xppath
-        self.fspath=fspath
+        self.hemi=0	# 0=N, 1=S
+        self.season=season
+
+        # Callbacks
         self.status=status
         self.log=log
-        self.fatal=fatal
 
-        self.misc=[]
         self.apt={}
         self.nav=[]
-        self.exc=[]	# Exclusion rectangles: (bottomleft, topright)
+        self.misc=[]
+        self.done={}	# BGL files that we've already processed
+        self.exc=[]	# Exclusion rectangles: (type, bottomleft, topright)
+        self.libobj={}	# Library objects: 	(MDL, file, offset, size) by id
         self.objplc=[]	# Object placements:	(loc, hdg, cmplx, name, scale)
         self.objdat={}	# Objects by name
         self.stock={}	# FS2004 stock objects - we don't have these
         self.haze={}	# Textures that have palette-based transparency
         self.dufftex={}	# Textures we couldn't convert (avoid multiple reports)
+        
         if platform=='win32':
             self.bglexe=curdir+sep+platform+sep+'bglunzip.exe'
             self.xmlexe=curdir+sep+platform+sep+'bglxml.exe'
             self.pngexe=curdir+sep+platform+sep+'bmp2png.exe'
             self.dsfexe=curdir+sep+'DSFTool.exe'
         else:
+            if platform.lower().startswith('linux'):
+                plat='linux'
+            else:
+                plat='mac'
             self.bglexe=None	# Only available on Windows
-            self.xmlexe=curdir+sep+platform+sep+'bglxml'
-            self.pngexe=curdir+sep+platform+sep+'bmp2png'
+            self.xmlexe=curdir+sep+plat+sep+'bglxml'
+            self.pngexe=curdir+sep+plat+sep+'bmp2png'
             self.dsfexe=curdir+sep+'DSFTool'
 
-        if not exists(fspath):
-            fatal('"%s" does not exist' % fspath)
-        if not isdir(fspath):
-            fatal('"%s" is not a folder' % fspath)
+        for path in [fspath, lbpath]:
+            if path and not exists(path):
+                raise FS2XError('"%s" does not exist' % path)
+            if path and not isdir(path):
+                raise FS2XError('"%s" is not a folder' % path)
         for path, dirs, files in walk(xppath):
             if dirs or files:
-                fatal('"%s" is not empty' % xppath)
+                raise FS2XError('"%s" is not empty' % xppath)
         path=normpath(join(xppath, pardir))
         if basename(path).lower()!='custom scenery' or not isdir(path):
-            fatal('"%s" is not a sub-folder of "Custom Scenery"' % xppath)
+            raise FS2XError('"%s" is not a sub-folder of "Custom Scenery"' % (
+                xppath))
 
         for exe in [self.bglexe, self.xmlexe, self.pngexe, self.dsfexe]:
             if exe and not exists(exe):
-            	fatal("Can't find \"%s\"" % exe)
+            	raise FS2XError("Can't find \"%s\"" % exe)
         
         path=join(mypath, 'objfile.txt')
         try:
             stock=file(path, 'rU')
         except IOError:
-            fatal("Can't read \"%s\"." % path)
+            raise FS2XError("Can't read \"%s\"." % path)
         for line in stock:
             if line[0]!=';':
                 l=line.find(',')
@@ -72,32 +122,47 @@ class Output:
         stock.close()
         if exists('debug.txt'): unlink('debug.txt')
 
-    def export(self):
-        # Off we go
-        self.status('Reading BGLs')
-        for path, dirs, files in walk(self.fspath):
-            #if 1:
-            #(path, files)=("C:\Program Files\Microsoft Games\Flight Simulator 9\Addon Scenery\FlyTampa-SanFrancisco\scenery", ["tl1.bgl"])
-
-            for filename in files:
-                if filename[-4:].lower()=='.bgl':
+    # Fill out self.libobj
+    def scanlibs(self):
+        self.status(-1, 'Scanning libraries')
+        for toppath in [self.lbpath, self.fspath]:
+            if not toppath:
+                continue
+            for path, dirs, files in walk(toppath):
+                n = len(files)
+                for i in range(n):
+                    filename=files[i]
+                    if filename[-4:].lower()!='.bgl':
+                        continue
                     bglname=join(path, filename)
                     if stat(bglname).st_size==0:
+                        self.done[bglname]=True
                         continue	# Sometimes seen 0-length files!
-                    self.status(bglname[len(self.fspath)+1:])
-                    tmp=None
                     try:
                         bgl=file(bglname, 'rb')
                     except IOError:
                         self.log("Can't read \"%s\"" % bglname)
+                        self.done[bglname]=True
                         continue
-        
                     c=bgl.read(2)
                     if len(c)!=2:
                         self.log("Can't read \"%s\"" % bglname)
-                        continue                
+                        self.done[bglname]=True
+                        continue
+                    done=True
                     (c,)=unpack('<H', c)
                     if c==1:
+                        for section in [42,54,58,102,114]:
+                            bgl.seek(section)
+                            (secbase,)=unpack('<I',bgl.read(4))
+                            if secbase:
+                                done=False
+                        bgl.seek(62)	# LIBRARY data
+                        (secbase,)=unpack('<I',bgl.read(4))
+                        if not secbase:
+                            continue
+                        self.status(i*100.0/n, bglname[len(toppath)+1:])
+                        tmp=bglname
                         bgl.seek(122)
                         (spare2,)=unpack('<I',bgl.read(4))
                         if spare2:
@@ -105,6 +170,7 @@ class Output:
                             if not self.bglexe:
                                 self.log("Can't parse compressed file %s" % (
                                     filename))
+                                # don't mark as done
                                 continue
                             tmp=join(gettempdir(), filename)
                             helper('%s "%s" "%s"' %(self.bglexe, bglname, tmp))
@@ -113,32 +179,235 @@ class Output:
                                     filename))
                                 continue
                             bgl=file(tmp, 'rb')
-                        convbgl.Parse(bgl, filename, bglname, self, None, None)
+                        bgl.seek(secbase)
+                        while 1:
+                            pos=bgl.tell()
+                            (off,)=unpack('<I', bgl.read(4))
+                            if off==0:
+                                break
+                            bgl.seek(secbase+off)
+                            (a,b,c,d,x,hdsize,size)=unpack('<IIIIBII',
+                                                           bgl.read(25))
+                            name = "%08x%08x%08x%08x" % (a,b,c,d)
+                            if not name in self.libobj:	# 1st wins
+                                self.libobj[name]=(False, bglname, tmp, 
+                                                   secbase+off+hdsize,
+                                                   size)
+                            bgl.seek(pos+20)
+
                     elif c==0x201:
-                        tmp=join(gettempdir(), filename[:-3]+'xml')
-                        x=helper('%s -t "%s" "%s"' % (
-                            self.xmlexe, bglname, tmp))
-                        if not x and exists(tmp):
-                            try:
-                                xmlfile=file(tmp, 'rU')
-                            except IOError:
-                                self.log("Can't parse %s" % filename)
-                            convxml.Parse(xmlfile, filename, bglname,
-                                          self, None, None)
-                            xmlfile.close()
-                        else:
-                            self.log("Can't parse %s (%s)" % (filename, x))
+                        islib=False
+                        bgl.seek(4)
+                        (sectiontbl,)=unpack('<I',bgl.read(4))
+                        bgl.seek(20)
+                        (sections,)=unpack('<I',bgl.read(4))
+                        for section in range(sections):
+                            bgl.seek(sectiontbl+20*section)
+                            (type,x,subsections,subsectiontbl)=unpack('<IIIi', bgl.read(16))
+                            if type!=0x2b:	# 2b=MDL data
+                                done=False
+                                continue
+                            if not islib:
+                                self.status(i*100.0/n,bglname[len(toppath)+1:])
+                                islib=True
+                            for subsection in range(subsections):
+                                bgl.seek(subsectiontbl+16*subsection)
+                                (id,records,recordtbl)=unpack('<IIi',
+                                                              bgl.read(12))
+                                bgl.seek(recordtbl)
+                                for record in range(records):
+                                    (a,b,c,d,off,size)=unpack('<IIIIiI',
+                                                              bgl.read(24))
+                                    name = "%08x%08x%08x%08x" % (a,b,c,d)
+                                    if not name in self.libobj:
+                                        self.libobj[name]=(True,
+                                                           bglname, bglname,
+                                                           recordtbl+off, size)
                     else:
                         self.log("Can't parse \"%s\". Is this a BGL file?" % (
                             filename))
                     bgl.close()
-                    if tmp and exists(tmp): unlink(tmp)
+                    if done:
+                        self.done[bglname]=True
+        #for key in sorted(self.libobj.keys()):
+        #    (MDL, f, comp, offset, size)=self.libobj[key]
+        #    print "%s:\t%d, %s, %x, %x" % (key, MDL, f, offset, offset+size)
+        #print self.done
 
-        # Now export
+
+    # Fill out self.objplc and self.objdat
+    def process(self):
+        if self.dumplib: return
+        
+        self.status(-1, 'Reading BGLs')
+        for path, dirs, files in walk(self.fspath):
+            n = len(files)
+            for i in range(n):
+                filename=files[i]
+                if filename[-4:].lower()!='.bgl':
+                    continue
+                bglname=join(path, filename)
+                if bglname in self.done:
+                    continue
+                self.done[bglname]=True
+                self.status(i*100.0/n, bglname[len(self.fspath)+1:])
+                try:
+                    bgl=file(bglname, 'rb')
+                except IOError:
+                    self.log("Can't read \"%s\"" % bglname)
+                    continue
+                c=bgl.read(2)
+                if len(c)!=2:
+                    self.log("Can't read \"%s\"" % bglname)
+                    continue                
+                tmp=None
+                (c,)=unpack('<H', c)
+                if c==1:
+                    bgl.seek(122)
+                    (spare2,)=unpack('<I',bgl.read(4))
+                    if spare2:
+                        bgl.close()
+                        if not self.bglexe:
+                            self.log("Can't parse compressed file %s" % (
+                                filename))
+                            continue
+                        tmp=join(gettempdir(), filename)
+                        helper('%s "%s" "%s"' % (self.bglexe, bglname, tmp))
+                        if not exists(tmp):
+                            self.log("Can't parse compressed file %s" % (
+                                filename))
+                            continue
+                        bgl=file(tmp, 'rb')
+                    convbgl.Parse(bgl, bglname, self)
+                elif c==0x201:
+                    tmp=join(gettempdir(), filename[:-3]+'xml')
+                    x=helper('%s -t "%s" "%s"' % (self.xmlexe, bglname, tmp))
+                    if not x and exists(tmp):
+                        try:
+                            xmlfile=file(tmp, 'rU')
+                        except IOError:
+                            self.log("Can't parse %s" % filename)
+                        convxml.Parse(xmlfile, bglname, self)
+                        xmlfile.close()
+                    else:
+                        self.log("Can't parse %s (%s)" % (filename, x))
+                else:
+                    self.log("Can't parse \"%s\". Is this a BGL file?" % (
+                        filename))
+                bgl.close()
+                if not self.debug and tmp and exists(tmp): unlink(tmp)
+
+
+    # Process referenced library into self.objplc and self.objdat
+    def proclibs(self):
+        if self.dumplib:	# Fake up
+            for name in self.libobj.keys():
+                self.objplc.append((None, 0, 1, name, 1))
+        
+        self.status(-1, 'Reading library objects')
+        n=len(self.objplc)
+        i=-1
+        for loc, heading, complexity, name, scale in self.objplc:
+            i+=1
+            if name in self.objdat:
+                continue	# Already got it
+            # Do this first to ensure that the user doesn't
+            # inadvertantly convert MS stock objects
+            if self.stock.has_key(name) and not self.dumplib:
+                self.log('Object %s is a built-in object (%s)' % (
+                    name, self.stock[name]))
+                self.objdat[name]=[Object(name+'.obj',"Placeholder for built-in object %s (%s)" % (name, self.stock[name]), None, [], [], [], [], [], 0)]
+                continue
+            if not name in self.libobj.keys():
+                continue	# Missing object error will be reported later
+            
+            (mdl, bglname, realfile, offset, size)=self.libobj[name]
+            self.status(i*100.0/n, name)
+            scen=None
+            tran=None
+            bgl=file(realfile, 'rb')
+            bgl.seek(offset)
+            if mdl:
+                # New-style MDL file
+                data=''
+                bgldata=''
+                tbldata=''
+                try:
+                    if bgl.read(4)!='RIFF': raise IOError
+                    (mdlsize,)=unpack('<I', bgl.read(4))
+                    if bgl.read(4)!='MDL9': raise IOError
+                    while bgl.tell()<offset+mdlsize:
+                        c=bgl.read(4)
+                        (size,)=unpack('<I', bgl.read(4))
+                        if c=='EXTE':
+                            end=size+bgl.tell()
+                            while bgl.tell()<end:
+                                c=bgl.read(4)
+                                (size,)=unpack('<I', bgl.read(4))
+                                if c in ['TEXT','MATE','VERT']:
+                                    data+=bgl.read(size-2)	# strip return
+                                    if bgl.read(2)!='\x22\0':	raise IOError
+                                elif c=='BGL ':
+                                    bgldata+=bgl.read(size)
+                                    bgldata+='\0\0'		# add EOF
+                                elif c in ['TRAN', 'ANIP', 'ANIC', 'SCEN']:
+                                    # Maintain offsets between ANIC and SCEN
+                                    if c=='TRAN':
+                                        tran=len(tbldata)+8
+                                    elif c=='SCEN':
+                                        scen=len(tbldata)+8
+                                    tbldata+=pack('<I',size)+c+bgl.read(size)
+                                else:
+                                    bgl.seek(size,1)
+                        else:
+                            bgl.seek(size,1)
+                    data+=bgldata
+                    if not data: raise IOError
+                    if scen: scen+=len(data)	# Offset from first instruction
+                    if tran: tran+=len(data)	# Offset from first instruction
+                    data+=tbldata	# Table data must be last
+                except (IOError, struct.error):
+                    output.log("Can't parse object %s in %s" % (
+                        self.name, self.filename))
+                    bgl.close()
+                    continue
+                # Write a flat BGL section
+                bgl.close()
+                bgl=StringIO()
+                bgl.write(data)
+                bgl.seek(0)
+                offset=0
+                size=len(data)
+
+            if self.debug:
+                debug=file('debug.txt','at')
+                debug.write('%s\n' % bglname)
+            else:
+                debug=None
+
+            try:
+                p=convbgl.ProcScen(bgl, offset+size, name, bglname,
+                                   self, scen, tran, debug)
+                if p.anim:
+                    output.log("Skipping animation in %s" % name)
+                    if debug: debug.write("Animation\n")
+                if p.old:
+                    output.log("Skipping pre-FS2002 scenery in %s" % name)
+                    if debug: debug.write("Pre-FS2002\n")
+                if p.rrt:
+                    output.log("Skipping pre-FS2004 runways, taxiways and/or roads in %s" % name)
+                    if debug: debug.write("Old-style rtr\n")
+            except struct.error:
+                output.log("Can't parse %s" % name)
+                if debug: debug.write("!Parse error")
+            bgl.close()
+
+
+    def export(self):
         if self.apt or self.nav or self.objplc:
             if not isdir(self.xppath): mkdir(self.xppath)
         else:
-            self.fatal('No data found!')
+            raise FS2XError('No data found!')
 
         # attach beacons and windsocks to corresponding airport
         for (code, loc, data) in self.misc:
@@ -175,9 +444,10 @@ class Output:
             filename=join(path, 'apt.dat')
             f=file(filename, 'wt')
             f.write("I\n810\t# %s\n" % banner)
-            for k, v in self.apt.iteritems():
-                doneheader=False
+            for k in sorted(self.apt):
+                v=self.apt[k]
                 v.sort()
+                doneheader=False
                 for l in v:
                     if l.code==1:
                         # Only write one header
@@ -201,7 +471,7 @@ class Output:
             f.close()
 
 
-        self.status('Writing OBJs')
+        self.status(-1, 'Writing OBJs')
         # make a list of requested objects and scales
         objdef={}
         for loc, heading, complexity, name, scale in self.objplc:
@@ -209,27 +479,23 @@ class Output:
                 objdef[name]=[scale]
             elif not scale in objdef[name]:
                 objdef[name].append(scale)
-
-        # Create placeholders for stock objects
-        for name in objdef.keys():
-            if not self.objdat.has_key(name) and self.stock.has_key(name):
-                self.log('Object %s is a built-in object (%s)' % (
-                    name, self.stock[name]))
-                self.objdat[name]=[Object(name+'.obj',
-                                          "Placeholder for built-in object %s (%s)" % (name, self.stock[name]),
-                                          None, [], [], [], [], [])]
                 
         # write out objects
+        n = len(objdef)
+        i = 0
         for name in sorted(objdef):
             if name in self.objdat:
-                self.status(name)
+                self.status(i*100.0/n, name)
                 for scale in objdef[name]:
                     count=1
                     for obj in self.objdat[name]:
                         obj.export(scale, self)
             else:
                 self.log('Object %s not found' % name)
+            i+=1
 
+        if self.dumplib:
+            return
 
         # copy readmes
         for path, dirs, files in walk(self.xppath):
@@ -237,11 +503,11 @@ class Output:
                 for f in ['readme', 'read me',
                           'leeeme', 'leee me',
                           'lisezmoi', 'lisez moi']:
-                    if f in filename:
+                    if f in filename.lower():
                         copyfile(join(path, filename),
                                  join(self.xppath, filename))
         
-        self.status('Writing DSFs')
+        self.status(-1, 'Writing DSFs')
         # poly_os objects need to be drawn first to prevent them from
         # swallowing other objects.
         # X-Plane 8.20 and 8.30 draw in order of definition (not placement)
@@ -250,7 +516,6 @@ class Output:
         # prority objects come last. So disable prioritisation.
         cmplx={}
         for loc, heading, complexity, name, scale in self.objplc:
-            if self.dumplib and not loc: continue
             tile=(int(floor(loc.lat)), int(floor(loc.lon)))
             key=(name,scale)
             if self.docomplexity:
@@ -272,7 +537,6 @@ class Output:
         objplc={}	# number and location
         lookup={}	# lists of indices into objdef
         for loc, head, c, name, scale in self.objplc:
-            if self.dumplib and not loc: continue
             tile=(int(floor(loc.lat)), int(floor(loc.lon)))
             key=(name,scale)
             complexity=cmplx[tile][(name,scale)]
@@ -306,6 +570,8 @@ class Output:
         srcpath=join(join(join(srcpath, "Resources"), "default scenery"),
                      "DSF 820 Earth")
 
+        n = len(objdef.keys())
+        i = 0
         for tile in objdef.keys():
             (lat,lon)=tile
             sw=Point(lat,lon)
@@ -315,7 +581,8 @@ class Output:
             tilename="%+03d%+04d" % (lat,lon)
             tiledir=join("Earth nav data", "%+02d0%+03d0" % (
                 int(lat/10), int(lon/10)))
-            self.status(tilename+'.dsf')
+            self.status(i*100.0/n, tilename+'.dsf')
+            i+=1
     
             if self.overlays:
                 objcount=0
@@ -323,11 +590,11 @@ class Output:
                 srcname=join(join(srcpath, tiledir), tilename+'.dsf')
                 dsfname=join(gettempdir(), tilename+'.txt')
                 if not exists(srcname):
-                    self.fatal("Can't read source DSF %s.dsf"%(tilename))
+                    raise FS2XError("Can't read source DSF %s.dsf"%(tilename))
                 x=helper(self.dsfexe+' -dsf2text "'+srcname+'" "'+dsfname+'"')
                 if x or not exists(dsfname):
-                    self.fatal("Can't read source DSF %s.dsf (%s)" %
-                               (tilename, x))
+                    raise FS2XError("Can't read source DSF %s.dsf (%s)" %
+                                    (tilename, x))
                 dsf=file(dsfname, 'rU')
                 objcount=0
                 for line in dsf:
@@ -337,7 +604,8 @@ class Output:
                         objcount+=1
                     elif line.find("# Result code: ")==0:
                         if int(line[15:])!=0:
-                            self.fatal("Can't read source DSF %s.dsf"%tilename)
+                            raise FS2XError("Can't read source DSF %s.dsf" % (
+                                tilename))
 
             # Caculate base index for each complexity. Highest are first.
             base=[[] for i in range(complexities)]
@@ -366,9 +634,9 @@ class Output:
                 else:
                     dst.write('PROPERTY sim/require_object\t1/0\n')
                 for exc in self.exc:
-                    (bl,tr)=exc
+                    (type, bl,tr)=exc
                     if bl.within(sw,ne) or tr.within(sw,ne):
-                        dst.write('PROPERTY sim/exclude_objs\t%11.6f,%10.6f,%11.6f,%10.6f\n' % (bl.lon,bl.lat,tr.lon,tr.lat))
+                        dst.write('PROPERTY sim/exclude_%s\t%11.6f,%10.6f,%11.6f,%10.6f\n' % (type, bl.lon,bl.lat, tr.lon,tr.lat))
                 # XXX flattening?
                 dst.write('PROPERTY sim/creation_agent\t%s' % banner)
                 # Following must be the last properties
@@ -463,7 +731,8 @@ class Output:
                     
             dst.close()
             dsfname=join(path, tilename+'.dsf')
-            print '%s -text2dsf "%s" "%s"' % (self.dsfexe, dstname, dsfname)
             x=helper('%s -text2dsf "%s" "%s"' %(self.dsfexe, dstname, dsfname))
             if (x or not exists(dsfname)):
-                self.fatal("Can't write DSF %s.dsf (%s)" % (tilename, x))
+                raise FS2XError("Can't write DSF %s.dsf (%s)" % (tilename, x))
+
+            return True
