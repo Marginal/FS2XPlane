@@ -1,12 +1,8 @@
 #!/bin/bash
 
 # Find lsregister
-if [ -x /System/Library/Frameworks/ApplicationServices.framework/Frameworks/LaunchServices.framework/Support/lsregister ] ;then
-    LS=/System/Library/Frameworks/ApplicationServices.framework/Frameworks/LaunchServices.framework/Support/lsregister;
-elif [ -x /System/Library/Frameworks/ApplicationServices.framework/Versions/A/Frameworks/LaunchServices.framework/Versions/A/Support/lsregister ] ; then
-    # From http://developer.apple.com/documentation/Carbon/Conceptual/MDImporters/Concepts/Troubleshooting.html
-    LS=/System/Library/Frameworks/ApplicationServices.framework/Versions/A/Frameworks/LaunchServices.framework/Versions/A/Support/lsregister;
-else
+LS=/System/Library/Frameworks/ApplicationServices.framework/Frameworks/LaunchServices.framework/Support/lsregister;
+if [ ! -x $LS ] ;then
     echo Can\'t find the lsregister tool!
     exit 1;
 fi
@@ -26,4 +22,4 @@ fi
 
 unset DISPLAY
 export WINESERVER="${WINELOADER}server"
-"$WINELOADER" ./win32/bglunzip.exe "$1" "$2"
+"$WINELOADER" ./MacOS/win32/bglunzip.exe "$1" "$2"

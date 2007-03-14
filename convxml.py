@@ -239,9 +239,6 @@ class ExclusionRectangle:
             T(self, 'excludeGenericBuildingObjects') or
             T(self, 'excludeLibraryObjects')):
             output.exc.append(('obj', bl, tr))
-            #output.exc.append(('fac', bl, tr))
-            #output.exc.append(('for', bl, tr))
-            #output.exc.append(('net', bl, tr))
 
 
 class Ndb:
@@ -816,49 +813,54 @@ class Airport:
         # Aprons - come after taxiways so that taxiways overlay them
         for a in self.aprons:
             for apron in a.apron:
-                if (T(apron, 'drawSurface') or T(apron, 'drawDetail')) and not output.excluded(Point(float(apron.vertex[0].lat), float(apron.vertex[0].lon))):
+                if T(apron, 'drawSurface') or T(apron, 'drawDetail'):
                     surface=surfaces[apron.surface]
                     smoothing=0.25
                     if self.runway:
                         heading=float(self.runway[0].heading)%180
                     else:
                         heading=0
-                    aptdat.append(AptNav(110, "%02d %4.2f %6.2f Apron" % (
-                        surface, smoothing, surfaceheading)))
-
                     l=[]
                     for v in apron.vertex:
                         if D(v, 'lat') and D(v, 'lon'):
                             loc=Point(float(v.lat), float(v.lon))
                         elif D(v, 'biasX') and D(v, 'biasZ'):
                             loc=airloc.biased(float(v.biasX), float(v.biasZ))
+                        if output.excluded(loc): break
                         l.append(loc)
-                    # sort CCW
-                    area2=0
-                    count=len(l)
-                    for i in range(count):
-                        area2+=(l[i].lon * l[(i+1)%count].lat -
-                                l[(i+1)%count].lon * l[i].lat)
-                    if area2<0: l.reverse()
-                    for loc in l:
-                        aptdat.append(AptNav(111, "%10.6f %11.6f %d" % (
-                            loc.lat, loc.lon, 0)))
-                    aptdat[-1].code=113
+                    else:
+                        # sort CCW
+                        area2=0
+                        count=len(l)
+                        for i in range(count):
+                            area2+=(l[i].lon * l[(i+1)%count].lat -
+                                    l[(i+1)%count].lon * l[i].lat)
+                        if area2<0: l.reverse()
+                        aptdat.append(AptNav(110, "%02d %4.2f %6.2f Apron" % (
+                            surface, smoothing, surfaceheading)))
+                        for loc in l:
+                            aptdat.append(AptNav(111, "%10.6f %11.6f %d" % (
+                                loc.lat, loc.lon, 0)))
+                        aptdat[-1].code=113
 
         # ApronEdgeLights
         for a in self.apronedgelights:
             for e in a.edgelights:
-                if output.excluded(Point(float(e.vertex[0].lat), float(e.vertex[0].lon))): continue
-                aptdat.append(AptNav(120, "Apron edge"))
+                l=[]
                 for v in e.vertex:
                     if D(v, 'lat') and D(v, 'lon'):
                         loc=Point(float(v.lat), float(v.lon))
                     elif D(v, 'biasX') and D(v, 'biasZ'):
                         loc=airloc.biased(float(v.biasX), float(v.biasZ))
-                    aptdat.append(AptNav(111, "%10.6f %11.6f %02d %03d" % (
-                        loc.lat, loc.lon, 3, 102)))
-                aptdat[-1].code=115
-                aptdat[-1].text=aptdat[-1].text[:22]
+                    if output.excluded(loc): break
+                    l.append(loc)
+                else:
+                    aptdat.append(AptNav(120, "Apron edge"))
+                    for loc in l:
+                        aptdat.append(AptNav(111, "%10.6f %11.6f %02d %03d" % (
+                            loc.lat, loc.lon, 53, 102)))
+                    aptdat[-1].code=115
+                    aptdat[-1].text=aptdat[-1].text[:22]
 
         # Tower view location
         if D(self, 'name'):

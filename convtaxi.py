@@ -130,7 +130,6 @@ class Link:	# TaxiwayPath or TaxiwayParking
     def __init__(self, path, parkingoffset, taxinames):
         self.type=path.type
         self.width=float(path.width)
-        self.surface=surfaces[path.surface]
         if self.type!='PARKING':
             self.nodes=[int(path.start),int(path.end)]
         else:
@@ -155,6 +154,10 @@ class Link:	# TaxiwayPath or TaxiwayParking
             self.name=self.type[0]+self.type[1:].lower()
             if taxinames[int(path.name)].name:
                 self.name+=' '+taxinames[int(path.name)].name
+        if self.draw:
+            self.surface=surfaces[path.surface]
+        else:
+            self.surface=15
         self.done=0
 
     def findlinked(self, searchspace, found):
@@ -285,7 +288,7 @@ def follow(subgraph, ccw, allpoints, dump):
                     if h>lastheading: h=h-twopi
                     elinks.append((o,h,link))
                     break
-        if not ccw and nodeno==0:
+        if False:#not ccw and nodeno==0:
             elinks.sort(lambda (o1,h1,l1),(o2,h2,l2): cmp(h1,h2))
         else:
             elinks.sort(lambda (o1,h1,l1),(o2,h2,l2): cmp(h2,h1)) # largest first
@@ -319,7 +322,7 @@ def follow(subgraph, ccw, allpoints, dump):
             code2=edgefeature(link2, end2, link2, end2)
 
             straight=(h1-pi-h2)%twopi
-            straight=straight<0.1 or straight>twopi-0.1	# arbitrary ~5degrees
+            straight=straight<0.1 or straight>twopi-0.1	or abs(h1-h2)<0.1	# arbitrary ~5degrees
             
             if n1==n2:
                 # Stub
@@ -335,7 +338,7 @@ def follow(subgraph, ccw, allpoints, dump):
             elif not i or n2==nodes[(nodeno+1)%len(nodes)]:
                 # prev or next nodes
                 
-                if straight and link1 in subgraph and link2 in subgraph:	# arbitrary ~5degrees
+                if False: # doesn't work in really short links. was: straight and link1 in subgraph and link2 in subgraph:
                     w=(link1.width+link2.width)/4
                     # not quite average but close enough
                     intersect=n.loc.biased(-w*(cos(h1)+cos(h2-pi))/2,
@@ -355,9 +358,15 @@ def follow(subgraph, ccw, allpoints, dump):
                     if dump: print intersect, "straight endblank", degrees(h1), degrees(h2), degrees((h1%twopi + (h2-pi)%twopi)/2)
                     points.append((intersect, False, code2))
                 else:
-                    ratio=0.5/sin((h1-pi)%twopi-h2)
-                    intersect=n.loc.biased(-sin(h1)*link2.width*ratio - sin(h2)*link1.width*ratio,
-                                           -cos(h1)*link2.width*ratio - cos(h2)*link1.width*ratio)
+                    if straight:
+                        w=(link1.width+link2.width)/4
+                        # not quite average but close enough
+                        intersect=n.loc.biased(-w*(cos(h1)+cos(h2-pi))/2,
+                                               w*(sin(h1)+sin(h2-pi))/2)
+                    else:
+                        ratio=0.5/sin((h1-pi)%twopi-h2)
+                        intersect=n.loc.biased(-sin(h1)*link2.width*ratio - sin(h2)*link1.width*ratio,
+                                               -cos(h1)*link2.width*ratio - cos(h2)*link1.width*ratio)
                     if dump: print intersect, "intersect", degrees(h1), degrees(h2), i,
                     if i and n2==nodes[(nodeno+1)%len(nodes)]:	# end of blank
                         if link1.type=='RUNWAY':
@@ -371,6 +380,7 @@ def follow(subgraph, ccw, allpoints, dump):
                             l1=link1.width
                         if l1:
                             l1=intersect.biased(sin(h1)*l1, cos(h1)*l1)
+                            points.append((n.loc, False, ''))
                             if dump: print "endblank",
                         #else:	# reduce to point
                         #    l1=0.0
@@ -403,42 +413,46 @@ def follow(subgraph, ccw, allpoints, dump):
 
 def tessbegin(datatype, data):
     if datatype!=GL_LINE_LOOP: raise GLUerror	# can't happen
-    (out, dump)=data
+    (tpoints, dump)=data
+    tpoints.append([])
     if dump: print "Begin"
     
+def tessend(data):
+    (tpoints, dump)=data
+    if dump: print "End"
+
 def tessvertex(vertex, data):
-    (out, dump)=data
-    (pt, bez, blank, code)=vertex
-    if dump: print "Vertex", pt, bez, blank, code
-    if not pt: return	# dummy bezier vertex for outscribing obtuse curves
-    if blank==True:	# end of blank
-        out.append(AptNav(111, "%10.6f %11.6f" % (pt.lat, pt.lon)))
-    if bez:
-        out.append(AptNav(112, "%10.6f %11.6f %10.6f %11.6f %s" % (
-            pt.lat, pt.lon, bez.lat, bez.lon, code)))
-    else:
-        out.append(AptNav(111, "%10.6f %11.6f %s" % (pt.lat, pt.lon, code)))
-    if blank==False:	# start of blank
-        out.append(AptNav(111, "%10.6f %11.6f" % (pt.lat, pt.lon)))
+    (tpoints, dump)=data
+    # just accumulate points
+    tpoints[-1].append(vertex)
+    if dump:
+        (pt, bez, blank, dummy, code)=vertex
+        print "Vertex", pt, bez, blank, dummy, code
+    #if not pt: return	# dummy bezier vertex for outscribing obtuse curves
+    #if blank==True:	# end of blank
+    #    tpoints[-1].append((pt, None, ''))
+    #if bez:
+    #    tpoints[-1].append((pt, bez, code))
+    #else:
+    #    tpoints[-1].append((pt, None, code))
+    #if blank==False:	# start of blank
+    #    tpoints[-1].append((pt, None, ''))
 
 def tesscombine(coords, vertex, weight, data):
-    (out, dump)=data
+    (tpoints, dump)=data
     if dump:
         print "Combine", Point(coords[2], coords[0])
-        for i in range(len(weight)):
-            if not weight[i]: break
-            (pt, bez, blank, code)=vertex[i]
-            print pt, bez, blank, code, weight[i]
+    for i in range(len(weight)):
+        if not weight[i]: break
+        (pt, bez, blank, dummy, code)=vertex[i]
+        if dump:  print pt, bez, blank, dummy, code, round(weight[i],3)
+        # make any dummy vertices real
+        # XXX vertex[i]=(pt, bez, blank, False, code)
         #if blank!=None:
         #    # hack. Collapse blank sections to a point
         #    vertex[i]=(pt, None, None, code)
-    (pt, bez, blank, code)=vertex[0]	# arbitrary - use first code
-    return (Point(coords[2], coords[0]), None, None, code)
-
-def tessend(data):
-    (out, dump)=data
-    if dump: print "End"
-    out[-1].code+=2		# Terminate last
+    (pt, bez, blank, dummy, code)=vertex[0]	# arbitrary - use first code
+    return (Point(coords[2], coords[0]), None, None, False, code)
 
 
 # --------------------------------------------------------------------------
@@ -447,7 +461,7 @@ def taxilayout(allnodes, alllinks, surfaceheading, output, aptdat=None, ident="u
 
     # Edges ----------------------------------------------------------------
 
-    dump=(output.debug and ident=="HECA" and open(join(output.xppath, ident+"_nodes.txt"), "at"))
+    dump=(output.debug and ident=="TEST" and open(join(output.xppath, ident+"_nodes.txt"), "at"))
     if dump:
         print ident
         interfile=open(join(output.xppath, ident+"_inter.txt"), "at")
@@ -488,10 +502,9 @@ def taxilayout(allnodes, alllinks, surfaceheading, output, aptdat=None, ident="u
             follow(interior, False, basepoints, dump)
             lastlen=len(interior)
 
-        out=[AptNav(110, "%02d %4.2f %6.2f Taxiways" % (
-            surface, 0.25, surfaceheading))]
         if dump: print "BeginPolygon"
-        gluTessBeginPolygon(tessObj, (out, dump))
+        newpoints=[]
+        gluTessBeginPolygon(tessObj, (newpoints, dump))
         for points in basepoints:
             gluTessBeginContour(tessObj)
             for i in range(len(points)):
@@ -499,7 +512,7 @@ def taxilayout(allnodes, alllinks, surfaceheading, output, aptdat=None, ident="u
                 loc.round()
                 if dump: interfile.write("%.6f\t%.6f\n" % (loc.lon,loc.lat))
                 if not bez:
-                    gluTessVertex(tessObj, [loc.lon, 0, loc.lat], (loc, None, None, code))
+                    gluTessVertex(tessObj, [loc.lon, 0, loc.lat], (loc, None, None, False, code))
                     
                 else:	# pair of beziers. loc is intersection point
                     (l1,l2)=bez		# desired distances to control points
@@ -508,13 +521,13 @@ def taxilayout(allnodes, alllinks, surfaceheading, output, aptdat=None, ident="u
                     if type(l1)==float:
                         (oloc, obez, ocode)=points[(i-1)%len(points)]
                         if not l1:	# reduces to a point
-                            gluTessVertex(tessObj, [loc.lon, 0, loc.lat], (loc, None, None, code1))
+                            gluTessVertex(tessObj, [loc.lon, 0, loc.lat], (loc, None, None, False, code1))
                         elif l1<loc.distanceto(oloc)/2 or not obez:
                             # Skip duplicate truncated section
                             l1=min(l1,loc.distanceto(oloc)/2)
                             h1=radians(loc.headingto(oloc))
                             p1=loc.biased(sin(h1)*l1, cos(h1)*l1).round()
-                            gluTessVertex(tessObj, [p1.lon, 0, p1.lat], (p1, p1+(loc-p1)*(2.0/3), None, code1))
+                            gluTessVertex(tessObj, [p1.lon, 0, p1.lat], (p1, p1+(loc-p1)*(2.0/3), None, False, code1))
                     else:		# absolute location of control point
                         p1=l1.round()	# end of blank section
                         if not p1.equals(loc) and type(l2)==float and l2:
@@ -522,15 +535,15 @@ def taxilayout(allnodes, alllinks, surfaceheading, output, aptdat=None, ident="u
                             (oloc, obez, ocode)=points[(i+1)%len(points)]
                             h2=radians(loc.headingto(oloc))
                             if dump: print "endblank", degrees((h1e-h2)%twopi)
-                            if (h1e-h2)%twopi<=pi/2:
-                                # fill fillet
-                                if dump: print loc, "filler", degrees((h1e-h2)%twopi)
-                                gluTessVertex(tessObj, [loc.lon, 0, loc.lat], (loc, None, None, ''))                                
-                        gluTessVertex(tessObj, [p1.lon, 0, p1.lat], (p1, p1+(loc-p1)*(2.0/3), True, code1))
+                            #if (h1e-h2)%twopi<=pi/2:
+                            #    # fill fillet
+                            #    if dump: print loc, "filler", degrees((h1e-h2)%twopi)
+                            #    gluTessVertex(tessObj, [loc.lon, 0, loc.lat], (loc, None, None, False, ''))                                
+                        gluTessVertex(tessObj, [p1.lon, 0, p1.lat], (p1, p1+(loc-p1)*(2.0/3), True, False, code1))
 
                     if type(l2)==float:
                         if not l2:	# reduces to a point
-                            gluTessVertex(tessObj, [loc.lon, 0, loc.lat], (loc, None, None, code2))
+                            gluTessVertex(tessObj, [loc.lon, 0, loc.lat], (loc, None, None, False, code2))
                         else:
                             (oloc, obez, ocode)=points[(i+1)%len(points)]
                             l2=min(l2,loc.distanceto(oloc)/2)
@@ -540,24 +553,72 @@ def taxilayout(allnodes, alllinks, surfaceheading, output, aptdat=None, ident="u
                                 # generate dummy vertices to outscribe curve
                                 b1=(p1+(loc-p1)*(2.0/3)).round()
                                 b2=(p2+(loc-p2)*(2.0/3)).round()
-                                if dump: print loc, "obtuse", b1, b2
-                                gluTessVertex(tessObj, [b1.lon, 0, b1.lat], (None, None, None, code1))
-                                gluTessVertex(tessObj, [b2.lon, 0, b2.lat], (None, None, None, code2))
-                            gluTessVertex(tessObj, [p2.lon, 0, p2.lat], (p2, p2-(loc-p2)*(2.0/3), None, code2))
+                                if dump: print loc, "reflex", b1, b2
+                                gluTessVertex(tessObj, [b1.lon, 0, b1.lat], (b1, None, None, True, code1))
+                                gluTessVertex(tessObj, [b2.lon, 0, b2.lat], (b1, None, None, True, code2))
+                            gluTessVertex(tessObj, [p2.lon, 0, p2.lat], (p2, p2-(loc-p2)*(2.0/3), None, False, code2))
                     else:		# absolute location of control point
                         p2=l2.round()	# start of blank section
-                        gluTessVertex(tessObj, [p2.lon, 0, p2.lat], (p2, p2-(loc-p2)*(2.0/3), False, ''))
+                        gluTessVertex(tessObj, [p2.lon, 0, p2.lat], (p2, p2-(loc-p2)*(2.0/3), False, False, ''))
                         if h1!=None and not p2.equals(loc):
                             h2=radians(loc.headingto(p2))
                             if dump: print "startblank", degrees((h1-h2)%twopi)
-                            if (h1-h2)%twopi<=pi/2:
-                                # fill fillet
-                                if dump: print loc, "filler", degrees((h1-h2)%twopi)
-                                gluTessVertex(tessObj, [loc.lon, 0, loc.lat], (loc, None, None, ''))
+                            #if (h1-h2)%twopi<=pi/2:
+                            #    # fill fillet
+                            #    if dump: print loc, "filler", degrees((h1-h2)%twopi)
+                            #    gluTessVertex(tessObj, [loc.lon, 0, loc.lat], (loc, None, None, False, ''))
             gluTessEndContour(tessObj)
 
         gluTessEndPolygon(tessObj)
         if dump: print "EndPolygon\n"
+
+        # OK, finally output the tessellated polygons
+        # Tessellator spits out points in any order -
+        # how do we know which interior polygons belong to which exterior?
+        out=[]
+        needccw=True
+        for points in newpoints:
+            n=len(points)
+            area2=0
+            for i in range(n):
+                area2+=(points[i][0].lon * points[(i+1)%n][0].lat -
+                        points[(i+1)%n][0].lon * points[i][0].lat)
+            #print n, area2
+            if area2>=0:		# CCW is exterior
+                if area2<1e-8:	# crappy
+                    needccw=True
+                    continue
+                else:
+                    needccw=False
+                    out.append(AptNav(110, "%02d %4.2f %6.2f Taxiways" % (
+                        surface, 0.25, surfaceheading)))
+            elif needccw:
+                continue	# XXX skip!
+                #needccw=False
+                #out.append(AptNav(110, "%02d %4.2f %6.2f CW!" % (
+                #    surface, 0.25, surfaceheading)))
+            elif area2>-1e-8:	# crappy
+                continue
+
+            for i in range(n):
+                (pt,bez,blank,dummy,code)=points[i]
+                if dummy: continue	# dummy bezier vertex for outscribing obtuse curves
+                if blank==True:	# end of blank
+                    out.append(AptNav(111, "%10.6f %11.6f" % (pt.lat, pt.lon)))
+                if bez:
+                    out.append(AptNav(112, "%10.6f %11.6f %10.6f %11.6f %s" % (
+                        pt.lat, pt.lon, bez.lat, bez.lon, code)))
+                else:
+                    out.append(AptNav(111, "%10.6f %11.6f %s" % (pt.lat, pt.lon, code)))
+                if blank==False:	# start of blank
+                    out.append(AptNav(111, "%10.6f %11.6f" % (pt.lat, pt.lon)))
+                #if bez:
+                #    out.append(AptNav(112, "%10.6f %11.6f %10.6f %11.6f %s" % (
+                #        pt.lat, pt.lon, bez.lat, bez.lon, code)))
+                #else:
+                #    out.append(AptNav(111, "%10.6f %11.6f %s" % (pt.lat, pt.lon, code)))
+            out[-1].code+=2		# Terminate last
+        
         if aptdat:
             aptdat.extend(out)
         else:

@@ -74,7 +74,7 @@ chown -R %USERNAME% "%RPMRT%"
 
 @REM mac
 mkdir FS2XPlane.app\Contents\MacOS
-xcopy /q MacOS\* FS2XPlane.app\Contents\MacOS\ |findstr -v "file(s) copied"
+xcopy /q /e MacOS FS2XPlane.app\Contents\MacOS\ |findstr -v "file(s) copied"
 for %%I in (%PY%) do (copy %%I FS2XPlane.app\Contents\MacOS\ |findstr -v "file(s) copied")
 mkdir FS2XPlane.app\Contents\MacOS\win32
 for %%I in (win32\bglunzip.exe win32\fake2004.exe) do (copy %%I FS2XPlane.app\Contents\MacOS\win32 |findstr -v "file(s) copied")

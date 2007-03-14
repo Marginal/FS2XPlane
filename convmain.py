@@ -71,6 +71,7 @@ class Output:
         self.misc=[]
         self.done={}	# BGL files that we've already processed
         self.exc=[]	# Exclusion rectangles: (type, bottomleft, topright)
+        self.excfac=[]	# Exclusion rectangles for facility data
         self.libobj={}	# Lib objects: (MDL, f, cmp, offset, size, name, scale) by uid
         self.objplc=[]	# Object placements:	(loc, hdg, cmplx, name, scale)
         self.objdat={}	# Objects by name
@@ -247,24 +248,15 @@ class Output:
                         (spare2,)=unpack('<I',bgl.read(4))
                         if spare2:
                             bgl.close()
-                            if not self.bglexe:
+                            tmp=join(gettempdir(), filename)
+                            helper('%s "%s" "%s"' %(self.bglexe, bglname, tmp))
+                            if not exists(tmp):
                                 # Check for uncompressed version
-                                if exists(join('Resources',
-                                               basename(bglname).lower())):
-                                    tmp=join('Resources',
-                                             basename(bglname).lower())
-                                else:
-                                    self.log("Can't parse compressed file %s"%(
-                                        filename))
-                                    # don't mark as done
-                                    continue
-                            else:
-                                tmp=join(gettempdir(), filename)
-                                helper('%s "%s" "%s"' %(self.bglexe, bglname, tmp))
+                                tmp=join('Resources',basename(bglname).lower())
                                 if not exists(tmp):
                                     self.log("Can't parse compressed file %s"%(
                                         filename))
-                                    continue
+                                    continue	# don't mark as done
                             bgl=file(tmp, 'rb')
                         # Exclusions
                         if excbase:
@@ -320,6 +312,7 @@ class Output:
                         for section in range(sections):
                             bgl.seek(sectiontbl+20*section)
                             (typ,x,subsections,subsectiontbl)=unpack('<IIIi', bgl.read(16))
+                            #print "%x %x %d" % (typ,x,subsections)
                             if typ!=0x2b:	# 2b=MDL data
                                 done=False
                                 continue
@@ -328,8 +321,10 @@ class Output:
                                 islib=True
                             for subsection in range(subsections):
                                 bgl.seek(subsectiontbl+16*subsection)
+                                #print "  %x" % bgl.tell(),
                                 (id,records,recordtbl)=unpack('<IIi',
                                                               bgl.read(12))
+                                #print "%x %d" % (id,records)
                                 bgl.seek(recordtbl)
                                 for record in range(records):
                                     (a,b,c,d,off,rcsize)=unpack('<IIIIiI',
@@ -360,6 +355,7 @@ class Output:
         if self.dumplib: return
         
         self.status(-1, 'Reading BGLs')
+        xmls=[]
         for path, dirs, files in walk(self.fspath):
             if basename(path).lower()!='scenery':
                 continue	# Only look at BGLs in 'scenery' directory
@@ -390,10 +386,6 @@ class Output:
                     (spare2,)=unpack('<I',bgl.read(4))
                     if spare2:
                         bgl.close()
-                        if not self.bglexe:
-                            self.log("Can't parse compressed file %s" % (
-                                filename))
-                            continue
                         tmp=join(gettempdir(), filename)
                         helper('%s "%s" "%s"' % (self.bglexe, bglname, tmp))
                         if not exists(tmp):
@@ -403,22 +395,39 @@ class Output:
                         bgl=file(tmp, 'rb')
                     convbgl.Parse(bgl, bglname, self)
                 elif c==0x201:
-                    tmp=join(gettempdir(), filename[:-3]+'xml')
-                    x=helper('%s -t "%s" "%s"' % (self.xmlexe, bglname, tmp))
-                    if not x and exists(tmp):
-                        try:
-                            xmlfile=file(tmp, 'rU')
-                        except IOError:
-                            self.log("Can't parse file %s" % filename)
-                        convxml.Parse(xmlfile, bglname, self)
-                        xmlfile.close()
-                    else:
-                        self.log("Can't parse file %s (%s)" % (filename, x))
+                    xmls.append(bglname)
                 else:
                     self.log("Can't parse \"%s\". Is this a BGL file?" % (
                         filename))
                 bgl.close()
                 if tmp and exists(tmp) and not self.debug: unlink(tmp)
+
+        # set up exclusions that affect facilities
+        self.excfac=list(self.exc)
+        for (name, heading, points) in self.polyplc:
+            minlat=minlon=maxint
+            maxlat=maxlon=-maxint
+            for p in points:
+                minlat=min(minlat,p[0].lat)
+                maxlat=max(maxlat,p[0].lat)
+                minlon=min(minlon,p[0].lon)
+                maxlon=max(maxlon,p[0].lon)
+            self.excfac.append((None, Point(minlat,minlon), Point(maxlat,maxlon)))
+
+        # Do airport facilities last so that exclusions have been set up
+        for bglname in xmls:
+            tmp=join(gettempdir(), basename(bglname[:-3])+'xml')
+            x=helper('%s -t "%s" "%s"' % (self.xmlexe, bglname, tmp))
+            if not x and exists(tmp):
+                if 1:#XXX try:
+                    xmlfile=file(tmp, 'rU')
+                    convxml.Parse(xmlfile, bglname, self)
+                    xmlfile.close()
+                    if not self.debug: unlink(tmp)
+                else:#except:
+                    self.log("Can't parse file %s" % filename)
+            else:
+                self.log("Can't parse file %s (%s)" % (filename, x))
 
 
     # Process referenced library into self.objplc and self.objdat
@@ -436,7 +445,7 @@ class Output:
         i=0
         while i<len(self.objplc):
             (loc, heading, complexity, uid, scale)=self.objplc[i]
-            if uid in self.stock:
+            if uid in self.stock and not self.dumplib:
                 name=self.stock[uid]
                 if name in ignorestock:
                     self.objplc.pop(i)	# Silently drop ignored stock objects
@@ -718,7 +727,7 @@ class Output:
             if poly.layer and poly.layer>4: fslayers[poly.layer]=None
         keys=fslayers.keys()
         keys.sort()
-        if True:	# was self.visrunways, but need lights:
+        if True:	# was self.visrunways, but need runway lights:
             layermap=["taxiways +1", "taxiways +2", "taxiways +3", "taxiways +4", "taxiways +5", "runways -5", "runways -4", "runways -3", "runways -2", "runways -1"]
         else:
             layermap=["airports +1", "airports +2", "airports +3", "airports +4", "airports +5", "roads -5", "roads -4", "roads -3", "roads -2", "roads -1"]
@@ -954,9 +963,8 @@ class Output:
             if not self.debug: unlink(dstname)
 
 
-    # Is point within any exclusion regions?
+    # Should taxiway node be suppressed?
     def excluded(self, p):
-        for (typ, sw, ne) in self.exc:
+        for (typ, sw, ne) in self.excfac:
             if p.lat>=sw.lat and p.lat<=ne.lat and p.lon>=sw.lon and p.lon<=ne.lon:
                 return True
-        return False

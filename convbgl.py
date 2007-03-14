@@ -200,6 +200,7 @@ class ProcScen:
         self.rrt=False	# Old style runways/roads found and skipped
         self.anim=False	# Animations found and skipped
         self.debug=debug
+        self.cmd=0
 
         self.bgl=bgl
         self.libname=libname
@@ -216,8 +217,9 @@ class ProcScen:
             if d.lower()=='texture':
                 self.texdir=join(self.texdir, d)
                 break
-        else:
-            raise FS2XError('"%s" does not exist' %join(self.texdir,'Texture'))
+        #else:
+        # Ignore
+        #    raise FS2XError('"%s" does not exist' %join(self.texdir,'Texture'))
 
         start=bgl.tell()
         if tran: self.tran=start+tran		# Location of TRAN table
@@ -357,6 +359,7 @@ class ProcScen:
               0x1a:self.ResList,
               0x1b:self.Jump,
               0x1c:self.IfIn2,
+              0x1d:self.FaceT,
               0x1e:self.Haze,
               0x1f:self.TaxiMarkings,
               0x20:self.FaceTTMap,
@@ -386,6 +389,7 @@ class ProcScen:
               0x42:self.TextureRunway,
               0x43:self.Texture2,
               0x44:self.TextureRunway,
+              0x4c:self.VScale,
               0x4d:self.MoveL2G,
               0x4e:self.MoveL2G,
               0x46:self.PointVICall,
@@ -459,28 +463,28 @@ class ProcScen:
                     if self.debug: self.debug.write("!Overrun at %x enda=%x\n" % (pos, enda))
                     raise struct.error
                 return
-            (cmd,)=unpack('<H',bgl.read(2))
-            if cmd==0 or (cmd==0x22 and not self.stack):
+            (self.cmd,)=unpack('<H',bgl.read(2))
+            if self.cmd==0 or (self.cmd==0x22 and not self.stack):
                 if self.donight():
                     bgl.seek(start)
                     continue
                 self.makeobjs()
                 if self.debug:
-                    self.debug.write("%x: cmd %02x\n" % (pos, cmd))
+                    self.debug.write("%x: cmd %02x\n" % (pos, self.cmd))
                     for i in range(1, len(self.matrix)):
                         self.debug.write("!Unbalanced matrix:\n%s\n" % (
                             self.matrix[i]))
                 return
-            elif cmd in cmds:
+            elif self.cmd in cmds:
                 if self.debug: self.debug.write("%x: cmd %02x %s\n" % (
-                    pos, cmd, cmds[cmd].__name__))
-                cmds[cmd]()
+                    pos, self.cmd, cmds[self.cmd].__name__))
+                cmds[self.cmd]()
             elif self.donight():
                 bgl.seek(start)
                 continue
             else:
                 self.makeobjs()	# Try to go with what we've got so far
-                if self.debug: self.debug.write("!Unknown cmd %x at %x\n" % (cmd, pos))
+                if self.debug: self.debug.write("!Unknown cmd %x at %x\n" % (self.cmd, pos))
                 raise struct.error
 
 
@@ -764,13 +768,15 @@ class ProcScen:
             else:
                 self.vtx[i]=v
 
-    def FaceT(self):		# 2a:GFaceT, 3e:FaceT
-        (count,nx,ny,nz)=unpack('<H3h', self.bgl.read(8))
+    def FaceT(self):		# 1d:Face, 2a:GFaceT, 3e:FaceT
+        (count,)=unpack('<H', self.bgl.read(2))
+        if self.cmd==0x1d: self.bgl.read(6)	# point
+        (nx,ny,nz)=unpack('<3h', self.bgl.read(6))
         if count<=4: self.concave=False	# Don't bother
         nx=nx/32767.0
         ny=ny/32767.0
         nz=nz/32767.0
-        self.bgl.read(4)
+        if self.cmd!=0x1d: self.bgl.read(4)	# dot_ref
         vtx=[]
         for i in range(count):
             (idx,)=unpack('<H', self.bgl.read(2))
@@ -835,10 +841,13 @@ class ProcScen:
         (lat,lon,self.altmsl)=self.LLA()
         self.alt=0
         if self.debug: self.debug.write("AltMSL %s\n" % self.altmsl)
-        self.loc=Point(lat,lon)
-        if lat<0 and not self.output.hemi:
-            self.output.hemi=1
-            self.setseason()
+        if lat>=-90 and lat<=90 and lon>=-180 and lon<=180:
+            self.loc=Point(lat,lon)
+            if lat<0 and not self.output.hemi:
+                self.output.hemi=1
+                self.setseason()
+        else:	# bogus
+            self.loc=None
 
     def Instance(self):		# 33
         (off,p,b,h)=unpack('<h3H', self.bgl.read(8))
@@ -944,20 +953,21 @@ class ProcScen:
         self.bgl.read(8)	# jump,range (LOD) (may be 0),size,reserved
         (lat,lon,self.altmsl)=self.LLA()
         self.alt=0
-        if self.debug: self.debug.write("AltMSL %s\n" % self.altmsl)
-        pt=Point(lat,lon)
-        if self.loc:
-            (x,y,z)=Matrix().headed(self.loc.headingto(pt)).rotate(0,0,self.loc.distanceto(pt))
-            if self.matrix[-1]:
-                if self.debug: self.debug.write("Old\n%s\n" % self.matrix[-1])
-                self.matrix[-1]=self.matrix[-1].offset(x,0,z)
+        if self.debug: self.debug.write("Position %s\n" % self.altmsl)
+        if lat>=-90 and lat<=90 and lon>=-180 and lon<=180:
+            pt=Point(lat,lon)
+            if self.loc:
+                (x,y,z)=Matrix().headed(self.loc.headingto(pt)).rotate(0,0,self.loc.distanceto(pt))
+                if self.matrix[-1]:
+                    if self.debug: self.debug.write("Old\n%s\n" % self.matrix[-1])
+                    self.matrix[-1]=self.matrix[-1].offset(x,0,z)
+                else:
+                    self.matrix[-1]=Matrix().offset(x,0,z)
+                if self.debug:
+                    self.debug.write("New\n%s\n" % self.matrix[-1])
+                    self.debug.write("Now\n%s\n" % Matrix().offset(x,0,z))
             else:
-                self.matrix[-1]=Matrix().offset(x,0,z)
-            if self.debug:
-                self.debug.write("New\n%s\n" % self.matrix[-1])
-                self.debug.write("Now\n%s\n" % Matrix().offset(x,0,z))
-        else:
-            self.loc=pt
+                self.loc=pt
         self.checkmsl()
 
     def Texture2(self):		# 43
@@ -1055,6 +1065,13 @@ class ProcScen:
             loc=self.loc
         self.output.objplc.append((loc, heading, self.complexity, name, 1))
             
+    def VScale(self):		# 4c
+        # ignore and hope another command sets location
+        self.bgl.read(8)	# jump,range (LOD) (may be 0),size,reserved
+        (scale,var)=unpack('<Ih', self.bgl.read(6))
+        self.scale=65536.0/scale
+        self.loc=None
+
     def MoveL2G(self):		# 4d:MoveL2G, 4e:MoveG2L
         (to, fr)=unpack('<2H', self.bgl.read(4))
         self.vars[to]=self.getvar(fr)
@@ -1152,10 +1169,13 @@ class ProcScen:
         self.scale=65536.0/scale
         (lat,lon,self.alt)=self.LLA()
         self.altmsl=0
-        self.loc=Point(lat,lon)
-        if lat<0 and not self.output.hemi:
-            self.output.hemi=1
-            self.setseason()
+        if lat>=-90 and lat<=90 and lon>=-180 and lon<=180:
+            self.loc=Point(lat,lon)
+            if lat<0 and not self.output.hemi:
+                self.output.hemi=1
+                self.setseason()
+        else:
+            self.loc=None
         
     def ResPnt(self):		# 80
         (idx,)=unpack('<H', self.bgl.read(2))
@@ -1391,6 +1411,7 @@ class ProcScen:
         (size,op)=unpack('<HB', self.bgl.read(3))
         endop=self.bgl.tell()+size-5
         (lat,lon,alt)=self.LLA()
+        if not (lat>=-90 and lat<=90 and lon>=-180 and lon<=180): return
         cloc=Point(lat,lon)
         (heading, length, width, markers, surface_type, surface_lights, identifiers)=unpack('<HHHHBBB', self.bgl.read(11))
         heading=heading*(360.0/65536)
@@ -2332,15 +2353,14 @@ class ProcScen:
                 minx=minz=maxint
                 maxx=maxz=maxy=-maxint
                 if vt:
-                    decal=True
+                    poly=2
                     for (x,y,z, nx,ny,nz, tu,tv) in vt:
                         minx=min(minx,x)
                         maxx=max(maxx,x)
                         maxy=max(maxy,y)
                         minz=min(minz,z)
                         maxz=max(maxz,z)
-                        if y>groundfudge: decal=False
-                    if decal: poly=5
+                        if y>groundfudge: poly=0
                         #if (maxx-minx)>NM2m/4 or (maxz-minz)>NM2m/4:    # arbitrary
                         #    poly=1	# probably orthophoto
                         #else:
@@ -2637,9 +2657,9 @@ def ProcTerrain(bgl, srcfile, output, debug):
                      (Point(lat,lon+LONRES),1,1),
                      (Point(lat,floor(lon)+1),(floor(lon)+1-lon)/LONRES,1)]]
         else:
-            points=[[(Point(lat-LATRES,lon),0,0),
+            points=[[(Point(lat-LATRES,lon),0,0),	# SW
                      (Point(lat-LATRES,lon+LONRES),1,0),
-                     (Point(lat,lon+LONRES),1,1),
+                     (Point(lat,lon+LONRES),1,1),	# NE
                      (Point(lat,lon),0,1)]]
         if lat>floor(lat-LATRES)+1:
             # Split NS

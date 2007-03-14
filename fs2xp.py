@@ -29,7 +29,7 @@
 
 from getopt import getopt, GetoptError
 from os import chdir, mkdir
-from os.path import abspath, basename, dirname, exists, isdir, join
+from os.path import abspath, normpath, basename, dirname, pardir, exists, isdir, join
 from sys import exit, argv
 from traceback import print_exc
 
