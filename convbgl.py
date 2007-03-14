@@ -220,14 +220,13 @@ class ProcScen:
         #else:
         # Ignore
         #    raise FS2XError('"%s" does not exist' %join(self.texdir,'Texture'))
-
-        start=bgl.tell()
-        if tran: self.tran=start+tran		# Location of TRAN table
+        self.start=bgl.tell()
+        if tran: self.tran=self.start+tran	# Location of TRAN table
         if scen:
             # Decode SCEN table
-            bgl.seek(start+scen)
+            bgl.seek(self.start+scen)
             (count,)=unpack('<H', bgl.read(2))
-            scen=start+scen+2
+            scen=self.start+scen+2
             self.scen=[None for i in range(count)]
             for i in range(count):
                 bgl.seek(scen+i*12)
@@ -275,7 +274,7 @@ class ProcScen:
                         (a,b,c,d)=unpack('<4f', bgl.read(16))
                         m.append([a,b,c,d])
                     self.debug.write("%s = %d\n" % (Matrix(m), i))
-            bgl.seek(start)
+            bgl.seek(self.start)
         
         # State
         self.complexity=1
@@ -309,6 +308,7 @@ class ProcScen:
         self.polydat=[]	# ((points, layer, heading, scale, tex, lit))
 
         self.neednight=False
+        self.dayloc=None
         self.dayobjdat={}        
         self.daylinedat={}        
         self.daylightdat={}        
@@ -455,18 +455,17 @@ class ProcScen:
         while True:
             pos=bgl.tell()
             if pos>=enda:
-                if self.donight():
-                    bgl.seek(start)
-                    continue
-                self.makeobjs()
-                if pos>enda:
-                    if self.debug: self.debug.write("!Overrun at %x enda=%x\n" % (pos, enda))
-                    raise struct.error
-                return
-            (self.cmd,)=unpack('<H',bgl.read(2))
+                self.cmd=0
+                if pos>enda and self.debug: self.debug.write("!Overrun at %x enda=%x\n" % (pos, enda))
+            elif pos<self.start:
+                # Underrun - just return if in a call eg ESGJ2K2
+                self.cmd=0x22
+                if self.debug: self.debug.write("!Underrun at %x start=%x\n" % (pos, self.start))
+            else:
+                (self.cmd,)=unpack('<H',bgl.read(2))
             if self.cmd==0 or (self.cmd==0x22 and not self.stack):
                 if self.donight():
-                    bgl.seek(start)
+                    bgl.seek(self.start)
                     continue
                 self.makeobjs()
                 if self.debug:
@@ -480,7 +479,7 @@ class ProcScen:
                     pos, self.cmd, cmds[self.cmd].__name__))
                 cmds[self.cmd]()
             elif self.donight():
-                bgl.seek(start)
+                bgl.seek(self.start)
                 continue
             else:
                 self.makeobjs()	# Try to go with what we've got so far
@@ -491,6 +490,7 @@ class ProcScen:
     def donight(self):
         if self.neednight and self.vars[0x28c]!=4:
             self.vars[0x28c]=4
+            self.dayloc=self.loc
             self.dayobjdat=self.objdat
             self.daylinedat=self.linedat
             self.daylightdat=self.lightdat
@@ -847,6 +847,8 @@ class ProcScen:
                 self.output.hemi=1
                 self.setseason()
         else:	# bogus
+            if self.debug:
+                self.debug.write("!Bogus Location %s\n" % Point(lat,lon))
             self.loc=None
 
     def Instance(self):		# 33
@@ -968,6 +970,8 @@ class ProcScen:
                     self.debug.write("Now\n%s\n" % Matrix().offset(x,0,z))
             else:
                 self.loc=pt
+        elif self.debug:
+            self.debug.write("!Bogus Location %s\n" % Point(lat,lon))
         self.checkmsl()
 
     def Texture2(self):		# 43
@@ -1175,6 +1179,8 @@ class ProcScen:
                 self.output.hemi=1
                 self.setseason()
         else:
+            if self.debug:
+                self.debug.write("!Bogus Location %s\n" % Point(lat,lon))
             self.loc=None
         
     def ResPnt(self):		# 80
@@ -1205,7 +1211,7 @@ class ProcScen:
         self.stack.append((self.bgl.tell(),self.layer,False))
         if self.debug: self.debug.write("Layer %d\n" % cat)
         self.layer=cat
-        self.bgl.seek(off-6,1)
+        self.bgl.seek(off-8,1)
 
     def ReScale(self):		# 83
         self.bgl.read(6)	# jump,range (LOD) (may be 0),size
@@ -1328,7 +1334,7 @@ class ProcScen:
         elif typ==0x26c:
             # effect
             end=self.bgl.tell()+size-6
-            name=self.bgl.read(0x5a).strip('\0').lower()
+            name=self.bgl.read(80).strip('\0').lower()
             if not name in effects:
                 self.output.log('Unsupported effect "%s" at (%10.6f, %11.6f) in %s' % (name, self.loc.lat, self.loc.lon, self.comment))
             else:
@@ -2141,7 +2147,8 @@ class ProcScen:
             if self.loc:
                 if self.debug: self.debug.write("!Location given for library object\n")
                 raise struct.error	# Code assumes no spurious location
-        elif self.loc:
+        elif self.loc or self.dayloc:
+            if not self.loc: self.loc=self.dayloc
             bname=self.srcfile
             if bname.lower()[-4:]=='.bgl':
                 bname=bname[:-4]

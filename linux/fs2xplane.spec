@@ -6,7 +6,7 @@ URL: http://marginal.org.uk/x-planescenery
 Icon: fs2xplane.xpm
 Vendor: Jonathan Harris <x-plane@marginal.org.uk>
 Prefix: /usr/local
-Requires: python >= 2.4, python < 2.5, wxPython >= 2.6, python-opengl >= 2.0, wine
+Requires: bash, python >= 2.4, python < 2.5, wxPython >= 2.6, python-opengl >= 2.0, wine
 
 %description
 This application converts MS Flight Simulator 2004 add-on scenery packages to X-Plane DSF overlay scenery packages for X-Plane 8.60 or later.

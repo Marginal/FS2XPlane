@@ -35,7 +35,7 @@ from struct import pack, unpack
 from sys import exit, platform, maxint
 from tempfile import gettempdir
 
-from convutil import banner, helper, complexities, AptNav, Object, Polygon, Point, FS2XError, sortfolded
+from convutil import asciify, banner, helper, complexities, AptNav, Object, Polygon, Point, FS2XError, sortfolded
 from convobjs import makestock, ignorestock
 from convbgl import ProcEx
 import convbgl
@@ -181,7 +181,7 @@ class Output:
                                 if not j in '0123456789abcdef': break
                             else:
                                 line=line[line.index('name="')+6:]
-                                self.friendly[uid]=line[:line.index('"')]
+                                self.friendly[uid]=asciify(line[:line.index('"')])
                     except:
                         pass
                         
@@ -207,7 +207,7 @@ class Output:
                                 for j in uid:
                                     if not j in '0123456789abcdef': break
                                 else:
-                                    self.friendly[uid]=line[32:].strip()
+                                    self.friendly[uid]=asciify(line[32:].strip())
                             h.close()
                         except:
                             pass
@@ -289,7 +289,7 @@ class Output:
                             name=None
                             if hdsize>42:
                                 # Use "friendly" name instead of id
-                                name=bgl.read(hdsize-(41)).rstrip(' \0')
+                                name=asciify(bgl.read(hdsize-(41)).rstrip(' \0'))
                             if not name or name=="Object":
                                 if uid in self.friendly:
                                     name=self.friendly[uid]
@@ -419,12 +419,12 @@ class Output:
             tmp=join(gettempdir(), basename(bglname[:-3])+'xml')
             x=helper('%s -t "%s" "%s"' % (self.xmlexe, bglname, tmp))
             if not x and exists(tmp):
-                if 1:#XXX try:
+                try:
                     xmlfile=file(tmp, 'rU')
                     convxml.Parse(xmlfile, bglname, self)
                     xmlfile.close()
                     if not self.debug: unlink(tmp)
-                else:#except:
+                except:
                     self.log("Can't parse file %s" % filename)
             else:
                 self.log("Can't parse file %s (%s)" % (filename, x))

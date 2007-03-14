@@ -172,6 +172,9 @@ class Point:
         #if not type(m) in int, float: return NotImplemented
         return Point(self.lat*m, self.lon*m)
 
+    def __div__(self, m):
+        return Point(self.lat/m, self.lon/m)
+
     def equals(self, other, precision=6):
         return round(self.lat,precision)==round(other.lat,precision) and round(self.lon,precision)==round(other.lon,precision)
 

@@ -20,8 +20,8 @@ h5 { font-family: Arial,Helvetica,sans-serif; }
 <table style="width: 100%;" border="0" cellpadding="2">
   <tbody>
     <tr>
-      <td class="banner">Marginal &raquo; <a href="http://marginal.org.uk/x-planescenery/">X-Plane
-Scenery</a> &raquo; <a href="http://marginal.org.uk/x-planescenery/tools.html">Tools</a> &raquo; FS2XPlane</td>
+      <td class="banner">Marginal &rarr; <a href="http://marginal.org.uk/x-planescenery/">X-Plane
+Scenery</a> &rarr; <a href="http://marginal.org.uk/x-planescenery/tools.html">Tools</a> &rarr; FS2XPlane</td>
     </tr>
   </tbody>
 </table>
@@ -31,7 +31,7 @@ Scenery</a> &raquo; <a href="http://marginal.org.uk/x-planescenery/tools.html">T
 <p>This application converts MS Flight Simulator 2004 and FSX add-on 
 scenery packages to X-Plane DSF overlay scenery packages.
 The resulting X-Plane scenery packages work under X-Plane 8.60 and
-later on Windows, MacOS and Linux. Standard "ENV" or "DSF" global scenery
+later on Windows, Mac OS and Linux. Standard "ENV" or "DSF" global scenery
 for the relevant areas must also have been installed.</p>
 <p>See the <a href="#license">license</a>
 section below before using this application.</p>
@@ -51,16 +51,18 @@ The application also works with FS2002 and older scenery packages that
 contain old-style BGL procedural scenery, but produces poorer and less
 efficient X-Plane scenery <small>(this is mostly due to the fact that older
 MSFS scenery packages tend to use lots of small texture files)</small>.</p>
-<h3>Requirements</a></h3>
+<h3><a name="requirements">Requirements</a></h3>
 <dl>
   <dt><b>Windows</b></dt>
   <dd>Requires Windows 2000 or later.</dd>
   <dt>&nbsp;</dt>
   <dt><b>Mac OS</b></dt>
   <dd>Requires Mac OS 10.3.9 or later.<br>
-If you have an Intel Mac then you should install X11 from your Mac OS
-installation disc and also download
-<a href="http://darwine.opendarwin.org/download.php">Darwine</a> -
+If you have an Intel Mac then you should install X11 from the your Mac OS
+<a href="http://docs.info.apple.com/article.html?artnum=301229">DVD</a> or
+<a href="http://docs.info.apple.com/article.html?artnum=25735">CD 3</a>,
+and also download
+<a href="http://darwine.opendarwin.org/download.php">Darwine</a> (x86) -
 drag the folder <code>Darwine</code> to your Applications folder to install it.
 This will allow you to run MSFS scenery package installer programs
 and will also in some cases allow FS2XPlane to produce more complete
@@ -104,9 +106,9 @@ two kinds of scenery packages; those that come with an installer program
 and those that you install manually:</li>
     <dl>
       <dt>Installer program:</dt>
-      <dd>Mac OS: If you have an Intel Mac double-click on the WineHelper
-application in the <code>Darwine</code> folder. If you have a PPC Mac you can't use this scenery package.<br>
-      Double-click on the installer program to run it.
+      <dd>Double-click on the installer program to run it
+      <small>(unless you have a PPC Mac, in which case you can't use this
+      scenery package)</small>.<br>
       Let the program put the scenery in the default location.<br>
       The installer program puts the scenery in a folder somewhere inside of
       your MSFS installation. Find this subfolder (it may be inside
@@ -142,6 +144,12 @@ X-Plane's<code> Custom&nbsp;Scenery </code>folder.</li>
 which case this setting will be ignored).</small></li>
   <li>Press <samp>Convert</samp>.</li>
 </ul>
+<p>The application runs for a while and displays the names of the files
+that it is processing. It will stop and display an
+<a href="FS2XPlane.html#errors">error</a> if it encounters a fatal problem
+during the conversion. Otherwise, on completion, the application will say
+"Done" and may display a summary of problems that it encountered.
+This summary is described <a href="FS2XPlane.html#summary">below</a>.</p>
 <h5>Extracting library objects</h5>
 <p>FS2XPlane can extract objects from "BGL", "Rwy12" and "EZ-Scenery"
 libraries. It cannot read uncompiled "API", "SBuilder", "SCM" or "MDL" files
@@ -163,12 +171,6 @@ scenery libraries supply seasonal textures, in which case this setting
 will be ignored).</small></li>
   <li>Press <samp>Convert</samp>.</li>
 </ul>
-<p>The application runs for a while and displays the names of the files
-that it is processing. It will stop and display an
-<a href="FS2XPlane.html#errors">error</a> if it encounters a fatal problem
-during the conversion. Otherwise, on completion, the application will say
-"Done" and may display a summary of problems that it encountered.
-This summary is described <a href="FS2XPlane.html#summary">below</a>.</p>
 <h5><a name="command_line">Command line</a></h5>
 <p>Windows/Linux:</p>
 <p style="margin-left: 40px;"><code>fs2xp </code>[options]&nbsp;"<i>location&nbsp;of&nbsp;MSFS&nbsp;scenery&nbsp;package</i>"
@@ -269,6 +271,7 @@ This can lead to these textures "floating" above the ground in X-Plane.</li>
 </ul>
 <p>The following MSFS scenery data are discarded:</p>
 <ul>
+  <li>FSX photoscenery.</li>
   <li>Scenery made by FSX MDL design tools.</li>
   <li>Data that X-Plane does not understand, <i>eg</i> airspace boundaries.</li>
   <li>Terrain and landclass data.</li>
@@ -444,9 +447,10 @@ but any other areas or objects in the same file will be OK.</td>
     <tr>
       <td style="background-color: white; vertical-align: top;">Can't
 parse compressed file &lt;filename&gt;</td>
-      <td style="background-color: white;">The file is
-compressed. Compressed files can only be read on Windows or Linux.<br>
-This file will not be converted.</td>
+      <td style="background-color: white;">The file is compressed and
+could not be converted.<br>
+If you have an Intel Mac then install <a href="#requirements">Darwine</a>
+and run the application again.<br></td>
     </tr>
     <tr>
       <td style="background-color: white; vertical-align: top;">Can't
@@ -623,7 +627,7 @@ You may be asked whether to overwrite some files; say yes.</li>
 <table style="width: 100%;" border="0" cellpadding="2">
   <tbody>
     <tr>
-      <td class="banner">Version 2.03 &copy; 2006 <a href="mailto:x-plane@marginal.org.uk">Jonathan Harris</a>
+      <td class="banner">Version 2.10 &copy; 2006 <a href="mailto:x-plane@marginal.org.uk">Jonathan Harris</a>
 <a rel="license" href="http://creativecommons.org/licenses/by-sa/2.5/"><img style="border: 0px solid ; width: 88px; height: 31px; vertical-align: text-bottom;" alt="Creative Commons License" src="http://creativecommons.org/images/public/somerights20.png"></a><br>
       </td>
     </tr>

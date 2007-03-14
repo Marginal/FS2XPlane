@@ -145,7 +145,12 @@ if platform=='win32':
                     v='\\'.join(dirs)
                 if t in [REG_SZ,REG_EXPAND_SZ] and isdir(v):
                     v=join(v.rstrip('\0').strip(), 'Addon Scenery')
-                    fspath=join(v, listdir(v)[0])
+                    dirs=[i for i in listdir(v) if isdir(join(v,i))]
+                    sortfolded(dirs)
+                    if dirs:
+                        fspath=join(v, dirs[0])
+                    else:
+                        fspath=v
                     lbpath=v	#join(v, 'Scenery')
                     break
             except:
@@ -168,7 +173,12 @@ if platform=='win32':
                 pass
             v=join(fsroot, "Addon Scenery")
             if isdir(v):
-                fspath=v+'\\'+listdir(v)[0]
+                dirs=[i for i in listdir(v) if isdir(join(v,i))]
+                sortfolded(dirs)
+                if dirs:
+                    fspath=join(v, dirs[0])
+                else:
+                    fspath=v
                 lbpath=v
             else:
                 newfsroot=fsroot
@@ -191,9 +201,12 @@ else:
         pass
     v=join(fsroot, "Addon Scenery")
     if isdir(v):
-        dirs=listdir(v)
+        dirs=[i for i in listdir(v) if isdir(join(v,i))]
         sortfolded(dirs)
-        fspath=v+'/'+dirs[0]
+        if dirs:
+            fspath=join(v, dirs[0])
+        else:
+            fspath=v
         lbpath=v
     else:
         newfsroot=fsroot
@@ -432,7 +445,7 @@ class MainWindow(wx.Frame):
                 self.progress=None
             if exists(self.logname):
                 viewer(self.logname)
-                myMessageBox('Displaying error log "%s"' %(
+                myMessageBox('Displaying summary "%s"' %(
                     self.logname), 'Done.', wx.ICON_INFORMATION|wx.OK, self)
             else:
                 myMessageBox('', 'Done.', wx.ICON_INFORMATION|wx.OK, self)

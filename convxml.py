@@ -32,8 +32,8 @@ from sys import maxint
 import xml.parsers.expat
 from tempfile import gettempdir
 
-from convutil import m2f, NM2m, complexity, asciify, AptNav, Object, Point, Matrix, FS2XError, apronlightspacing, taxilightspacing
-from convobjs import makeapronlight, maketaxilight, maketaxisign, makegenquad, makegenmulti
+from convutil import m2f, NM2m, complexity, asciify, AptNav, Object, Point, Matrix, FS2XError
+from convobjs import makegenquad, makegenmulti
 from convtaxi import designators, surfaces, taxilayout, Node, Link
 
 
@@ -857,8 +857,8 @@ class Airport:
                 else:
                     aptdat.append(AptNav(120, "Apron edge"))
                     for loc in l:
-                        aptdat.append(AptNav(111, "%10.6f %11.6f %02d %03d" % (
-                            loc.lat, loc.lon, 53, 102)))
+                        aptdat.append(AptNav(111, "%10.6f %11.6f %03d" % (
+                            loc.lat, loc.lon, 102)))
                     aptdat[-1].code=115
                     aptdat[-1].text=aptdat[-1].text[:22]
 

@@ -34,6 +34,29 @@ from convutil import Object, rgb2uv
 # X-Plane autonmatically generates versions of these from nav.dat data 
 ignorestock=['air_localizerantenna01', 'air_ndb_dmeantenna','air_ndb_dmeshack','air_ndb_dmetower','gen_dme','gen_ndb01','gen_tacan','ndb','sco_gen_checkershed','sco_gen_ilstransmitter','sco_gen_radarshackb','sco_gen_radarshackbaseb','sco_gen_radarshackdish','sco_gen_vor03','sco_gen_vor03dme','sco_gen_vorsmall','sco_gen_vorsmall2','sco_gen_vorsmall2dme','sco_gen_vorsmalldme']
 
+# Stock X-Plane objects that are close enough to stock MSFS objects
+libobjs={'ag_gas_2':		'trans/truckstop.obj',
+         'ag_gas_3':		'ind/truckstop.obj',
+         'gen_aviator01':	'lib/cars/car.obj',
+         'gen_oilrig01':	'lib/ships/OilPlatform.obj',
+         'gen_rig01':		'lib/ships/OilPlatform.obj',	
+         'sailboat_big_down':	'lib/ships/SailBoat.obj',
+         'sailboat_big_up':	'lib/ships/SailBoat.obj',
+         'sailboat_s_down':	'lib/ships/SailBoat.obj',
+         'sailboat_s_up':	'lib/ships/SailBoat.obj',
+         'veh_carrier1':	'lib/ships/Carrier.obj',
+         'veh_water_eastcoastcarrier1':	'lib/ships/Carrier.obj',
+         'veh_water_sailboat1':	'lib/ships/SailBoat.obj',
+         'veh_water_sailboat2':	'lib/ships/SailBoat.obj',
+         'veh_water_sailboat3':	'lib/ships/SailBoat.obj',
+         'veh_water_sailboat4':	'lib/ships/SailBoat.obj',
+         'veh_water_sailboat5':	'lib/ships/SailBoat.obj',
+         'veh_water_smallboat1':'lib/ships/SailBoat.obj',
+         'veh_water_smallboat2':'lib/ships/SailBoat.obj',
+         'veh_water_smallboat3':'lib/ships/SailBoat.obj',
+         'veh_water_smallboat4':'lib/ships/SailBoat.obj',
+         }
+
 def makeapronlight():
     vlight=[(0,1,0, 0.3125,0.3125,1)]
     vt=[(-1.5,0,-1.5, 0,1,0, 0,0),
@@ -247,7 +270,6 @@ def maketaxisign(label):
 
 
 def makestock(output, uid, name):
-    libobjs={'gen_aviator01':'lib/cars/car.obj'}
     if name in libobjs:
         return Object(libobjs[name], "X-Plane library object", None,None,None,
                       None, None, None, None, None, None, 0)
