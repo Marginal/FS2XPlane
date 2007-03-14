@@ -57,9 +57,9 @@ elif platform.lower().startswith('darwin'):
               #  ]),
               ]
 
-objs=[]
+res=["Resources/library objects.txt"]
 for f in listdir('Resources'):
-    if f[-4:]=='.obj': objs.append('Resources/%s' % f)
+    if f[-4:] in ['.bgl', '.obj', '.png']: res.append('Resources/%s' % f)
     
 setup(name='FS2XPlane',
       version=("%4.2f" % appversion),
@@ -72,13 +72,7 @@ setup(name='FS2XPlane',
                     'bglxml.copying.txt',
                     ]),
                   ('Resources',
-                   ['Resources/blank.png',
-                    'Resources/gaspump1.r8.png',
-                    'Resources/FS2X-palette.png',
-                    'Resources/transparent.png',
-                    'Resources/Tree_side.png',
-                    'Resources/library objects.txt',
-                    ]+objs),
+                   res),
                   ] + platdata,
 
       options = {'py2exe': {'ascii':True,

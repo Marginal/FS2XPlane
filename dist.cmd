@@ -14,7 +14,7 @@ set RPM=%TMP%\fs2xplane
 
 if exist FS2XPlane.app rd /s /q FS2XPlane.app >nul: 2>&1
 if exist "%RPM%" rd /s /q "%RPM%"
-del /s /q dist >nul:  2>&1
+if exist dist rd /s /q dist >nul:  2>&1
 REM del /s /q *.bak >nul: 2>&1
 del /s /q *.pyc >nul: 2>&1
 
@@ -75,6 +75,8 @@ chown -R %USERNAME% "%RPMRT%"
 @REM mac
 mkdir FS2XPlane.app\Contents\MacOS
 xcopy /q /e MacOS FS2XPlane.app\Contents\MacOS\ |findstr -v "file(s) copied"
+for /r FS2XPlane.app %%I in (CVS) do rd /s /q "%%I" >nul: 2>&1
+for /r FS2XPlane.app %%I in (.cvs*) do del /q "%%I" >nul:
 for %%I in (%PY%) do (copy %%I FS2XPlane.app\Contents\MacOS\ |findstr -v "file(s) copied")
 mkdir FS2XPlane.app\Contents\MacOS\win32
 for %%I in (win32\bglunzip.exe win32\fake2004.exe) do (copy %%I FS2XPlane.app\Contents\MacOS\win32 |findstr -v "file(s) copied")
