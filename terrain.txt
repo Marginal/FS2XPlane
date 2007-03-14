@@ -1,0 +1,2 @@
+terrain = ~1.2m - 39km resolution
+landclass = ~1.2km resolution

@@ -1,0 +1,41 @@
+REGEDIT4
+
+[HKEY_CURRENT_USER\Software\Microsoft\Microsoft Games]
+
+[HKEY_CURRENT_USER\Software\Microsoft\Microsoft Games\Flight Simulator]
+"SimConnect_Port_IPv4"="0"
+
+[HKEY_CURRENT_USER\Software\Microsoft\Microsoft Games\Flight Simulator\10.0]
+"FIRSTRUN"=dword:00000001
+"AppPath"="C:\\Program Files\\Microsoft Games\\Microsoft Flight Simulator X\\"
+
+[HKEY_CURRENT_USER\Software\Microsoft\Microsoft Games\Flight Simulator\9.0]
+"FIRSTRUN"=dword:00000001
+
+[HKEY_CURRENT_USER\Software\Microsoft\Microsoft Games\Flight Simulator X SDK]
+"FIRSTRUN"=dword:00000001
+
+[HKEY_CURRENT_USER\Software\Microsoft\Microsoft Games\Flight Simulator X SDK SP1]
+"FIRSTRUN"=dword:00000001
+
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Microsoft Games\Flight Simulator]
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Microsoft Games\Flight Simulator\10.0]
+"LangID"=dword:00000409
+"CDPath"="E:\\"
+"SetupPath"="C:\\Program Files\\Microsoft Games\\Microsoft Flight Simulator X\\"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Microsoft Games\Flight Simulator\9.0]
+"MP9Check"="3"
+"Zone"="http://zone.msn.com/asp/fs04redir.asp"
+"Version"="9.0"
+"Launched"="1"
+"PID"="69768-442-7371917-34223"
+"DigitalProductID"=hex:
+"EXE Path"="C:\\Program Files\\Microsoft Games\\Flight Simulator 9"
+"CDPath"="X:\\"
+"VersionType"="RetailVersion"
+"InstalledGroup"="3"
+"LangID"=dword:00000009
+

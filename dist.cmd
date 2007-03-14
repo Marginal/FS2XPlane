@@ -20,7 +20,7 @@ del /s /q *.pyc >nul: 2>&1
 
 @set PY=fs2xp.py FS2XPlane.py convbgl.py convmain.py convobjs.py convtaxi.py convutil.py convxml.py MessageBox.py version.py
 @set DATA=FS2XPlane.html bglxml.copying.txt
-@set RSRC=Resources/*.obj Resources/blank.png Resources/gaspump1.r8.png Resources/FS2X-palette.png Resources/transparent.png Resources/Tree_side.png "Resources/library objects.txt" Resources/FS2XPlane.png
+@set RSRC=Resources/*.bgl Resources/*.obj Resources/*.png "Resources/library objects.txt"
 
 @REM source
 zip -r FS2XPlane_%VER%_src.zip dist.cmd %PY% %DATA% %RSRC% linux MacOS win32 |findstr -vc:"adding:"

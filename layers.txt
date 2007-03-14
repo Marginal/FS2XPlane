@@ -1,0 +1,136 @@
+Adisutjipto
+5  -> terrain (grass)
+6  -> apron (concrete, sandstone)
+7  -> apron markings (gateparking)
+8  -> lights, runway
+9  -> taxilines
+
+
+LIEE
+8  -> terrain (grass)
+8  -> aprons (concrete, asfalto)
+12 -> markings
+16 -> aprons (asfalto, markings)
+24 -> old-style taxiways
+40 -> old-style taxiways
+
+LIEO
+12 -> orthophoto + taxiways + aprons (lieo00*, pista*)
+13 -> apron markings & lights (lieo_stand*, luce)
+14 -> apron markings (ISD_strade*)
+16 -> old-style taxiways
+20 -> light
+40 -> old-style markings
+
+LIMC
+12 -> orthophoto (above apron & taxiways)
+13 -> markings
+14 -> ground lights, apron markings
+15 -> taxilines, runway markings
+
+LIRF
+1 -> lights! (luce_lamp)
+12 -> orthophoto + taxiways + aprons (lirf_*)
+13 -> apron markings, roads
+15 -> runway, apron markings
+16 -> roads
+17 -> spotlights
+20 -> lights
+
+KATL
+8  -> terrain (gras3)
+12 -> apron
+16 -> apron
+20 -> concrete overlay (concb, conct)
+24 -> aprons (stock13), markings
+28 -> taxiway
+32 -> lights
+
+EGPF
+8 -> terrain (Terraindetail)
+10 -> markings (edgeslines)
+(12-> markings)
+(20-> markings)
+(38-> markings)
+10 -> runway/taxiay/apron (ApronConcreteHIGH*, TaxiAshaltHIGH*, driveway)
+12 -> orthophotos (egpf_*)
+12 -> markings (runwaymarks) !
+20 -> markings (apron roads) (egpf_a*)
+26 -> markings (UKMarkings1)
+40 -> markings (edgeslines, egpf_baydetail)
+
+SAEZ
+2,8,10,12,14,16,12 -> apron under runway (CONCRET1)
+14,16 -> taxiways & apron (CONCRET2)
+24 -> light (LIGHTR)
+
+EFHK
+19,20,21,22 -> runway shoulder
+24 -> runway
+
+SDK
+AFCAD runways,taxiways,markings,papi,signs = 0 (excluded by s16 mask&1)
+CAT_MESH = 4, 
+CAT_POLY = 8,
+CAT_RIVER = 12,
+CAT_ROAD = 16,
+CAT_LINE = 20,
+CAT_RUNWAY = 24, 	(old-style)
+CAT_MOUNTAIN = 28,
+CAT_CRATER = 32, 
+CAT_GROUND_ELEMENT = 40,
+CAT_SHADOWS = 60
+
+
+X-Plane:
+terrain, beaches, airports, roads, objects, light_objects, cars
+airports = shoulders, taxiways, runways, markings
+(runways 0 = after runways!, relative order between .obj and .pol undefined)
+
+older mapping:
+<=4  - airports-1
+5-8  - runways
+9-11 - markings
+>=12 - airports+1
+poly=airports+1
+
+old mapping:
+<=8  - terrain
+9-11  - airports-1
+12-13 - shoulders
+14-23 - taxiways
+24-27 - markings (=after runways)
+28-31 or .pol or poly - airports+1
+
+<=4 - terrain (orthophotos)
+5-8 - airports-1 (orthophotos)
+9-11 = taxiways
+12-13 - runways (=after runways?)
+14-19 - markings
+>=20 - airports+1
+
+
+new mapping:
+<=4 - terrain +1
+5-8 - terrain +2-+5
+>=24 - objects -1
+if not visrunways:
+   9-11 - airports +1
+  12    - airports +2
+  13-15 - airports +3
+  16-19 - airports +4
+  20-23 - airports +5
+else:	# what about markings!
+   9-11 - taxiways +1
+  12    - taxiways +2
+  13-15 - taxiways +3
+  16-19 - taxiways +4
+  20-23 - taxiways +5
+
+new new mapping:
+<=4 - terrain +1-+5
+>=24 - objects -1
+if not visrunways:
+  airports +1-+5, roads +1-+5
+else:	# what about markings!
+  taxiways +1-+5, runways -5--1
