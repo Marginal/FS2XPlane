@@ -59,7 +59,7 @@ twopi=pi+pi
 m2f=3.28084	# 1 metre [ft]
 NM2m=1852	# 1 international nautical mile [m]
 
-groundfudge=2.2	# arbitrary: 0.124 used in UNNT, 0.172 in KBOS, 2.19 in LIRP
+groundfudge=0.22	# arbitrary: 0.124 used in UNNT, 0.172 in KBOS, 2.19 in LIRP
 planarfudge=0.1	# arbitrary
 
 palettetex='Resources/FS2X-palette.png'
@@ -637,11 +637,6 @@ def maketex(src, dst, output, palno):
                 src=tmp
             f.close()
 
-        if platform=='win32':
-            quote='"'
-        else:
-            quote="'"
-
         if palno:
             x=helper(output.pngexe, '-xbrqp%d' % (palno-1), '-o', dst, src)
         else:
@@ -682,10 +677,10 @@ def rgb2uv(rgb):
 # Run helper app and return stderr
 def helper(*cmds):
     if platform=='win32':
-        quote='"'
+        escquote='"'
     else:
-        quote="'"
-    cmdstr=cmds[0]+" " + " ".join([quote+cmd+quote for cmd in cmds[1:]])
+        escquote="'"
+    cmdstr=cmds[0]+" " + " ".join([escquote+cmd+escquote for cmd in cmds[1:]])
     if platform=='win32' and type(cmdstr)==types.UnicodeType:
         # commands must be MBCS encoded
         cmdstr=cmdstr.encode("mbcs")

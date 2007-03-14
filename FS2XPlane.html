@@ -126,7 +126,7 @@ and follow the installation notes for this additional scenery library.
 See the notes <a href="#rwy12">below</a> if your package depends on the
 "rwy12" library.</li>
     <li>Whether the packages supplies multiple alternative airport
-definitions (these are sometimes described as "AFCAD files" in the
+definitions (these are sometimes described as "AFCAD" files in the
 installation notes). If so, the installation notes may advise you to copy
 one of these files to the<code> scenery </code>folder inside the
 installed package.</li>
@@ -204,18 +204,20 @@ scenery package folder:</p>
     <tr>
       <td style="vertical-align: top; background-color: white;"><code>summary.txt</code></td>
       <td style="background-color: white;">Produced if there were any problems
-with the conversion. Discussed <a href="#summary">below</a>.<br>
+with the conversion. See <a href="#summary">below</a>.<br>
 You need not include this file in your scenery package.</td>
     </tr>
     <tr>
-      <td style="vertical-align: top; background-color: white;"><code>readme*, *.pdf</code></td>
-      <td style="background-color: white;">Documentation files copied from the
-MSFS scenery package.</td>
+      <td style="vertical-align: top; background-color: white;"><code>readme*</code>, <code>*.doc</code>, <code>*.html</code>, <code>*.pdf</code>, <code>*.rtf</code>, <code>*.txt</code></td>
+      <td style="vertical-align: top; background-color: white;">Documentation files copied from the MSFS scenery package.</td>
     </tr>
     <tr>
       <td style="vertical-align: top; background-color: white;"><code>Earth&nbsp;nav&nbsp;data\apt.dat</code></td>
-      <td style="background-color: white;">Airport,
-runway, taxiway and COM data.</td>
+      <td style="background-color: white;">Airport, runway, taxiway and COM data.</td>
+    </tr>
+    <tr>
+      <td style="vertical-align: top; background-color: white;"><code>Earth&nbsp;nav&nbsp;data\fullapt.dat</code></td>
+      <td style="background-color: white;">Alternative version of the above. See <a href="#taxiways">below</a>.</td>
     </tr>
     <tr>
       <td style="vertical-align: top; background-color: white;"><code>Earth&nbsp;nav&nbsp;data\nav.dat</code></td>
@@ -266,7 +268,8 @@ converted as static objects.</li>
 transparent or opaque. (But transparent textures work fine).</li>
   <li>Many MSFS scenery packages supply ground-level textures
 (eg taxiways) as scenery objects on top of flattened terrain.
-This can lead to these textures "floating" above the ground in X-Plane.</li>
+This can lead to these textures "floating" above the ground in X-Plane.
+See <a href="#taxiways">below</a> for one method of dealing with this.</li>
   <li>"Generic" MSFS buildings are not textured.</li>
 </ul>
 <p>The following MSFS scenery data are discarded:</p>
@@ -278,6 +281,23 @@ This can lead to these textures "floating" above the ground in X-Plane.</li>
   <li>"Hard" surfaces above ground-level.</li>
   <li>Areas that make use of some of the more obscure pre-FS2002 BGL opcodes.</li>
 </ul>
+
+<h3><a name="taxiways">Taxiways</a></h3>
+<p>Sometimes the designer of a MSFS scenery package chooses or is forced to
+hide some or all of the taxiways (and associated lights and lines);
+the designer creates "fake" taxiways using scenery objects and polygons
+instead.</p>
+<p>If the designer has hidden any taxiways then these hidden taxiways
+will not be listed in <code>apt.dat</code>. FS2XPlane creates an
+alternative file called <code>fullapt.dat</code> which contains all of the
+contents of <code>apt.dat</code> plus the hidden taxiways.</p>
+<p>You can see what the hidden taxiway look like by renaming
+<code>fullapt.dat</code> as <code>apt.dat</code> - sometimes they look
+better in X-Plane than the designers' "fake" taxiways. But if you do this
+then you will probably need to edit the converted package to remove the scenery
+objects and polygons that make up the "fake" taxiways, otherwise you will
+see duplicated taxiways, lights and/or lines.</p>
+
 <h3><a name="license"></a>License and terms</h3>
 <h4>License</h4>
 <p>This application mechanically rewrites files from one format (MSFS)
@@ -351,15 +371,14 @@ conversion:</p>
       <td style="background-color: white; vertical-align: top;">&lt;Path&gt;
 does not exist<br>
 &lt;Path&gt; is not a folder</td>
-      <td style="background-color: white;">The location that you specify
-for the source MSFS scenery should be an existing folder.</td>
+      <td style="background-color: white; vertical-align: top;">The location that you specify for the source MSFS scenery should be an existing folder.</td>
     </tr>
     <tr>
       <td style="background-color: white; vertical-align: top;">&lt;Path&gt;
 already exists and is not empty<br>
 &lt;Path&gt; is not a sub-folder of "Custom Scenery"<br>
       </td>
-      <td style="background-color: white;">The location
+      <td style="background-color: white; vertical-align: top;">The location
 that you specify for the new X-Plane scenery package should be a
 non-existent or empty folder directly under X-Plane's
 <code>Custom&nbsp;Scenery</code> folder (which must itself exist).</td>
@@ -367,35 +386,31 @@ non-existent or empty folder directly under X-Plane's
     <tr>
       <td style="background-color: white; vertical-align: top;">Can't write &lt;filename&gt;<br>
       </td>
-      <td style="background-color: white;">Are you out of disk space?<br>
+      <td style="background-color: white; vertical-align: top;">Are you out of disk space?<br>
 Do you have write access to the target folder?<br>
 Does your filesystem truncate file names?</td>
     </tr>
     <tr>
       <td style="background-color: white; vertical-align: top;">Found
 duplicate definition of airport &lt;code&gt; in &lt;filename&gt;</td>
-      <td style="background-color: white;">Some scenery packages supply
-alternative airport layouts. This application should be run using only one
-of the alternatives.<br>
+      <td style="background-color: white; vertical-align: top;">Some scenery packages supply alternative airport layouts. This application should be run using only one of the alternatives.<br>
 Read the installation notes that came with the scenery package,
 delete the alternative layout, and run the application again.</td>
     </tr>
     <tr>
       <td style="background-color: white; vertical-align: top;">Internal error</td>
-      <td style="background-color: white;">The application crashed.<br>
+      <td style="background-color: white; vertical-align: top;">The application crashed.<br>
 Please report the details of the crash which are listed in the log.</td>
     </tr>
     <tr>
       <td style="background-color: white; vertical-align: top;">No
 data found!</td>
-      <td style="background-color: white;">The application was unable
-to find and/or convert any MSFS scenery.</td>
+      <td style="background-color: white; vertical-align: top;">The application was unable to find and/or convert any MSFS scenery.</td>
     </tr>
     <tr>
       <td style="background-color: white; vertical-align: top;">The
 specified module could not be found.<br>LoadLibrary(pythondll) failed</td>
-      <td style="background-color: white;">Follow the instructions
-under <a href="#settingup">Setting Up</a>.</td>
+      <td style="background-color: white; vertical-align: top;">Follow the instructions under <a href="#settingup">Setting Up</a>.</td>
     </tr>
   </tbody>
 </table>
@@ -467,9 +482,9 @@ not contain any information (in FS2004 or FSX format) describing airport
 runways, taxiways, navaids etc. Buildings will likely be incorrectly
 placed relative to runways and taxiways.<br>
 Look in the installation notes for the scenery package to see if it tells
-you to copy an airport definition file (or "AFCAD file") into the package's
+you to copy an airport facility data (or "AFCAD") file into the package's
 <code>scenery</code> folder, or if there is an additional airport
-definition file that you should download.</td>
+facility data file that you should download.</td>
     </tr>
     <tr>
       <td style="background-color: white; vertical-align: top;">Non-zero
@@ -528,9 +543,10 @@ file &lt;filename&gt;</td>
       <td style="background-color: white;">This is probably caused by an
 error in the MSFS scenery package. The duplicate taxiway is ignored.<br>
 If you see lots of these errors, this may indicate that you have multiple
-alternative airport definitions installed. Read the installation notes
-that came with the scenery package, delete all but one of the alternative
-layouts, and run the application again.</td>
+alternative airport facility data (or "AFCAD") files installed.
+Read the installation notes that came with the scenery package, delete all
+but one of the alternative facility data files,
+and run the application again.</td>
     </tr>
     <tr>
       <td style="background-color: white; vertical-align: top;">Skipping
@@ -590,8 +606,7 @@ the missing package into this package and run the application again.</li>
       <td style="background-color: white; vertical-align: top;">Unsupported
 request for object &lt;id1&gt; within object &lt;id2&gt; in file
 &lt;filename&gt;</td>
-      <td style="background-color: white;">X-Plane doesn't objects nested
-within other objects.<br>
+      <td style="background-color: white; vertical-align: top;">X-Plane doesn't support objects nested within other objects.<br>
 The nested object &lt;id1&gt; is ignored.</td>
     </tr>
   </tbody>
@@ -627,7 +642,7 @@ You may be asked whether to overwrite some files; say yes.</li>
 <table style="width: 100%;" border="0" cellpadding="2">
   <tbody>
     <tr>
-      <td class="banner">Version 2.13 &copy; 2006 <a href="mailto:x-plane@marginal.org.uk">Jonathan Harris</a>
+      <td class="banner">Version 2.14 &copy; 2006 <a href="mailto:x-plane@marginal.org.uk">Jonathan Harris</a>
 <a rel="license" href="http://creativecommons.org/licenses/by-sa/2.5/"><img style="border: 0px solid ; width: 88px; height: 31px; vertical-align: text-bottom;" alt="Creative Commons License" src="http://creativecommons.org/images/public/somerights20.png"></a><br>
       </td>
     </tr>

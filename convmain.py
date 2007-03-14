@@ -67,11 +67,14 @@ class Output:
         self.anccount=0	# Not used for library objects
 
         self.apt={}	# (location, AptNav entries) by ICAO code
+        self.aptfull={}	# version of the above with nothing excluded
         self.nav=[]
         self.misc=[]
         self.done={}	# BGL files that we've already processed
         self.exc=[]	# Exclusion rectangles: (type, bottomleft, topright)
         self.excfac=[]	# Exclusion rectangles for facility data
+        self.doexcfac=False	# Process exclusions?
+        self.needfull=False	# Some apt.dat features are excluded?
         self.libobj={}	# Lib objects: (MDL, f, cmp, offset, size, name, scale) by uid
         self.objplc=[]	# Object placements:	(loc, hdg, cmplx, name, scale)
         self.objdat={}	# Objects by name
@@ -415,19 +418,25 @@ class Output:
             self.excfac.append((None, Point(minlat,minlon), Point(maxlat,maxlon)))
 
         # Do airport facilities last so that exclusions have been set up
-        for bglname in xmls:
-            tmp=join(gettempdir(), basename(bglname[:-3])+'xml')
-            x=helper(self.xmlexe, '-t', bglname, tmp)
-            if not x and exists(tmp):
-                try:
-                    xmlfile=file(tmp, 'rU')
-                    convxml.Parse(xmlfile, bglname, self)
-                    xmlfile.close()
-                    if not self.debug: unlink(tmp)
-                except:
-                    self.log("Can't parse file %s" % filename)
-            else:
-                self.log("Can't parse file %s (%s)" % (filename, x))
+        for self.doexcfac in [False, True]:
+            for bglname in xmls:
+                tmp=join(gettempdir(), basename(bglname[:-3])+'xml')
+                x=helper(self.xmlexe, '-t', bglname, tmp)
+                if not x and exists(tmp):
+                    try:
+                        xmlfile=file(tmp, 'rU')
+                        convxml.Parse(xmlfile, bglname, self)
+                        xmlfile.close()
+                        if not self.debug: unlink(tmp)
+                    except:
+                        self.log("Can't parse file %s" % filename)
+                else:
+                    self.log("Can't parse file %s (%s)" % (filename, x))
+            if self.doexcfac or not self.needfull: break
+            # Do them again, this time with exclusions
+            self.aptfull=self.apt
+            self.apt={}
+            self.nav=[]
 
 
     # Process referenced library into self.objplc and self.objdat
@@ -649,52 +658,57 @@ class Output:
                         if int(d[1])!=15:
                             self.visrunways=True	# Runways on top
                             self.apt[airport][1].insert(1,data[0])
+                            if self.aptfull: self.aptfull[airport][1].insert(1,data[0])
                         else:
                             self.log("Can't find an airport for %s at (%10.6f, %11.6f)" % (name, loc.lat, loc.lon))
                             #if self.debug: self.debug.write('Can\'t place runway %s""\n' % data[0])
                 else:
                     self.apt[airport][1].extend(data)
+                    if self.aptfull: self.aptfull[airport][1].extend(data)
 
             # Export apt.dat
             path=join(self.xppath, 'Earth nav data')
             if not isdir(path): mkdir(path)
-            filename=join(path, 'apt.dat')
-            f=file(filename, 'wt')
-            f.write("I\n850\t# %s\n\n" % banner)
-            keys=self.apt.keys()
-            keys.sort()
-            for k in keys:
-                v=self.apt[k][1]
-                seabase=True
-                helibase=True
-                for l in v:
-                    if l.code==100:
-                        helibase=False
-                        seabase=False
-                    elif l.code==101:
-                        helibase=False
-                    elif l.code==102:
-                        seabase=False
-                doneheader=False
-                last=0
-                for l in v:
-                    if l.code==1:
-                        # Only write one header
-                        if not doneheader:
-                            if seabase:
-                                l.code=16
-                            elif helibase:
-                                l.code=17
+            for (filename, apt) in [(join(path, 'apt.dat'), self.apt), (join(path, 'fullapt.dat'), self.aptfull)]:
+                if not apt: break
+                f=file(filename, 'wt')
+                f.write("I\n850\t# %s\n\n" % banner)
+                keys=apt.keys()
+                keys.sort()
+                for k in keys:
+                    v=apt[k][1]
+                    seabase=True
+                    helibase=True
+                    for l in v:
+                        if l.code==100:
+                            helibase=False
+                            seabase=False
+                        elif l.code==101:
+                            helibase=False
+                        elif l.code==102:
+                            seabase=False
+                    doneheader=False
+                    last=0
+                    for l in v:
+                        if l.code==1:
+                            # Only write one header
+                            if not doneheader:
+                                if seabase:
+                                    l.code=16
+                                elif helibase:
+                                    l.code=17
+                                f.write("%s\n" % l)
+                            doneheader=True
+                        elif l.code in [110,120,130] or (l.code<110 and last>=110):
+                            f.write("\n%s\n" % l)	# Hack - insert CR
+                        elif l.code in [14,15] and last>=110:
+                            f.write("\n%s\n" % l)	# Hack - insert CR
+                        else:
                             f.write("%s\n" % l)
-                        doneheader=True
-                    elif l.code in [110,120,130] or (l.code<110 and last>=110):
-                        f.write("\n%s\n" % l)	# Hack - insert CR
-                    else:
-                        f.write("%s\n" % l)
-                    last=l.code
-                f.write("\n\n")
-            f.write("99\n")	# eof marker
-            f.close()
+                        last=l.code
+                    f.write("\n\n")
+                f.write("99\n")	# eof marker
+                f.close()
                     
         if self.nav:
             path=join(self.xppath, 'Earth nav data')
@@ -727,7 +741,7 @@ class Output:
             if poly.layer and poly.layer>4: fslayers[poly.layer]=None
         keys=fslayers.keys()
         keys.sort()
-        # need runway lights so must be below taxiways
+        # need runway lights so objects must be below runways
         #layermap=["taxiways +1", "taxiways +2", "taxiways +3", "taxiways +4", "taxiways +5", "runways -5", "runways -4", "runways -3", "runways -2", "runways -1"]
         layermap=["shoulders +1", "shoulders +2", "shoulders +3", "shoulders +4", "shoulders +5", "taxiways -5", "taxiways -4", "taxiways -3", "taxiways -2", "taxiways -1"]
         for i in range(len(keys)):
@@ -966,4 +980,7 @@ class Output:
     def excluded(self, p):
         for (typ, sw, ne) in self.excfac:
             if p.lat>=sw.lat and p.lat<=ne.lat and p.lon>=sw.lon and p.lon<=ne.lon:
-                return True
+                self.needfull=True
+                return self.doexcfac
+        return False
+

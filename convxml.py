@@ -697,9 +697,9 @@ class Airport:
                 if vasi.side=='RIGHT': x=-x
                 h=radians(vheading)
                 vloc=cloc.biased(-cos(h)*x-sin(h)*z, sin(h)*x-cos(h)*z)
-                if True: # not output.excluded(vloc):
-                    aptdat.append(AptNav(21, '%10.6f %11.6f %d %6.2f %3.1f' % (
-                        vloc.lat, vloc.lon, vtype, vheading, vangle)))
+                # was not output.excluded(vloc):, but keep VASI info
+                aptdat.append(AptNav(21, '%10.6f %11.6f %d %6.2f %3.1f' % (
+                    vloc.lat, vloc.lon, vtype, vheading, vangle)))
 
         # Helipads
         hno=0

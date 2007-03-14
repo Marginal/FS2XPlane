@@ -34,6 +34,15 @@ from struct import unpack
 from sys import maxint
 import types
 
+from OpenGL.GL import GL_TRIANGLES, GL_TRUE
+from OpenGL.GLU import *
+try:
+    # apparently older PyOpenGL version didn't define gluTessVertex
+    gluTessVertex
+except NameError:
+    from OpenGL import GLU
+    gluTessVertex = GLU._gluTessVertex
+
 from convutil import cirp, m2f, NM2m, complexity, asciify, unicodeify, normalize, rgb2uv, cross, dot, AptNav, Object, Polygon, Point, Matrix, FS2XError, unique, palettetex, groundfudge, planarfudge, effects
 from convobjs import maketaxilight, makegenquad, makegenmulti
 from convtaxi import taxilayout, Node, Link
@@ -306,6 +315,7 @@ class ProcScen:
         self.pnt=None	# Last line location (x,y,z)
         self.haze=0	# Whether palette-based transparency. 0=none
         self.zbias=0	# Polygon offsetting
+        self.surface=False	# StrRes/CntRes does lines not surface
         self.concave=False
         
         self.objdat={}	# (mat, vtx[], idx[]) by (loc, layer, alt, altmsl, matrix, scale, tex, lit)
@@ -356,13 +366,13 @@ class ProcScen:
         self.setseason()
 
         cmds={0x02:self.NOP,
-              0x05:self.NOP,
+              0x05:self.Surface,
               0x06:self.SPnt,
               0x07:self.CPnt,
               0x08:self.Closure,
               0x0d:self.Jump,
               0x0f:self.StrRes,
-              0x10:self.StrRes,    
+              0x10:self.CntRes,    
               0x14:self.SColor,
               0x17:self.TextureEnable,
               0x18:self.Texture,
@@ -548,13 +558,15 @@ class ProcScen:
             if not mat:
                 # must have a colour for lights and lines
                 mat=[(1.0,1.0,1.0),(0,0,0),(0,0,0),0.5]
-        elif not mat:
-            if self.debug: self.debug.write("Transparent\n")
         elif self.t==None:
             tex=palettetex
+            if self.debug and not mat: self.debug.write("Transparent\n")
         else:
             # we don't use ambient colour
-            mat[0]=(1.0,1.0,1.0)
+            if not mat:	# SColor24 alpha value only applies to untextured
+                mat=[(1.0,1.0,1.0),(0,0,0),(0,0,0),0.5]
+            else:
+                mat[0]=(1.0,1.0,1.0)
             if self.vars[0x28c]!=1:
                 tex=None
                 lit=self.tex[self.t]
@@ -578,40 +590,38 @@ class ProcScen:
             layer=24
         return ((self.loc,layer,self.alt,self.altmsl,self.matrix[-1],self.scale,tex,lit), mat)
 
+    def Surface(self):		# 05
+        self.surface=True	# StrRes/CntRes does surface not lines
+
     def SPnt(self):		# 06
-        self.pnt=unpack('<hhh', self.bgl.read(6))
+        (sx,sy,sz)=unpack('<hhh', self.bgl.read(6))
+        self.pnt=(sx,sy,sz,0,0,0,0,0)
 
     def CPnt(self):		# 07
         (cx,cy,cz)=unpack('<hhh', self.bgl.read(6))
         (key,mat)=self.makekey(False)
-        if not mat:
-            self.pnt=(cx,cy,cz)
-            return	# transparent
-        if self.pnt:
-            (sx,sy,sz)=self.pnt
-        else:	# continuation
-            if not key in self.linedat:
-                self.pnt=(cx,cy,cz)
-                return	# CPnt with no SPnt
+        if not mat or not self.pnt: return	# transparent
+        if not key in self.linedat:
+            self.linedat[key]=[]
+        else:
             (vtx,idx,m)=self.linedat[key][-1]
-            if m==mat[0]:
+            if m==mat[0] and vtx[-1]==self.pnt:
+                # continuation
                 idx.append(len(vtx))
                 vtx.append((cx,cy,cz,0,0,0,0,0))
                 self.linedat[key][-1]=(vtx,idx,m)
                 self.checkmsl()
+                self.pnt=(cx,cy,cz,0,0,0,0,0)
                 return
-            else:	# change of material - can't do continuation
-                (sx,sy,sz,nx,ny,nz,tu,tv)=vtx[-1]
 
-        if not key in self.linedat:
-            self.linedat[key]=[]
-        self.linedat[key].append(([(sx,sy,sz,0,0,0,0,0), (cx,cy,cz,0,0,0,0,0)],
+        self.linedat[key].append(([self.pnt, (cx,cy,cz,0,0,0,0,0)],
                                   [0,1], mat[0]))
         self.checkmsl()
-        self.pnt=None
+        self.pnt=(cx,cy,cz,0,0,0,0,0)
 
     def Closure(self):		# 08
         count=len(self.idx)
+        if count<=4: self.concave=False	# Don't bother
         vtx=[]
         for i in range(count):
             (x,y,z,c,c,c,c,c)=self.vtx[self.idx[i]]
@@ -632,16 +642,43 @@ class ProcScen:
             self.objdat[key]=[]
         self.objdat[key].append((mat, vtx, idx, True))
         self.checkmsl()
-        
+        self.surface=False        
         
     def Jump(self):		# 0d, 1b: IfInBoxRawPlane, 73: IfInBoxP
         (off,)=unpack('<h', self.bgl.read(2))
         if not off: raise struct.error	# infloop
         self.bgl.seek(off-4,1)
 
-    def StrRes(self):		# 0f:StrRes, 10:CntRes
+    def StrRes(self):		# 0f
         (i,)=unpack('<H',self.bgl.read(2))
-        self.idx.append(i)
+        if self.surface:
+            self.idx.append(i)
+        else:
+            self.pnt=self.vtx[i]
+
+    def CntRes(self):		# 10
+        (i,)=unpack('<H',self.bgl.read(2))
+        if self.surface:	# doing surface not lines
+            self.idx.append(i)	# wait for closure
+            return
+        (key,mat)=self.makekey(False)
+        if not mat or not self.pnt: return	# transparent
+        if not key in self.linedat:
+            self.linedat[key]=[]
+        else:
+            (vtx,idx,m)=self.linedat[key][-1]
+            if m==mat[0] and vtx[-1]==self.pnt:
+                # continuation
+                idx.append(len(vtx))
+                vtx.append(self.vtx[i])
+                self.linedat[key][-1]=(vtx,idx,m)
+                self.checkmsl()
+                self.pnt=self.vtx[i]
+                return
+
+        self.linedat[key].append(([self.pnt, self.vtx[i]], [0,1], mat[0]))
+        self.checkmsl()
+        self.pnt=self.vtx[i]
         
     def SColor(self):	# 14:Scolor, 50:GColor, 51:NewLColor, 52:NewSColor
         (c,)=unpack('H', self.bgl.read(2))
@@ -710,6 +747,7 @@ class ProcScen:
         
     def FaceTTMap(self):	# 20:FaceTTMap, 7a:GFaceTTMap
         (count,nx,ny,nz,)=unpack('<H3h', self.bgl.read(8))
+        if count<=4: self.concave=False	# Don't bother
         nx=nx/32767.0
         ny=ny/32767.0
         nz=nz/32767.0
@@ -862,11 +900,9 @@ class ProcScen:
         self.m=0
         if a==0xf0:	# unicol
             self.mat=[[self.unicol(0xf000+r), (0,0,0), (0,0,0), 0.5]]
-        #elif (a>=0xb3 and a<=0xb8) or (a>=0xe3 and a<=0xe8):
-        #    # E0 = transparent ... EF=opaque. Same for B?
-        #    self.mat=[[(r/255.0,g/255.0,b/255.0,0.25), (0,0,0,0), (0,0,0,0)]]
         elif (a>=0xb0 and a<=0xb4) or (a>=0xe0 and a<=0xe4):
-            # Treat semi-transparent as fully transparent (ESSA-1 uses E5)
+            # E0 = transparent ... EF=opaque. Same for B?
+            # Treat semi-transparent as fully transparent
             self.mat=[None]
         else:
             self.mat=[[(r/255.0,g/255.0,b/255.0), (0,0,0), (0,0,0), 0.5]]
@@ -1730,10 +1766,11 @@ class ProcScen:
             (p,)=unpack('<f', self.bgl.read(4))	# specular power
             if m[1]==(0.0,0.0,0.0): p=0.0	# sometimes bogus power value
             m.append(p)
-            if da<0.2:	# eg KBOS taxilines.bgl uses 0.2
-                self.mat.append(None)	# transparent
-            else:
-                self.mat.append(m)
+            # ignore alpha
+            #if da<0.2:	# eg KBOS taxilines.bgl uses 0.2
+            #    self.mat.append(None)	# transparent
+            #else:
+            #    self.mat.append(m)
 
     def TextureList(self):	# b7
         self.tex=[]
@@ -1838,7 +1875,7 @@ class ProcScen:
     # Ignored opcodes
     
     def NOP(self):
-        # 02:NOOP, 05:Surface, 76:BGL, 7d:Perspective, bd:EndVersion
+        # 02:NOOP, 76:BGL, 7d:Perspective, bd:EndVersion
         pass
 
     def NOPh(self):
@@ -1880,7 +1917,6 @@ class ProcScen:
     # Try to make a draped polygon
     def makepoly(self, haveuv, vtx, idx=None):
         if self.t==None: return False	# Only care about textured polygons
-        if not self.mat[self.m]: return False	# Not transparent
         if not self.loc: return False	# Not for library objects
         if self.debug: self.debug.write("Poly: %s %s %s %d " % (basename(self.tex[self.t]), self.alt, self.layer, self.zbias))
         
@@ -1965,7 +2001,9 @@ class ProcScen:
                     if self.debug: self.debug.write("Not coplanar\n")
                     return False
                 area2+=(vtx[i][0]*vtx[(i+1)%count][2] - vtx[(i+1)%count][0]*vtx[i][2])
-            if area2<0: vtx.reverse()	# Tested on SAEZ, LIRF
+            if area2<0:	# Tested on SAEZ, LIRF
+                vtx=list(vtx)
+                vtx.reverse()
 
         # Trim textures that spill over edge
         TEXFUDGE=0.01
@@ -2816,119 +2854,35 @@ def ProcTerrain(bgl, srcfile, output, debug):
 
 def subdivide(vtx):
     # Subdivide concave polygon into tris
+    tessObj = gluNewTess()
+    gluTessProperty(tessObj,GLU_TESS_WINDING_RULE,GLU_TESS_WINDING_NONZERO)
+    gluTessCallback(tessObj,GLU_TESS_VERTEX_DATA,  tessvertex)
+    gluTessCallback(tessObj,GLU_TESS_EDGE_FLAG,    tessedge)	# no strips
+    points=[]
     idx=[]
-    count=len(vtx)
-    
-    if count<=4:
-        # don't bother for quads
-        for i in range(1,count-1):
-            idx.extend([0,i,i+1])
-        return (vtx, idx)
-        
-    planar=True
-    ax=ay=az=au=av=0
-    vx=[]
-    vy=[]
-    (c,y0,c,c,c,c,c,c)=vtx[0]
-    for i in range(count):
-        (x,y,z, nx,ny,nz, tu, tv)=vtx[i]
-        if y!=y0:
-            planar=False
-        ax+=x
-        ay+=y
-        az+=z
-        au+=tu
-        av+=tv
-        vx.append(x)
-        vy.append(z)
+    try:
+        gluTessBeginPolygon(tessObj, (points, idx))
+        gluTessBeginContour(tessObj)
+        for vertex in vtx:
+            (x,y,z, nx,ny,nz, tu, tv)=vertex
+            gluTessVertex(tessObj, [x, y, z], vertex)
+        gluTessEndContour(tessObj)
+        gluTessEndPolygon(tessObj)
+    except:
+        gluDeleteTess(tessObj)
+        raise GLUerror
+    gluDeleteTess(tessObj)        
+    return (points,idx)
 
-    if not planar:
-        # Just add a new vertex in the middle and use that in every triangle
-        ax/=float(count)
-        ay/=float(count)
-        az/=float(count)
-        for i in range(1,count-1):
-            idx.extend([0,i,i+1])
-        vtx.insert(0, (ax,ay,az, nx,ny,nz, au,av))
-        idx.extend([0,count-1,count, 0,count,1])
-        return (vtx, idx)
+def tessedge(flag):
+    pass	# dummy
 
-    # Simple O(n2) Greedy algorithm.
-    # Remove candidate vertex if triangle formed by it and adjacent
-    # vertices doesn't cross any edges.
-
-    # Determine order
-    area2=0
-    for i in range(count):
-        area2+=(vx[i]*vy[(i+1)%count] - vx[(i+1)%count]*vy[i])
-
-    candidate=-1		# index of tested vertex
-    count=len(vx)
-    remaining=count
-    vi=[True for i in range(count)]	# whether vertex is still a candidate
-    edges=[]
-    for i in range(count):
-        edges.append((i,(i+1)%count))
-    infloop=0
-
-    # This needs to work for integer values of x and y
-    while remaining>4:
-        if infloop>count:
-            # Shouldn't happen
-            #if self.debug: self.debug.write('!InfLoop in polygon\n')
-            return(vtx,idx)
-
-        # Candidate and adjacent vertices
-        candidate=(candidate+1)%count
-        while not vi[candidate]: candidate=(candidate+1)%count
-        p1=(candidate+1)%count
-        while not vi[p1]: p1=(p1+1)%count
-        p2=(candidate-1)%count
-        while not vi[p2]: p2=(p2-1)%count
-
-        # Is this triangle outside?
-        a=0
-        ii=[candidate, p1, p2]
-        for i in range(3):
-            a+=(vx[ii[i]]*vy[ii[(i+1)%3]] - vx[ii[(i+1)%3]]*vy[ii[i]])
-        if area2*a<0:
-            # this triangle no good
-            infloop+=1
-            continue
-
-        # Does this triangle cross any edge (including those we've removed)?
-        for edge in edges:
-            (p3,p4)=edge
-            if p3==p1 or p3==p2 or p4==p1 or p4==p2:
-                continue
-            d=(vy[p4]-vy[p3])*(vx[p2]-vx[p1])-(vx[p4]-vx[p3])*(vy[p2]-vy[p1])
-            if d==0:
-                continue	# parallel
-            a=((vx[p4]-vx[p3])*(vy[p1]-vy[p3])-(vy[p4]-vy[p3])*(vx[p1]-vx[p3]))/d
-            b=((vx[p2]-vx[p1])*(vy[p1]-vy[p3])-(vy[p2]-vy[p1])*(vx[p1]-vx[p3]))/d
-            if a<0 or a>1 or b<0 or b>1:
-                continue	# no intersection
-            # intersection - this triangle no good
-            infloop+=1
-            break
-        else:
-            # No intersection - make triangle
-            idx.extend([candidate, p1, p2])
-            vi[candidate]=False
-            edges.insert(0, (p2,p1))	# so tested first
-            remaining-=1
-            infloop=0
-
-    p1=0
-    while not vi[p1]: p1+=1
-    p2=p1+1
-    while not vi[p2]: p2+=1
-    p3=p2+1
-    while not vi[p3]: p3+=1
-    p4=p3+1
-    while not vi[p4]: p4+=1
-    idx.extend([p1,p2,p3, p1,p3,p4])
-    return(vtx,idx)
+def tessvertex(vertex, (points, idx)):
+    if vertex in points:
+        idx.append(points.index(vertex))
+    else:
+        idx.append(len(points))
+        points.append(vertex)
 
 
 # Helper to return fully-qualified case-sensitive texture filename
