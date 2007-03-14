@@ -49,9 +49,9 @@ elif platform.lower().startswith('darwin'):
                 'mac/FS2XPlane.icns',
                 ]),
               # Include wxPython 2.4
-              #('../Frameworks',
-              # ['/usr/local/lib/libwx_mac-2.4.0.rsrc',
-              #  ]),
+              ('../Frameworks',
+               ['/usr/local/lib/libwx_mac-2.4.0.rsrc',
+                ]),
               ]
 
 objs=[]

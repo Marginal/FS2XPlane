@@ -33,7 +33,7 @@ from shutil import copyfile
 from struct import pack
 from tempfile import gettempdir
 
-version='0.99'	# Must be numeric
+version='0.99'
 banner="Converted by FS2XPlane %s\n" % version
 
 # MSFS oblate spheroid

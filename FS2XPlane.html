@@ -7,39 +7,34 @@
   <title>FS2XPlane</title>
   <meta content="Jonathan Harris" name="author">
   <style type="text/css">
-.banner { font-family: Arial,Helvetica,sans-serif; background-color: lightskyblue; text-align: left; height: 32px; }
-.dnl { font-family: Arial,Helvetica,sans-serif; font-size: small; background-color: lightskyblue; }
+.banner { font-family: Arial,Helvetica,sans-serif; font-weight: bold; text-align: center; background-color: lightskyblue; height: 32px; }
 samp { font-family: Arial,Helvetica,sans-serif; }
-h2 { font-family: Arial,Helvetica,sans-serif; }
+h2 { font-family: Arial,Helvetica,sans-serif; text-align: center; }
 h3 { font-family: Arial,Helvetica,sans-serif; }
 h4 { font-family: Arial,Helvetica,sans-serif; }
 h5 { font-family: Arial,Helvetica,sans-serif; }
   </style>
 </head>
 <body>
-<table style="width: 100%;" border="0" cellpadding="2">
+<table style="width: 100%;" cellpadding="0">
   <tbody>
     <tr>
-      <td class="banner">Marginal &raquo; <a href="http://marginal.org.uk/x-planescenery/">X-Plane
-Scenery</a> &raquo; <a href="http://marginal.org.uk/x-planescenery/tools.html">Tools</a> &raquo; FS2XPlane</td>
+      <td class="banner">FS2Xplane</td>
     </tr>
   </tbody>
 </table>
-<hr>
+<hr style="width: 100%; height: 2px;">
 <h2>FS2004 Add-on Scenery converter for X-Plane<small><sup>&reg;</sup></small></h2>
 <h3>Overview</h3>
 <p>This application converts MS Flight Simulator 2004 add-on
-scenery packages to X-Plane scenery packages. It is intended for
-scenery developers; the converted scenery often requires some
-re-work to look good in X-Plane.</p>
-<p>The application currently runs on Windows 98 and later and
-Linux. Some users have also reported good results under
-Virtual PC on Mac <small>(to avoid filenames problems unzip the
-MSFS package within the VirtualPC environment and zip up the
-resulting X-Plane package before transferring it out)</small>.</p>
-<p>The resulting X-Plane scenery packages work under X-Plane 8.30
-and later on Windows, MacOS and Linux. Standard "ENV" or "DSF"
-scenery for the relevant areas must also have been installed.
+scenery packages to X-Plane scenery packages. The application is
+intended for scenery developers; the converted scenery often
+requires some re-work to look good in X-Plane.</p>
+<p>The application currently runs on Windows and Linux, however
+the resulting X-Plane scenery packages will work on any platform
+supported by X-Plane 8.30 and later provided that the standard
+"ENV" or "DSF" scenery for the area is also installed. Some users
+have also reported good results under Virtual PC on Mac.</p>
 <p>See the <a href="#license">license</a>
 section below before using this application.</p>
 <p> The following scenery features are converted:</p>
@@ -78,18 +73,17 @@ You can download the wxPython runtime from <a target="_blank" href="http://www.w
 <ul>
   <li>Extract the contents of this archive to a folder. The rest
 of these notes refer to this as the FS2XPlane folder.</li>
-  <li>Download the <span style="text-decoration: underline;">Windows</span>
+  <li>Download
+the <span style="text-decoration: underline;">Windows</span>
 DSF2Text package from <a target="_blank" href="http://scenery.x-plane.com/tools.php">here</a>.
 Copy the <code>DSFTool.exe</code> program from this
 package to the FS2XPlane folder.</li>
 </ul>
 <h3><a name="usage"></a>Usage</h3>
 <ul>
-  <li>Download and the scenery package that you want to convert.
-If you have FS2004 installed then follow the installation
-notes in the scenery package. Otherwise create a folder
-called<code> Addon&nbsp;Scenery </code> and unzip the scenery
-package into a subfolder of this folder.</li>
+  <li>Find the location of the scenery package that you want to
+convert. For scenery packages that have been installed in FS2004 this
+will most likely be a folder under <code>C:\Program&nbsp;Files\Microsoft&nbsp;Games\Flight&nbsp;Simulator&nbsp;9\Addon&nbsp;Scenery\</code></li>
   <li>Read the installation notes for the scenery package. Look
 for:</li>
   <ul>
@@ -99,8 +93,8 @@ scenery library. See the notes <a href="#rwy12">below</a>
 if your package depends on the "rwy12" library.</li>
     <li>Whether the packages supplies multiple alternative
 airport definitions (these are sometimes described as "AFCAD files" in
-the installation notes). If so, the installation notes may advise you
-to copy one of these files to the package's <code>scenery</code>
+the installation notes). If so, the notes may advise you to copy one
+of these files to the package's <code>scenery</code>
 folder.</li>
   </ul>
   <li>Find the location of the <code>Custom&nbsp;Scenery</code>
@@ -111,12 +105,10 @@ folder in X-Plane. By default on Windows this will be <code>C:\X-Plane\Custom&nb
 <ul>
   <li>Run the <samp>FS2XPlane</samp> program in the
 FS2XPlane folder.</li>
-  <li>Supply the location of the MSFS scenery package. For scenery
-packages that have been installed in FS2004 this will most likely
-be a folder under <code>C:\Program&nbsp;Files\Microsoft&nbsp;Games\Flight&nbsp;Simulator&nbsp;9\Addon&nbsp;Scenery\</code></li>
-  <li>Supply the location of any additional MSFS libraries that the package depends on. (Leave this blank for none, or specify the
-<code>Addon&nbsp;Scenery</code> folder to search all installed
-libraries.)</li>
+  <li>Supply the location of the MSFS scenery package.</li>
+  <li>Supply the location of any additional MSFS libraries that the package depends on. (Leave this blank for none, or specify
+the MSFS <code>Addon&nbsp;Scenery</code> folder to
+search all installed libraries.)</li>
   <li>Specify the location for the new X-Plane scenery package.
 This should be a non-existent or empty folder directly under
 X-Plane's <code>Custom&nbsp;Scenery</code> folder.</li>
@@ -667,24 +659,25 @@ texture&nbsp;files</code>.</li>
 <p>When you <a href="#usage">run</a> <samp>FS2XPlane</samp>, supply the location of the<code>
 Static&nbsp;Objects&nbsp;Library&nbsp;</code>folder
 that you just created as the location for "Additional MSFS libraries".</p>
-<hr>
-<table style="width: 100%;" border="0" cellpadding="2">
+<ul>
+</ul>
+<h3>Stuff</h3>
+This application &copy;&nbsp;2006&nbsp;<a href="mailto:Jonathan%20Harris%20%3Cx-plane@marginal.org.uk%3E">Jonathan&nbsp;Harris&nbsp;&lt;x-plane@marginal.org.uk&gt;</a>.<br>
+Linux port by Pierluigi Vittori
+(<a href="http://forums.x-plane.org/index.php?showuser=5530">tango13</a>).<br>
+Beta&nbsp;0.99<br>
+<a href="http://marginal.org.uk/x-planescenery/">http://marginal.org.uk/x-planescenery/</a>
+<p><!-- Creative Commons License --><a rel="license" href="http://creativecommons.org/licenses/by-sa/2.5/"><img alt="Creative Commons License" src="http://creativecommons.org/images/public/somerights20.gif" style="border: 0px solid ;" align="middle"></a>This
+work is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by-sa/2.5/">Creative
+Commons License</a>.
+<!-- /Creative Commons License --><!-- <rdf:RDF xmlns="http://web.resource.org/cc/" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"> <Work rdf:about=""> <dc:type rdf:resource="http://purl.org/dc/dcmitype/Text" /> <license rdf:resource="http://creativecommons.org/licenses/by-sa/2.5/" /> </Work> <License rdf:about="http://creativecommons.org/licenses/by-sa/2.5/"> <permits rdf:resource="http://web.resource.org/cc/Reproduction" /> <permits rdf:resource="http://web.resource.org/cc/Distribution" /> <requires rdf:resource="http://web.resource.org/cc/Notice" /> <requires rdf:resource="http://web.resource.org/cc/Attribution" /> <permits rdf:resource="http://web.resource.org/cc/DerivativeWorks" /> <requires rdf:resource="http://web.resource.org/cc/ShareAlike" /> </License> </rdf:RDF> --></p>
+<hr style="width: 100%; height: 2px;">
+<table style="width: 100%;" cellpadding="0">
   <tbody>
     <tr>
-      <td class="banner">Beta 0.99c &copy; 2006
-      <a href="mailto:x-plane@marginal.org.uk">Jonathan
-Harris</a> <a rel="license" href="http://creativecommons.org/licenses/by-sa/2.5/"><img style="border: 0px solid ; width: 88px; height: 31px;" alt="Creative Commons License" src="http://creativecommons.org/images/public/somerights20.png"></a><br>Linux port by Pierluigi Vittori
-(<a href="http://forums.x-plane.org/index.php?showuser=5530">tango13</a>)</td>
+      <td class="banner">FS2XPlane</td>
     </tr>
   </tbody>
 </table>
-<!--/Creative Commons License-->
-<!-- <rdf:RDF xmlns="http://web.resource.org/cc/" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
-<Work rdf:about="">
-<license rdf:resource="http://creativecommons.org/licenses/by-sa/2.5/" />
-<dc:type rdf:resource="http://purl.org/dc/dcmitype/InteractiveResource" />
-</Work>
-<License rdf:about="http://creativecommons.org/licenses/by-sa/2.5/"><permits rdf:resource="http://web.resource.org/cc/Reproduction"/><permits rdf:resource="http://web.resource.org/cc/Distribution"/><requires rdf:resource="http://web.resource.org/cc/Notice"/><requires rdf:resource="http://web.resource.org/cc/Attribution"/><permits rdf:resource="http://web.resource.org/cc/DerivativeWorks"/><requires rdf:resource="http://web.resource.org/cc/ShareAlike"/></License></rdf:RDF>
--->
 </body>
 </html>

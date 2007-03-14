@@ -106,10 +106,10 @@ class MainWindow(wx.Frame):
 
         # 1st panel
         self.fspath=wx.TextCtrl(panel1, -1, fspath)
-        self.fsbrowse=wx.Button(panel1, FSBROWSE, "Browse...")
         self.lbpath=wx.TextCtrl(panel1, -1, lbpath)
-        self.lbbrowse=wx.Button(panel1, LBBROWSE, "Browse...")
         self.xppath=wx.TextCtrl(panel1, -1, xppath)
+        self.fsbrowse=wx.Button(panel1, FSBROWSE, "Browse...")
+        self.lbbrowse=wx.Button(panel1, LBBROWSE, "Browse...")
         self.xpbrowse=wx.Button(panel1, XPBROWSE, "Browse...")
         grid1 = wx.FlexGridSizer(2, 3, 7, 7)
         grid1.AddGrowableCol(1,proportion=1)
@@ -149,13 +149,13 @@ class MainWindow(wx.Frame):
         box3 = wx.BoxSizer(wx.HORIZONTAL)
         if 'startfile' in dir(os):
             box3.Add(button31, 0)
-        box3.Add([0,0], 1)	# push following buttons to right
+        box3.AddSpacer([0,0], 1)	# push following buttons to right
         box3.Add(button32, 0)
-        box3.Add([6,0], 0)	# cosmetic
+        box3.AddSpacer([6,0], 0)	# cosmetic
         box3.Add(button33, 0)
         button32.SetDefault()
         panel3.SetSizer(box3)
-        
+
         if 'startfile' in dir(os):
             wx.EVT_BUTTON(self, wx.ID_HELP, self.onHelp)
         wx.EVT_BUTTON(self, wx.ID_OK, self.onConvert)
@@ -174,14 +174,9 @@ class MainWindow(wx.Frame):
 
         # Go
         sz=self.GetBestSize()
-        if wx.VERSION<(2,6):
-            # Hack - Can't get min size to work properly in 2.5
-            height=sz.height+42
-        else:
-            height=sz.height            
-        self.SetSize((sz.width+300, height))
         # +50 is a hack cos I can't work out how to change minsize of TextCtrl
-        self.SetSizeHints(sz.width+50, height, -1, height)
+        self.SetSize((sz.width+300, sz.height))
+        self.SetSizeHints(sz.width+50, sz.height, -1, sz.height)
         self.Show(True)
 
 

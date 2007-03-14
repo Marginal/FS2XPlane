@@ -32,7 +32,7 @@ import struct
 from struct import unpack
 from sys import maxint
 
-from convutil import cirp, d2r, r2d, m2f, NM2m, complexity, asciify, cross, dot, AptNav, Object, Point, Matrix, apronlightspacing, taxilightspacing, FS2XError
+from convutil import cirp, d2r, r2d, m2f, NM2m, complexity, asciify, cross, dot, AptNav, Object, Point, Matrix, apronlightspacing, taxilightspacing
 from convobjs import maketaxilight
 
 # Read BGL header
@@ -143,12 +143,10 @@ class ProcScen:
         self.output=output
         self.texdir=normpath(join(dirname(srcfile), pardir))
         # For case-sensitive filesystems
-        for d in listdir(self.texdir):
-            if d.lower()=='texture':
-                self.texdir=join(self.texdir, d)
-                break
+        if 'Texture' in listdir(self.texdir):
+            self.texdir=join(self.texdir, 'Texture')
         else:
-            raise FS2XError('"%s" does not exist' %join(self.texdir,'Texture'))
+            self.texdir=join(self.texdir, 'texture')
 
         pos=bgl.tell()
         if tran: self.tran=pos+tran		# Location of TRAN table
@@ -215,7 +213,7 @@ class ProcScen:
         self.scale=1.0
         self.stack=[]	# (return address, pop matrix?)
         self.tex=[]
-        self.mat=[[(0.5,0.5,0.5),(0,0,0),(0,0,0)]]	# [[a,s,e]]
+        self.mat=[]	# [[(ar,ag,ab),(sr,sg,sb),(er,eg,eb)]]
         self.vtx=[]
         self.idx=[]	# Indices into vtx
         self.m=None	# Index into mat
@@ -394,13 +392,10 @@ class ProcScen:
     def CPnt(self):		# 07
         (cx,cy,cz)=unpack('<hhh', self.bgl.read(6))
         key=(self.loc,self.matrix[-1],self.scale)
-        if self.m==None:
-            mat=self.mat[0]
-        else:
-            mat=self.mat[self.m]
-            if not mat:
-                self.pnt=(cx,cy,cz)
-                return	# transparent
+        mat=self.mat[self.m]
+        if not mat:
+            self.pnt=(cx,cy,cz)
+            return	# transparent
         if self.pnt:
             (sx,sy,sz)=self.pnt
         else:	# continuation
@@ -655,11 +650,11 @@ class ProcScen:
         # If color defined then use it in preference to bitmap
         if self.m!=None or self.t==None or self.t==-1:
             tex=None
-            if self.m==None:
-                mat=self.mat[0]
-            else:
+            if self.m!=None:
                 mat=self.mat[self.m]
                 if not mat: return	# transparent
+            else:
+                mat=[(0.5,0.5,0.5), (0,0,0), (0,0,0)]	# wtf?
         else:
             tex=self.tex[self.t]
             if self.haze: self.output.haze[tex]=self.haze
@@ -733,11 +728,9 @@ class ProcScen:
             dz=(ez-sz)/(count-1.0)
         else:
             dx=dy=dz=0
-        if self.m==None:
-            mat=self.mat[0]
-        else:
-            mat=self.mat[self.m]
-            if not mat: return	# transparent
+        mat=self.mat[self.m]
+        if not mat:
+            return	# transparent
         key=(self.loc,self.matrix[-1],self.scale)
         if not key in self.lightdat:
             self.lightdat[key]=[]
@@ -748,11 +741,9 @@ class ProcScen:
         
     def Point(self):		# 37
         (x,y,z)=unpack('<3h', self.bgl.read(6))
-        if self.m==None:
-            mat=self.mat[0]
-        else:
-            mat=self.mat[self.m]
-            if not mat: return	# transparent
+        mat=self.mat[self.m]
+        if not mat:
+            return	# transparent
         key=(self.loc,self.matrix[-1],self.scale)
         if not key in self.lightdat:
             self.lightdat[key]=[]
@@ -1022,11 +1013,9 @@ class ProcScen:
     def ResPnt(self):		# 80
         (idx,)=unpack('<H', self.bgl.read(2))
         (x,y,z,c,c,c,c,c)=self.vtx[idx]
-        if self.m==None:
-            mat=self.mat[0]
-        else:
-            mat=self.mat[self.m]
-            if not mat: return	# transparent
+        mat=self.mat[self.m]
+        if not mat:
+            return	# transparent
         key=(self.loc,self.matrix[-1],self.scale)
         if not key in self.lightdat:
             self.lightdat[key]=[]
@@ -1231,11 +1220,9 @@ class ProcScen:
             last=max(last,a,b,c)
         for i in range(len(idx)):
             idx[i]=idx[i]-first
-        if self.m==None:
-            mat=self.mat[0]
-        else:
-            mat=self.mat[self.m]
-            if not mat: return	# transparent
+        mat=self.mat[self.m]
+        if not mat:
+            return	# transparent
         if self.t==None or self.t==-1:
             tex=None
         else:
@@ -1260,11 +1247,9 @@ class ProcScen:
             last=max(last,a,b)
         for i in range(len(idx)):
             idx[i]=idx[i]-first
-        if self.m==None:
-            mat=self.mat[0]
-        else:
-            mat=self.mat[self.m]
-            if not mat: return	# transparent
+        mat=self.mat[self.m]
+        if not mat:
+            return	# transparent
         key=(self.loc,self.matrix[-1],self.scale)
         if not key in self.linedat:
             self.linedat[key]=[]
@@ -1452,7 +1437,7 @@ class ProcScen:
         # OK now sort throught the objects.
         # Matrix is brought out here to allow for detection of data in a bgl
         # that is duplicated apart from translation and/or rotation by heading
-        for lkey in self.objdat:
+        for lkey in sorted(self.objdat):
             (loc,matrix,scale,tex)=lkey
             newmatrix=matrix
             newloc=loc
@@ -1494,8 +1479,7 @@ class ProcScen:
                 (vlight, vline, vt, idx, mattri)=objdat[okey]
 
             # Sort to minimise attribute changes
-            self.objdat[lkey].sort()
-            for (m, alt, vtx, i, dbl) in self.objdat[lkey]:
+            for (m, alt, vtx, i, dbl) in sorted(self.objdat[lkey]):
 
                 # replace materials with palette texture
                 if not tex:
