@@ -27,7 +27,7 @@
 
 from math import floor
 from os import curdir, mkdir, pardir, sep, stat, unlink, walk
-from os.path import basename, exists, isdir, join, normpath, splitext
+from os.path import basename, dirname, exists, isdir, join, normpath, splitext
 from shutil import copyfile
 from StringIO import StringIO
 import struct	# for struct.error
@@ -46,15 +46,13 @@ class Output:
 
         self.dumplib=dumplib
         self.debug=debug
-        self.overlays=True
         self.docomplexity=False
 
         if dumplib:
             self.fspath=None
-            self.lbpath=fspath
         else:
             self.fspath=fspath
-            self.lbpath=lbpath
+        self.lbpath=lbpath
         self.xppath=xppath
         self.hemi=0	# 0=N, 1=S
         self.season=season
@@ -76,6 +74,7 @@ class Output:
         self.objplc=[]	# Object placements:	(loc, hdg, cmplx, name, scale)
         self.objdat={}	# Objects by name
         self.stock={}	# FS2004 stock objects - we don't have these
+        self.friendly={}	# GUID->friendly name map
         self.haze={}	# Textures that have palette-based transparency
         self.dufftex={}	# Textures we couldn't convert (avoid multiple reports)
         
@@ -100,15 +99,14 @@ class Output:
                 raise FS2XError('"%s" does not exist' % path)
             if path and not isdir(path):
                 raise FS2XError('"%s" is not a folder' % path)
-        path=normpath(join(xppath, pardir))
-        if basename(path).lower()!='custom scenery' or not isdir(path):
-            raise FS2XError('"%s" is not a sub-folder of "Custom Scenery"' % (
-                xppath))
         for path, dirs, files in walk(xppath):
             for f in dirs+files:
                 if f!='errors.txt' and not f.startswith('.'):
                     raise FS2XError('"%s" already exists and is not empty' % (
                         xppath))
+        if not self.dumplib and (basename(dirname(xppath)).lower()!='custom scenery' or not isdir(dirname(xppath))):
+            raise FS2XError('"%s" is not a sub-folder of "Custom Scenery"' % (
+                xppath))
 
         for exe in [self.bglexe, self.xmlexe, self.pngexe, self.dsfexe]:
             if exe and not exists(exe):
@@ -141,6 +139,32 @@ class Output:
         for toppath in [self.lbpath, self.fspath]:
             if not toppath:
                 continue
+            if self.dumplib:
+                # read Rwy12 UID mappings
+                for path, dirs, files in walk(toppath):
+                    for filename in files:
+                        if filename[-4:].lower()!='.xml':
+                            continue
+                        try:
+                            h=file(join(path,filename), 'rU')
+                            h.readline()
+                            if not h.readline().strip()=='<objectsLibrary>':
+                                h.close()
+                                continue
+                            for line in h:
+                                if not line.startswith('<obj') or not 'guid="' in line or not 'name="' in line:
+                                    continue
+                                uid=line[line.index('guid="')+6:]
+                                if not uid[32]=='"': continue
+                                uid=uid[:32].lower()
+                                for j in uid:
+                                    if not j in '0123456789abcdef': break
+                                else:
+                                    line=line[line.index('name="')+6:]
+                                    self.friendly[uid]=line[:line.index('"')]
+                        except:
+                            pass
+                        
             for path, dirs, files in walk(toppath):
                 if basename(path).lower()!='scenery':
                     continue	# Only look at BGLs in 'scenery' directory
@@ -149,6 +173,24 @@ class Output:
                     filename=files[i]
                     if filename[-4:].lower()!='.bgl':
                         continue
+                    if self.dumplib and exists(join(path,filename[:-4]+'.txt')):
+                        # read EZ-Scenery UID mapping
+                        try:
+                            h=file(join(path,filename[:-4]+'.txt'), 'rU')
+                            if not h.readline().startswith('Library description file'):
+                                h.close()
+                                raise IOError
+                            for line in h:
+                                if len(line)<=33 or line[0]=='#' or not line[32] in ' \t':
+                                    continue
+                                uid=line[:32].lower()
+                                for j in uid:
+                                    if not j in '0123456789abcdef': break
+                                else:
+                                    self.friendly[uid]=line[32:].strip()
+                            h.close()
+                        except:
+                            pass
                     bglname=join(path, filename)
                     if stat(bglname).st_size==0:
                         self.done[bglname]=True
@@ -167,6 +209,7 @@ class Output:
                     done=True
                     (c,)=unpack('<H', c)
                     if c&0xff00==0:
+                        # Old-style
                         for section in [42,54,58,102,114]:
                             bgl.seek(section)
                             (secbase,)=unpack('<I',bgl.read(4))
@@ -215,6 +258,8 @@ class Output:
                                 # Use "friendly" name instead of id
                                 bgl.seek(16,1)
                                 name=bgl.read(hdsize-(41)).rstrip(' \0')
+                            elif uid in self.friendly:
+                                name=self.friendly[uid]
                             else:
                                 name=uid
                             if not uid in self.libobj:	# 1st wins
@@ -224,6 +269,7 @@ class Output:
                             bgl.seek(pos+20)
 
                     elif c==0x201:
+                        # newstyle
                         islib=False
                         bgl.seek(4)
                         (sectiontbl,)=unpack('<I',bgl.read(4))
@@ -249,6 +295,8 @@ class Output:
                                     uid = "%08x%08x%08x%08x" % (a,b,c,d)
                                     if uid in self.stock:
                                         name=self.stock[uid]
+                                    elif uid in self.friendly:
+                                        name=self.friendly[uid]
                                     else:
                                         # No friendly name - always use id
                                         name=uid
@@ -639,10 +687,6 @@ class Output:
             for i in lookup[tile][key]:
                 objplc[tile][complexity].append((i,loc.lon,loc.lat,head))
 
-        # Translate DSF
-        srcpath=normpath(join(self.xppath, pardir, pardir,
-                              "Resources", "default scenery", "DSF 820 Earth"))
-
         n = len(objdef.keys())
         t = 0
         for tile in objdef.keys():
@@ -656,29 +700,7 @@ class Output:
                 int(lat/10), int(lon/10)))
             self.status(t*100.0/n, tilename+'.dsf')
             t+=1
-    
-            if self.overlays:
-                objcount=0
-            else:
-                srcname=join(srcpath, tiledir, tilename+'.dsf')
-                dsfname=join(gettempdir(), tilename+'.txt')
-                if not exists(srcname):
-                    raise FS2XError("Can't read source DSF %s.dsf"%(tilename))
-                x=helper(self.dsfexe+' -dsf2text "'+srcname+'" "'+dsfname+'"')
-                if x or not exists(dsfname):
-                    raise FS2XError("Can't read source DSF %s.dsf (%s)" %
-                                    (tilename, x))
-                dsf=file(dsfname, 'rU')
-                objcount=0
-                for line in dsf:
-                    if line.find("PROPERTY sim/require_object")==0:
-                        pass
-                    elif line.find("OBJECT_DEF ")==0:
-                        objcount+=1
-                    elif line.find("# Result code: ")==0:
-                        if int(line[15:])!=0:
-                            raise FS2XError("Can't read source DSF %s.dsf" % (
-                                tilename))
+            objcount=0
 
             # Caculate base index for each complexity. Highest are first.
             base=[[] for i in range(complexities)]
@@ -695,113 +717,41 @@ class Output:
             dstname=join(path, tilename+'.txt')
             dst=file(dstname, 'wt')
 
-            if self.overlays:
-                dst.write('I\n800\nDSF2TEXT\n\n')
-                dst.write('PROPERTY sim/overlay\t1\n')
-                dst.write('PROPERTY sim/planet\tearth\n')
-                if self.docomplexity:
-                    for i in range(complexities-1,-1,-1):
-                        if len(defs[i]):
-                            dst.write('PROPERTY sim/require_object\t%d/%d\n'% (
-                                i+1, base[i]))
-                else:
-                    dst.write('PROPERTY sim/require_object\t1/0\n')
-                for exc in self.exc:
-                    (typ, bl,tr)=exc
-                    if bl.within(sw,ne) or tr.within(sw,ne):
-                        dst.write('PROPERTY sim/exclude_%s\t%11.6f/%10.6f/%11.6f/%10.6f\n' % (typ, bl.lon,bl.lat, tr.lon,tr.lat))
-                # XXX flattening?
-                dst.write('PROPERTY sim/creation_agent\t%s' % banner)
-                # Following must be the last properties
-                dst.write('PROPERTY sim/west\t%d\n' %  sw.lon)
-                dst.write('PROPERTY sim/east\t%d\n' %  ne.lon)
-                dst.write('PROPERTY sim/north\t%d\n' %  ne.lat)
-                dst.write('PROPERTY sim/south\t%d\n' %  sw.lat)
-                dst.write('\n')
-
+            dst.write('I\n800\nDSF2TEXT\n\n')
+            dst.write('PROPERTY sim/planet\tearth\n')
+            dst.write('PROPERTY sim/overlay\t1\n')
+            if self.docomplexity:
                 for i in range(complexities-1,-1,-1):
-                    for name in defs[i]:
-                        dst.write('OBJECT_DEF objects/%s\n' % name)
-                dst.write('\n')
+                    if len(defs[i]):
+                        dst.write('PROPERTY sim/require_object\t%d/%d\n'% (
+                            i+1, base[i]))
+            else:
+                dst.write('PROPERTY sim/require_object\t1/0\n')
+            for exc in self.exc:
+                (typ, bl,tr)=exc
+                if bl.within(sw,ne) or tr.within(sw,ne):
+                    dst.write('PROPERTY sim/exclude_%s\t%11.6f/%10.6f/%11.6f/%10.6f\n' % (typ, bl.lon,bl.lat, tr.lon,tr.lat))
+            # XXX flattening?
+            dst.write('PROPERTY sim/creation_agent\t%s' % banner)
+            # Following must be the last properties
+            dst.write('PROPERTY sim/west\t%d\n' %  sw.lon)
+            dst.write('PROPERTY sim/east\t%d\n' %  ne.lon)
+            dst.write('PROPERTY sim/north\t%d\n' %  ne.lat)
+            dst.write('PROPERTY sim/south\t%d\n' %  sw.lat)
+            dst.write('\n')
 
-                for i in range(complexities-1,-1,-1):
-                    for plc in plcs[i]:
-                        (idx,lon,lat,heading)=plc
-                        dst.write('OBJECT %3d %11.6f %10.6f %6.2f\n' % (
-                            base[i]+idx, lon, lat, heading))
-                dst.write('\n')
-                
-            else:	# !overlays
-                state=0
-                dsf.seek(0)
-                for line in dsf:
-                    if state==0:	# waiting for PROPERTY
-                        if line.find('PROPERTY ')==0:
-                            dst.write('# Added by FS2XPlane:\n')
-                            for i in range(complexities-1,-1,-1):
-                                if len(defs[i]):
-                                    dst.write('PROPERTY sim/require_object %d/%d\n' % (i+1, base[i]))
-                            state=1
-                        else:
-                            dst.write(line)
-                    if state==1:	# waiting for non-PROPERTY
-                        if line.find('PROPERTY ')!=0:
-                            if objcount:
-                                state=2
-                            else:
-                                state=3
-                        elif line.find('PROPERTY sim/require_object')!=0:
-                            dst.write(line)
+            for i in range(complexities-1,-1,-1):
+                for name in defs[i]:
+                    dst.write('OBJECT_DEF objects/%s\n' % name)
+            dst.write('\n')
 
-                    if state==2:	# waiting for OBJECT_DEF
-                        if line.find('OBJECT_DEF ')==0:
-                            state=3
-                        else:
-                            dst.write(line)
-                    if state==3:	# waiting for non-OBJECT_DEF
-                        if line.find('OBJECT_DEF ')!=0:
-                            dst.write('# Added by FS2XPlane:\n')
-                            for i in range(complexities-1,-1,-1):
-                                for name in defs[i]:
-                                    dst.write('OBJECT_DEF objects/%s\n' % name)
-                            if objcount:
-                                state=4
-                            else:
-                                state=5
-                        else:
-                            dst.write(line)
+            for i in range(complexities-1,-1,-1):
+                for plc in plcs[i]:
+                    (idx,lon,lat,heading)=plc
+                    dst.write('OBJECT %3d %11.6f %10.6f %6.2f\n' % (
+                        base[i]+idx, lon, lat, heading))
 
-                    if state==4:	# waiting for OBJECT
-                        if line.find('OBJECT ')==0:
-                            state=5
-                        else:
-                            dst.write(line)
-
-                    if state==5:	# waiting for non-OBJECT
-                        if line.find('OBJECT ')!=0:
-                            dst.write('# Added by FS2XPlane:\n')
-                            for i in range(complexities-1,-1,-1):
-                                for plc in plcs[i]:
-                                    (idx,lon,lat,heading)=plc
-                                    dst.write('OBJECT %3d %11.6f %10.6f %7.3f\n'%(base[i]+idx, lon, lat, heading))
-                            state=6
-                        else:
-                            args=line[7:].split()
-                            loc=Point(float(args[2]), float(args[1]))
-                            for exc in self.exc:
-                                (bl,tr)=exc
-                                if loc.within(bl,tr):
-                                    dst.write('# Excluded by FS2XPlane: '+line)
-                                    break
-                                else:
-                                    dst.write(line)
-
-                    if state==6:	# copy to end
-                        if line.find('# Result code: ')!=0:
-                            dst.write(line)
-                dsf.close()
-                unlink(dsfname)
-                    
+            dst.write('\n')
             dst.close()
             dsfname=join(path, tilename+'.dsf')
             x=helper('%s -text2dsf "%s" "%s"' %(self.dsfexe, dstname, dsfname))

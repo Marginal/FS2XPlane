@@ -87,16 +87,19 @@ for (opt, arg) in opts:
             print '\nError:\tSeason %s not recognized' % arg
             usage()
         season=seasons.index(arg.lower())
-if dumplib and lbpath:
-    exit("\nError:\tSpecify only one of -l and -x\n")
 if len(args)!=2:
     usage()
-    
-
-fspath=abspath(args[0])
+if dumplib:
+    if lbpath:
+        exit("\nError:\tSpecify only one of -l and -x\n")
+    else:
+        fspath=None
+        lbpath=abspath(args[0])
+else:
+    fspath=abspath(args[0])
 xppath=abspath(args[1])
 logname=abspath(join(xppath, 'errors.txt'))
-
+        
 
 # Main
 try:

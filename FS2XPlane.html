@@ -56,10 +56,9 @@ due to the fact that older MSFS scenery packages tend to use lots
 of small texture files)</small>.</p>
 <h3><a name="settingup">Setting Up</a></h3>
 <h5>Windows</h5>
-<p>Extract the contents of this zip file to a folder. The rest
-of these notes refer to this as the FS2XPlane folder.</p>
 <p>If you <b>don't</b> have FS2004 installed then double-click on the
-script <code>FakeFS2004</code> to set up the folders and registry
+script <code>FakeFS2004</code> which you can find in the folder where
+you installed FS2XPlane to set up the folders and registry
 entries that some MSFS scenery package installers require.</p>
 <p>Windows 95/98/ME users please note that the GUI application
 does not work on 95/98/ME - use the command-line program instead.</p>
@@ -73,8 +72,11 @@ You can <a target="_blank" href="http://www.wxpython.org/download.php#binaries">
 the wxPython runtime (or you can just stick with the command-line
 program).</p>
 <h3><a name="usage"></a>Usage</h3>
+<p>FS2XPlane can operate in one of two ways - it can convert a MSFS scenery
+package or it can extract all the objects in MSFS scenery libraries.<p>
+<h5>Converting a scenery package</h5>
 <ul>
-  <li>Download and the scenery package that you want to convert.
+  <li>Download the scenery package that you want to convert.
 If you have FS2004 installed then follow the installation
 notes in the scenery package. Otherwise create a folder
 called<code> Addon&nbsp;Scenery </code> and unzip the scenery
@@ -92,25 +94,35 @@ the installation notes). If so, the installation notes may advise you
 to copy one of these files to the package's <code>scenery</code>
 folder.</li>
   </ul>
-  <li>Find the location of the <code>Custom&nbsp;Scenery</code>
-folder in X-Plane. By default on Windows this will be <code>C:\X-Plane\Custom&nbsp;Scenery</code>
-  </li>
-</ul>
-<h5>The application</h5>
-<ul>
-  <li>Run the <samp>FS2XPlane</samp> application in the
-FS2XPlane folder.</li>
+  <li>Run the <samp>FS2XPlane</samp> application.</li>
   <li>Supply the location of the MSFS scenery package. For scenery
 packages that have been installed in FS2004 this will most likely
 be a folder under <code>C:\Program&nbsp;Files\Microsoft&nbsp;Games\Flight&nbsp;Simulator&nbsp;9\Addon&nbsp;Scenery\</code></li>
   <li>Supply the location of any additional MSFS libraries that the package depends on. (Leave this blank for none, or specify the
-<code>Addon&nbsp;Scenery</code> folder to search all installed
-libraries.)</li>
+<code>Addon&nbsp;Scenery</code> folder to search all installed libraries.)</li>
   <li>Specify the location for the new X-Plane scenery package.
 This should be a non-existent or empty folder directly under
 X-Plane's <code>Custom&nbsp;Scenery</code> folder.</li>
   <li>Select the season for converted textures. <font size="-1">(Not all MSFS scenery packages supply seasonal
 textures, in which case this setting will be ignored).</font></li>
+  <li>Press <samp>Convert</samp>.<font size="-1"><br>
+    </font></li>
+</ul>
+<h5>Extracting library objects</h5>
+<p>FS2XPlane can extract objects from "BGL", "Rwy12" and "EZ-Scenery" libraries. It cannot read "API", "SCM" or "SBuilder" macros or libraries.</p>
+<ul>
+  <li>Download the scenery library or libraries that you want to
+convert. If you have FS2004 installed then unzip the libraries into
+<code>C:\Program&nbsp;Files\Microsoft&nbsp;Games\Flight&nbsp;Simulator&nbsp;9\Addon&nbsp;Scenery\Scenery</code>. Otherwise create a folder
+called<code> Addon&nbsp;Scenery </code> and unzip the scenery
+package into a subfolder of this folder.</li>
+  <li>Run the <samp>FS2XPlane</samp> application.</li>
+  <li>Select the "Extract all library objects" option.</li>
+  <li>Ignore the "MSFS scenery location" - it's not used.</li>
+  <li>Supply the location where you put the MSFS scenery libraries.</code></li>
+  <li>Specify the location for the new X-Plane scenery objects.
+This should be a non-existent or empty folder.</li>
+  <li>Select the season for converted textures. <font size="-1">(Not all MSFS scenery libraries supply seasonal textures, in which case this setting will be ignored).</font></li>
   <li>Press <samp>Convert</samp>.<font size="-1"><br>
     </font></li>
 </ul>
@@ -642,7 +654,7 @@ that you just created as the location for "Additional MSFS libraries".</p>
 <table style="width: 100%;" border="0" cellpadding="2">
   <tbody>
     <tr>
-      <td class="banner">Version 1.01 &copy; 2006
+      <td class="banner">Version 1.02 &copy; 2006
       <a href="mailto:x-plane@marginal.org.uk">Jonathan
 Harris</a> <a rel="license" href="http://creativecommons.org/licenses/by-sa/2.5/"><img style="border: 0px solid ; width: 88px; height: 31px;" alt="Creative Commons License" src="http://creativecommons.org/images/public/somerights20.png"></a><br>Linux port by Pierluigi Vittori
 (<a href="http://forums.x-plane.org/index.php?showuser=5530">tango13</a>)</td>

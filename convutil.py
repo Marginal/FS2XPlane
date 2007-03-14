@@ -42,7 +42,7 @@ if not 'startfile' in dir(os):
     import webbrowser
 
 
-appversion='1.01'	# Must be numeric
+appversion='1.02'	# Must be numeric
 banner="Converted by FS2XPlane %s\n" % appversion
 
 # MSFS oblate spheroid

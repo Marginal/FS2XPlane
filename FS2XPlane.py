@@ -202,11 +202,16 @@ class MainWindow(wx.Frame):
         self.season = wx.RadioBox(panel2,-1, "Season:",
                                   choices=["Spring", "Summer",
                                            "Autumn", "Winter"])
+        self.dumplib= wx.CheckBox(panel2,-1, "Extract all library objects")
         # use panel and sizer so tab order works normally
         box2 = wx.BoxSizer(wx.HORIZONTAL)
         box2.Add(self.season, 1)
+        box2.Add(self.dumplib, 0, wx.ALIGN_CENTER_VERTICAL|wx.ALL|wx.EXPAND,10)
         panel2.SetSizer(box2)
 
+        wx.EVT_CHECKBOX(self, self.dumplib.GetId(), self.onDump)
+
+        
         # 3rd panel - adjust order of buttons per Windows or Mac conventions
         if platform=='win32':
             button31=wx.Button(panel3, wx.ID_HELP)
@@ -261,6 +266,13 @@ class MainWindow(wx.Frame):
         self.SetSizeHints(sz.width+50, height, -1, height)
         self.Show(True)
 
+    def onDump(self, evt):
+        if self.dumplib.GetValue():
+            self.fspath.Disable()
+            self.fsbrowse.Disable()
+        else:
+            self.fspath.Enable()
+            self.fsbrowse.Enable()
 
     def onFSbrowse(self, evt):
         dlg=wx.DirDialog(self, "Location of MSFS scenery package:",
@@ -293,30 +305,43 @@ class MainWindow(wx.Frame):
             viewer(join(curdir,appname+'.html'))
 
     def onConvert(self, evt):
+        dumplib=self.dumplib.GetValue()
         fspath=self.fspath.GetValue().strip()
-        if not fspath:
-            myMessageBox('You must specify a MSFS scenery location',
-                         appname, wx.ICON_ERROR|wx.CANCEL, self)
-            return
-        fspath=abspath(fspath)
         lbpath=self.lbpath.GetValue().strip()
-        if not lbpath:
-            lbpath=None
-        else:
-            lbpath=abspath(lbpath)
         xppath=self.xppath.GetValue().strip()
         if not xppath:
             myMessageBox('You must specify an X-Plane scenery location',
                          appname, wx.ICON_ERROR|wx.CANCEL, self)
             return
         xppath=abspath(xppath)
-        if basename(xppath).lower()=='custom scenery':
-            xppath=join(xppath, basename(fspath))
+
+        if not dumplib:
+            if not fspath:
+                myMessageBox('You must specify a MSFS scenery location',
+                             appname, wx.ICON_ERROR|wx.CANCEL, self)
+                return
+            fspath=abspath(fspath)
+            if not lbpath:
+                lbpath=None
+            else:
+                lbpath=abspath(lbpath)
+            if basename(xppath).lower()=='custom scenery':
+                xppath=join(xppath, basename(fspath))
+        else:
+            fspath=None
+            if not lbpath:
+                myMessageBox('You must specify a MSFS library location',
+                             appname, wx.ICON_ERROR|wx.CANCEL, self)
+                return
+            lbpath=abspath(lbpath)
+            if basename(xppath).lower()=='custom scenery':
+                xppath=join(xppath, basename(lbpath))
+            
         self.logname=abspath(join(xppath, 'errors.txt'))
         season=self.season.GetSelection()	# zero-based
 
         try:
-            output=Output(fspath,lbpath,xppath,season,status,log,False,False)
+            output=Output(fspath,lbpath,xppath,season,status,log,dumplib,False)
             output.scanlibs()
             output.process()
             output.proclibs()
