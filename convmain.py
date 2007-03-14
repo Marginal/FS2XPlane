@@ -838,10 +838,10 @@ class Output:
                     # Must only add objs that exist
                     for obj in self.objdat[name]:
                         idx.append(len(thisobjdef))
-                        if scale!=1.0:
-                            thisobjdef.append("objects/%s_%02d%02d.obj" % (obj.filename[:-4], int(scale), round(scale*100,0)%100))
-                        elif obj.comment=="X-Plane library object":
+                        if obj.comment=="X-Plane library object":
                             thisobjdef.append(obj.filename)
+                        elif scale!=1.0:
+                            thisobjdef.append("objects/%s_%02d%02d.obj" % (obj.filename[:-4], int(scale), round(scale*100,0)%100))
                         else:
                             thisobjdef.append("objects/%s" % obj.filename)
                     objlookup[tile][key]=idx
