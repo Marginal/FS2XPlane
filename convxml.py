@@ -25,15 +25,15 @@
 #   http://creativecommons.org/licenses/by-sa/2.5/legalcode
 #
 
-from math import sin, cos
+from math import sin, cos, atan
 from os import unlink
 from os.path import basename, exists, join
 from sys import maxint
 import xml.parsers.expat
 from tempfile import gettempdir
 
-from convutil import d2r, r2d, m2f, NM2m, complexity, AptNav, Object, Point, Matrix, FS2XError, apronlightspacing, taxilightspacing
-from convobjs import makeapronlight, maketaxilight, maketaxisign
+from convutil import d2r, r2d, m2f, NM2m, complexity, asciify, AptNav, Object, Point, Matrix, FS2XError, apronlightspacing, taxilightspacing
+from convobjs import makeapronlight, maketaxilight, maketaxisign, makegenquad, makegenmulti
 
 
 # member var is defined
@@ -78,7 +78,7 @@ class SceneryObject:
             for k, v in attrs.iteritems():
                 exec("self.%s=v" % k)
             self.multisidedbuilding=[]
-            self.pyriamidalbuilding=[]
+            self.pyramidalbuilding=[]
             self.rectangularbuilding=[]
 
         class MultiSidedBuilding:
@@ -111,7 +111,7 @@ class SceneryObject:
             for k, v in attrs.iteritems():
                 exec("self.%s=v" % k)
 
-    def export(self, output):
+    def export(self, parser, output):
         loc=Point(float(self.lat), float(self.lon))
         alt=float(self.alt)
         pitch=0
@@ -130,19 +130,87 @@ class SceneryObject:
             if D(bias, 'biasY'):
                 alt=alt+float(bias.biasY)
 
-        if self.genericbuilding:
-            # XXX Implement me!
-            output.log('Unsupported generic building at (%10.6f, %11.6f) in file %s' % (loc.lat, loc.lon, self.filename))
+        for l in self.genericbuilding:
+            scale=1.0
+            if D(l, 'scale'): scale=round(float(l.scale),2)
+            if D(self, 'altitudeIsAgl') and not T(self, 'altitudeIsAgl'):
+                output.log('Absolute altitude (%sm) for generic building at (%10.6f, %11.6f) in file %s' % (round(alt,2), loc.lat, loc.lon, parser.filename))
+            elif alt!=0:
+                output.log('Non-zero altitude (%sm) for generic building at (%10.6f, %11.6f) in file %s' % (round(alt,2), loc.lat, loc.lon, parser.filename))
+            if pitch or bank:
+                output.log('Non-zero pitch/bank (%s/%s) for generic building at (%10.6f, %11.6f) in file %s' % (pitch, bank, loc.lat, loc.lon, parser.filename))
+            texs=[int(l.bottomTexture), int(l.windowTexture),
+                  int(l.topTexture), int(l.roofTexture)]
+            for m in l.multisidedbuilding:
+                parser.gencount += 1
+                name="%s-generic-%d.obj" % (asciify(parser.filename[:-4]),
+                                            parser.gencount)
+                obj=makegenmulti(name, int(m.buildingSides),
+                                 scale*float(m.sizeX), scale*float(m.sizeZ),
+                                 [scale*float(m.sizeBottomY),
+                                  scale*float(m.sizeWindowY),
+                                  scale*float(m.sizeTopY),
+                                  scale*float(m.sizeRoofY)],
+                                 texs)
+                output.objdat[name]=[obj]
+                output.objplc.append((loc, heading, cmplx, name, 1))
+                                
+            for m in l.pyramidalbuilding:
+                h2=2*(float(m.sizeBottomY)+float(m.sizeWindowY)+
+                      float(m.sizeTopY))
+                parser.gencount += 1
+                name="%s-generic-%d.obj" % (asciify(parser.filename[:-4]),
+                                            parser.gencount)
+                obj=makegenquad(name,
+                                scale*float(m.sizeX), scale*float(m.sizeZ),
+                                atan((float(m.sizeX)-float(m.sizeTopX))/h2),
+                                atan((float(m.sizeZ)-float(m.sizeTopZ))/h2),
+                                [scale*float(m.sizeBottomY),
+                                 scale*float(m.sizeWindowY),
+                                 scale*float(m.sizeTopY)],
+                                texs, 0)
+                output.objdat[name]=[obj]
+                output.objplc.append((loc, heading, cmplx, name, 1))
 
+            for m in l.rectangularbuilding:
+                heights=[scale*float(m.sizeBottomY),
+                         scale*float(m.sizeWindowY),
+                         scale*float(m.sizeTopY)]
+                rtexs=list(texs)
+                roof=0
+                if m.roofType=="FLAT":
+                    roof=0
+                elif m.roofType=="PEAKED":
+                    roof=1
+                    heights.append(scale*float(m.sizeRoofY))
+                elif m.roofType=="RIDGE":
+                    roof=2
+                    heights.append(scale*float(m.sizeRoofY))
+                    rtexs.append(int(m.gableTexture))
+                elif m.roofType=="SLANT":
+                    roof=3
+                    heights.append(scale*float(m.sizeRoofY))
+                    rtexs.extend([int(m.gableTexture), int(m.faceTexture)])
+                else:
+                    continue
+                parser.gencount += 1
+                name="%s-generic-%d.obj" % (asciify(parser.filename[:-4]),
+                                            parser.gencount)
+                obj=makegenquad(name,
+                                scale*float(m.sizeX), scale*float(m.sizeZ),
+                                0, 0, heights, rtexs, roof)
+                output.objdat[name]=[obj]
+                output.objplc.append((loc, heading, cmplx, name, 1))
+                
         for l in self.libraryobject:
             scale=1.0
             if D(l, 'scale'): scale=round(float(l.scale),2)
             if D(self, 'altitudeIsAgl') and not T(self, 'altitudeIsAgl'):
-                output.log('Absolute altitude (%sm) for object %s at (%10.6f, %11.6f) in file %s' % (round(alt,2), l.name, loc.lat, loc.lon, self.filename))
+                output.log('Absolute altitude (%sm) for object %s at (%10.6f, %11.6f) in file %s' % (round(alt,2), l.name, loc.lat, loc.lon, parser.filename))
             elif alt!=0:
-                output.log('Non-zero altitude (%sm) for object %s at (%10.6f, %11.6f) in file %s' % (round(alt,2), l.name, loc.lat, loc.lon, self.filename))
+                output.log('Non-zero altitude (%sm) for object %s at (%10.6f, %11.6f) in file %s' % (round(alt,2), l.name, loc.lat, loc.lon, parser.filename))
             if pitch or bank:
-                output.log('Non-zero pitch/bank (%s/%s) for object %s at (%10.6f, %11.6f) in file %s' % (pitch, bank, l.name, loc.lat, loc.lon, self.filename))
+                output.log('Non-zero pitch/bank (%s/%s) for object %s at (%10.6f, %11.6f) in file %s' % (pitch, bank, l.name, loc.lat, loc.lon, parser.filename))
             output.objplc.append((loc, heading, cmplx, l.name.lower(), scale))
 
         for w in self.windsock:
@@ -167,7 +235,7 @@ class ExclusionRectangle:
         for k, v in attrs.iteritems():
             exec("self.%s=v" % k)
     
-    def export(self, output):
+    def export(self, parser, output):
         bl=Point(float(self.latitudeMinimum), float(self.longitudeMinimum))
         tr=Point(float(self.latitudeMaximum), float(self.longitudeMaximum))
         if (T(self, 'excludeAllObjects') or
@@ -335,7 +403,7 @@ class Airport:
                         exec("self.%s=v" % k)
 
     # Export airport to apt.dat and nav.dat
-    def export(self, output):
+    def export(self, parser, output):
 
         airloc=Point(float(self.lat), float(self.lon))
         ident=self.ident
@@ -377,11 +445,7 @@ class Airport:
             markings=0
             smoothing=0.25
             distance=0
-            angle=[0,0]
-
-            # X-Plane considers size<10? to be an error.
-            if length<10: length=10
-            if width<10: width=10
+            angle=[3.0,3.0]
 
             nos={'EAST':9, 'NORTH':0, 'NORTHEAST':4, 'NORTHWEST':31,
                  'SOUTH':18, 'SOUTHEAST':13, 'SOUTHWEST':22, 'WEST':27}
@@ -421,6 +485,7 @@ class Airport:
                     end=1
                 if vasis.has_key(vasi.type):
                     lights[end][0]=vasis[vasi.type]
+                angle[end]=float(vasi.pitch)
 
             for light in runway.lights:
                 if D(light, 'edge') and light.edge!='NONE':
@@ -431,9 +496,8 @@ class Airport:
                     lights[0][1]=4
                     lights[1][1]=4
             for app in runway.approachlights:
-                sys={'NONE':1,
-                     'SALS':2, 'SSALR':2, 'SSALSR':2, 'MALSR':2, 'RAIL':2,
-                     'SSALSF':3, 'MALSF':3,
+                sys={'MALS':2, 'MALSR':2, 'SALS':2, 'SSALR':2, 'SSALS':2, 'SSALSR':2, 'RAIL':2,
+                     'MALSF':3, 'SSALF':3, 'SSALSF':3,
                      'ALSF1':4,
                      'ALSF2':5,
                      'ODALS':6,
@@ -443,8 +507,10 @@ class Airport:
                     end=0
                 else:
                     end=1
-                if D(app, 'system'):
+                if D(app, 'system') and app.system in sys:
                     lights[end][2]=sys[app.system]
+                else:
+                    lights[end][2]=1
                 if (D(app, 'strobes') and int(app.strobes)>0 and
                     lights[end][1]<3):
                     lights[end][1]=3
@@ -518,11 +584,14 @@ class Airport:
                         
                         m2f*float(dme.alt), float(ils.frequency)*100, rng,
                         0, ils.ident, name)))
+
+            if length<4 or width<4:
+                continue	# X-Plane considers size<4ft to be an error.
                     
             if len(number)<3: number+='x'
             for a in aptdat:
                 if a.code==10 and a.text[0:3]==number:
-                    raise FS2XError('Found duplicate definition of runway %s in %s' % (number.replace('x',''), self.filename))
+                    raise FS2XError('Found duplicate definition of runway %s in %s' % (number.replace('x',''), parser.filename))
             aptdat.append(AptNav(10, loc, "%s %6.2f %6d %04d.%04d %04d.%04d %4d %d%d%d%d%d%d %02d %d %d %4.2f %d %04d.%04d" % (
                 number, heading, length,
                 displaced[0], displaced[1], overrun[0], overrun[1], width,
@@ -552,9 +621,13 @@ class Airport:
                 number=("H%dx" % hno)
             else:
                 number=("H%d" % hno)
+
+            if length<4 or width<4:
+                continue	# X-Plane considers size<4ft to be an error.
+
             for a in aptdat:
                 if a.code==10 and a.text[0:3]==number:
-                    raise FS2XError('Found duplicate definition of helipad %s in %s' % (number.replace('x',''), self.filename))
+                    raise FS2XError('Found duplicate definition of helipad %s in %s' % (number.replace('x',''), parser.filename))
             aptdat.append(AptNav(10, loc, "%s %6.2f %6d %04d.%04d %04d.%04d %4d 111111 %02d %d %d %4.2f %d %04d.%04d" % (
                 number, heading, length, 0, 0, 0, 0, width,
                 surface, 0, 0, 0.25, 0, 0, 0)))
@@ -585,13 +658,27 @@ class Airport:
                 length=0.5*width + m2f*start.distanceto(end)
                 surface=surfaces[t.surface]
                 
-                # X-Plane considers size<1 to be an error. So skip placeholders
-                if length<1 or width<1:
-                    continue
+                l=start.distanceto(end)
+                if T(t, 'centerLineLighted') and l>taxilightspacing/8:
+                    output.objdat[fname]=[obj]
+                    if l<taxilightspacing/2:
+                        l=start.distanceto(end)	# Just do one in the middle
+                    else:
+                        l=l-taxilightspacing/2
+                    n=1+int(l/taxilightspacing)
+                    (x,y,z)=Matrix().headed(
+                        start.headingto(end)).transform(0,0,l/n)
+                    for j in range(n):
+                        loc=start.biased(x*(j+0.5),z*(j+0.5))
+                        output.objplc.append((loc, 0, 1, fname, 1))
+
+                if length<4 or width<4:
+                    continue	# X-Plane considers size<4ft to be an error.
+                
                 dupl=False
                 for a in aptdat:
                     if a.code==10 and loc.lat==a.loc.lat and loc.lon==a.loc.lon:
-                        output.log('Skipping duplicate of taxiway at (%10.6f, %11.6f) in file %s' % (loc.lat, loc.lon, self.filename))
+                        output.log('Skipping duplicate of taxiway at (%10.6f, %11.6f) in file %s' % (loc.lat, loc.lon, parser.filename))
                         dupl=True
                         break
                 if dupl:
@@ -610,20 +697,6 @@ class Airport:
                 aptdat.append(AptNav(10, loc, "%s %6.2f %6d %04d.%04d %04d.%04d %4d 1%d11%d1 %02d %d %d %4.2f %d %04d.%04d" % (
                     'xxx', heading, length, 0, 0, 0, 0, width,
                     lights, lights, surface, 0, 0, 0.25, 0, 0, 0)))
-
-                l=start.distanceto(end)
-                if T(t, 'centerLineLighted') and l>taxilightspacing/8:
-                    output.objdat[fname]=[obj]
-                    if l<taxilightspacing/2:
-                        l=start.distanceto(end)	# Just do one in the middle
-                    else:
-                        l=l-taxilightspacing/2
-                    n=1+int(l/taxilightspacing)
-                    (x,y,z)=Matrix().headed(
-                        start.headingto(end)).transform(0,0,l/n)
-                    for j in range(n):
-                        loc=start.biased(x*(j+0.5),z*(j+0.5))
-                        output.objplc.append((loc, 0, 1, fname, 1))
 
 
         # Aprons
@@ -660,15 +733,20 @@ class Airport:
                         maxz=max(maxz,z)
                     width =m2f*(maxx-minx)
                     length=m2f*(maxz-minz)
+
+                    if length<4 or width<4:
+                        continue	# size<4ft is an error.
+                    
                     if heading:
                         (x,y,z)=back.transform((maxx+minx)/2,0,(maxz+minz)/2)
                         loc=airloc.biased(x,z)
                     else:
                         loc=airloc.biased((maxx+minx)/2, (maxz+minz)/2)
+                        
                     dupl=False
                     for a in aptdat:
                         if a.code==10 and loc.lat==a.loc.lat and loc.lon==a.loc.lon:
-                            output.log('Skipping duplicate of apron at (%10.6f, %11.6f) in file %s' % (loc.lat, loc.lon, self.filename))
+                            output.log('Skipping duplicate of apron at (%10.6f, %11.6f) in file %s' % (loc.lat, loc.lon, parser.filename))
                             dupl=True
                             break
                     if dupl:
@@ -826,7 +904,7 @@ class Vor:
                 exec("self.%s=v" % k)
 
     # Export to nav.dat
-    def export(self, output):
+    def export(self, parser, output):
         if self.dme:
             dtype='VOR'
         else:
@@ -865,7 +943,7 @@ class Ndb:
             exec("self.%s=v" % k)
 
     # Export to nav.dat
-    def export(self, output):
+    def export(self, parser, output):
         if D(self, 'name'):
             name=self.name
             if name[-3:].upper()!='NDB': name+=' NDB'
@@ -893,7 +971,7 @@ class Marker:
             exec("self.%s=v" % k)
 
     # Export to nav.dat
-    def export(self, output):
+    def export(self, parser, output):
         if self.type=='INNER':
             mtype='IM'
             code=9
@@ -921,8 +999,8 @@ class ModelData:
         for k, v in attrs.iteritems():
             exec("self.%s=v" % k)
 
-    def export(self, output):
-        # Just clean up MDL: files in %TMP%
+    def export(self, parser, output):
+        # Just clean up MDL files in %TMP%
         if D(self, 'sourceFile'):
             tmp=join(gettempdir(), self.sourceFile)
             if exists(tmp):
@@ -935,7 +1013,7 @@ class Parse:
         self.elems=[]
         self.parents=[]
         self.parname=''	# parent class(es)
-        self.output=output
+        self.gencount=0
 
         parser=xml.parsers.expat.ParserCreate()
         parser.StartElementHandler = self.start_element
@@ -945,12 +1023,11 @@ class Parse:
 
         # Parsed OK. Now export
         for elem in self.elems:
-            elem.export(self.output)
+            elem.export(self, output)
 
     def start_element(self, name, attrs):
         if name=='FSData':
             return
-        attrs['filename']=self.filename
         try:
             elem=eval('%s%s(attrs)' % (self.parname, name))
             if self.parents:

@@ -28,14 +28,13 @@
 #
 
 from getopt import getopt, GetoptError
-import os	# for startfile
 from os import chdir, mkdir
 from os.path import abspath, basename, dirname, exists, isdir, join
 from sys import exit, argv
 from traceback import print_exc
 
 from convmain import Output
-from convutil import FS2XError
+from convutil import FS2XError, viewer
 
 # callbacks
 def status(percent, msg):
@@ -57,7 +56,10 @@ def usage():
 mypath=dirname(abspath(argv[0]))
 if not isdir(mypath):
     exit('"%s" is not a folder' % mypath)
-chdir(mypath)
+if basename(mypath)=='MacOS':
+    chdir(normpath(join(mypath,pardir)))	# Starts in MacOS folder
+else:
+    chdir(mypath)
 
 
 # Arg validation
@@ -98,21 +100,19 @@ logname=abspath(join(xppath, 'errors.txt'))
 
 # Main
 try:
-    output=Output(mypath,fspath,lbpath,xppath,season,status,log,
-                  dumplib, debug)
+    output=Output(fspath,lbpath,xppath,season,status,log,dumplib,debug)
     output.scanlibs()
     output.process()
     output.proclibs()
     output.export()
     if exists(logname):
-        if 'startfile' in dir(os):
-            status(-1, 'Displaying error log "%s"' % logname)
-            os.startfile(logname)
-        else:
-            status(-1, 'Errors found; see log "%s"' % logname)
+        status(-1, 'Displaying error log "%s"' % logname)
+        viewer(logname)
     status(-1, 'Done.')
+
 except FS2XError, e:
     exit('Error:\t%s\n' % e.msg)
+
 except:
     status(-1, 'Internal error')
     print_exc()
@@ -122,7 +122,6 @@ except:
     logfile.write('\nInternal error\n')
     print_exc(None, logfile)
     logfile.close()
-    if 'startfile' in dir(os):
-        status(-1, 'Displaying error log "%s"' % logname)
-        os.startfile(logname)
+    status(-1, 'Displaying error log "%s"' % logname)
+    viewer(logname)
     exit(1)

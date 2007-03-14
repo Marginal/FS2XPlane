@@ -27,13 +27,22 @@
 
 from math import sin, cos, tan, asin, acos, atan, atan2, fmod, pi
 from locale import getpreferredencoding
+import os	# for startfile
 from os import listdir, mkdir, popen3, stat, unlink
-from os.path import basename, curdir, dirname, exists, isdir, join, normpath, splitext
+from os.path import abspath, basename, curdir, dirname, exists, isdir, join, normpath, splitext
 from shutil import copyfile
 from struct import pack
 from tempfile import gettempdir
+import types
+import unicodedata
 
-version='0.99'
+if not 'startfile' in dir(os):
+    # Causes problems under py2exe & not needed
+    from urllib import quote
+    import webbrowser
+
+
+version='1.00'	# Must be numeric
 banner="Converted by FS2XPlane %s\n" % version
 
 # MSFS oblate spheroid
@@ -59,6 +68,7 @@ taxilightspacing=30.48	# [m] = 100ft
 # for asciify
 # find corresponing Windows code page for the user's locale
 encoding=getpreferredencoding().lower()
+if encoding=='us-ascii': encoding='latin1'	# 2.3 on Mac
 if   encoding in ['cp1250', 'mac_latin2', 'iso8859_2', 'iso8859_16']:
     # Central European
     asciitbl='[|]-_E ,f_.||^%S<STZZ \'\'"".--- s>stzz   LxA|S"cS<--rZd+ l\'uP. as>L"lzRAAAALCCCEEEEIIDDNNOOOO*RUUUUYTsraaaalccceeeeiiddnnoooo/ruuuuyty'
@@ -102,7 +112,6 @@ class Point:
         # Approximation
         return Point(self.lat+biasZ*360.0/cirp,
                      self.lon+biasX*360.0/(cire*cos(d2r*self.lat)))
-    #self.lon+biasX*360.0/(cire*cos(self.lat*2/pi)))
 
     # From http://www.mathforum.com/library/drmath/view/51711.html
     def distanceto(self, to):
@@ -357,7 +366,6 @@ class Object:
                 else:
                     lit=None
 
-
         if 0: #output.debug:	# XXX
             # Generate line at object origin
             self.vline.insert(0, (0, 0, 0,  1, 0.5, 0.5))
@@ -378,8 +386,7 @@ class Object:
             objfile.write("I\n800\t# %sOBJ\n" % banner)
             objfile.write("\n# %s\n\n" % comment)
             if tex:
-                objfile.write("TEXTURE\t\t../textures/%s\n" % (
-                    basename(tex)))
+                objfile.write("TEXTURE\t\t../textures/%s\n" % (basename(tex)))
                 if lit:
                     objfile.write("TEXTURE_LIT\t../textures/%s\n" % (
                         basename(lit)))
@@ -504,6 +511,15 @@ class Object:
             return False
 
 
+# Convert r,g,b to offset in palette texture
+def rgb2uv(rgb):
+    (r,g,b)=rgb
+    r=(round(r*15,0)+0.5)/64
+    g=(round(g*15,0)+0.5)/64
+    b=(round(b*15,0)+0.5)
+    return (int(b%4)/4.0 + r, int(b/4)/4.0 + g)
+
+
 # Run helper app and return stderr
 def helper(cmds):
     (i,o,e)=popen3(cmds)
@@ -515,8 +531,24 @@ def helper(cmds):
     return txt.strip().replace('\n', ', ')
 
 
+# View contents of file
+def viewer(filename):
+    try:
+        if 'startfile' in dir(os):
+            os.startfile(filename)
+        else:
+            filename=abspath(filename)
+            if type(filename)==types.UnicodeType:
+                filename=filename.encode('utf-8')
+            webbrowser.open("file:"+quote(filename))
+    except:
+        pass
+
+
 # Turn string into ascii
 def asciify(s):
+    if type(s)==types.UnicodeType:
+        s=normalize(s)
     # s may be unicode, so can't use translate()
     a=''
     for c in s:
@@ -531,6 +563,14 @@ def asciify(s):
     return a
 
 
+# Turn 8-bit string into unicode
+def unicodeify(s):
+    return unicode(s, encoding)
+
+# Return normalized (pre-combined) unicode string
+def normalize(s):
+    return unicodedata.normalize('NFC',s)
+    
 # cross product of two triples
 def cross(a, b):
     (ax,ay,az)=a

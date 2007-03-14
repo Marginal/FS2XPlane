@@ -41,7 +41,7 @@ import convbgl
 import convxml
 
 class Output:
-    def __init__(self, mypath, fspath, lbpath, xppath, season, status, log,
+    def __init__(self, fspath, lbpath, xppath, season, status, log,
                  dumplib, debug):
 
         self.dumplib=dumplib
@@ -63,6 +63,10 @@ class Output:
         self.status=status
         self.log=log
 
+        # Per-BGL counts - should live somewhere else
+        self.gencount=0
+        self.anccount=0	# Not used for library objects
+
         self.apt={}
         self.nav=[]
         self.misc=[]
@@ -76,20 +80,20 @@ class Output:
         self.dufftex={}	# Textures we couldn't convert (avoid multiple reports)
         
         if platform=='win32':
-            self.bglexe=curdir+sep+platform+sep+'bglunzip.exe'
-            self.xmlexe=curdir+sep+platform+sep+'bglxml.exe'
-            self.pngexe=curdir+sep+platform+sep+'bmp2png.exe'
-            self.dsfexe=curdir+sep+'DSFTool.exe'
+            self.bglexe=join(curdir,'win32','bglunzip.exe')
+            self.xmlexe=join(curdir,'win32','bglxml.exe')
+            self.pngexe=join(curdir,'win32','bmp2png.exe')
+            self.dsfexe=join(curdir,'win32','DSFTool.exe')
         elif platform.lower().startswith('linux'):
-            self.bglexe=curdir+sep+'linux'+sep+'bglunzip'
-            self.xmlexe=curdir+sep+'linux'+sep+'bglxml'
-            self.pngexe=curdir+sep+'linux'+sep+'bmp2png'
-            self.dsfexe=curdir+sep+'linux'+sep+'DSFTool'
+            self.bglexe=join(curdir,'linux','bglunzip')
+            self.xmlexe=join(curdir,'linux','bglxml')
+            self.pngexe=join(curdir,'linux','bmp2png')
+            self.dsfexe=join(curdir,'linux','DSFTool')
         else:	# Mac
-            self.bglexe=None	# Not available on Mac
-            self.xmlexe=curdir+sep+'mac'+sep+'bglxml'
-            self.pngexe=curdir+sep+'mac'+sep+'bmp2png'
-            self.dsfexe=curdir+sep+'DSFTool'
+            self.bglexe=None	# Maybe available under Wine in future
+            self.xmlexe=join(curdir,'MacOS','bglxml')
+            self.pngexe=join(curdir,'MacOS','bmp2png')
+            self.dsfexe=join(curdir,'MacOS','DSFTool')
 
         for path in [fspath, lbpath]:
             if path and not exists(path):
@@ -101,8 +105,10 @@ class Output:
             raise FS2XError('"%s" is not a sub-folder of "Custom Scenery"' % (
                 xppath))
         for path, dirs, files in walk(xppath):
-            if (dirs or files) and files!=['errors.txt']:
-                raise FS2XError('"%s" is not empty' % xppath)
+            for f in dirs+files:
+                if f!='errors.txt' and not f.startswith('.'):
+                    raise FS2XError('"%s" already exists and is not empty' % (
+                        xppath))
 
         for exe in [self.bglexe, self.xmlexe, self.pngexe, self.dsfexe]:
             if exe and not exists(exe):
@@ -110,12 +116,12 @@ class Output:
 
         if platform.lower().startswith('linux'):
             # check for win32 executables under wine
-            for exe in [curdir+sep+'DSFTool.exe',
-                        curdir+sep+'win32'+sep+'bglunzip.exe']:
+            for exe in [join(curdir,'win32','DSFTool.exe'),
+                        join(curdir,'win32','bglunzip.exe')]:
                 if not exists(exe):
                     raise FS2XError("Can't find \"%s\"" % exe)
 
-        path=join(mypath, 'objfile.txt')
+        path=join('Resources', 'objfile.txt')
         try:
             stock=file(path, 'rU')
         except IOError:
@@ -177,16 +183,23 @@ class Output:
                         if spare2:
                             bgl.close()
                             if not self.bglexe:
-                                self.log("Can't parse compressed file %s" % (
-                                    filename))
-                                # don't mark as done
-                                continue
-                            tmp=join(gettempdir(), filename)
-                            helper('%s "%s" "%s"' %(self.bglexe, bglname, tmp))
-                            if not exists(tmp):
-                                self.log("Can't parse compressed file %s" % (
-                                    filename))
-                                continue
+                                # Check for uncompressed version
+                                if exists(join('Resources',
+                                               basename(bglname).lower())):
+                                    tmp=join('Resources',
+                                             basename(bglname).lower())
+                                else:
+                                    self.log("Can't parse compressed file %s"%(
+                                        filename))
+                                    # don't mark as done
+                                    continue
+                            else:
+                                tmp=join(gettempdir(), filename)
+                                helper('%s "%s" "%s"' %(self.bglexe, bglname, tmp))
+                                if not exists(tmp):
+                                    self.log("Can't parse compressed file %s"%(
+                                        filename))
+                                    continue
                             bgl=file(tmp, 'rb')
                         bgl.seek(secbase)
                         while 1:
@@ -261,6 +274,8 @@ class Output:
                 continue	# Only look at BGLs in 'scenery' directory
             n = len(files)
             for i in range(n):
+                self.gencount=0
+                self.anchorcount=0
                 filename=files[i]
                 if filename[-4:].lower()!='.bgl':
                     continue
@@ -321,8 +336,9 @@ class Output:
         if self.dumplib:	# Fake up references
             for uid in self.libobj:
                 self.objplc.append((None, 0, 1, uid, 1))
-        
-        self.status(-1, 'Reading library objects')
+
+        if self.objplc:
+            self.status(-1, 'Reading library objects')
         n=len(self.objplc)
         i=0
         for i in range(n):
@@ -438,13 +454,14 @@ class Output:
             raise FS2XError('No data found!')
 
         # Check that apt entries contain runways - X-Plane crashes on stubs
-        for k in sorted(self.apt):
-            v=self.apt[k]
+        k=self.apt.keys()
+        for i in k:
+            v=self.apt[i]
             for l in v:
                 if l.code==10 and (l.text[0].isdigit() or l.text[0]=='H'):
                     break	# ok
             else:
-                self.apt.pop(k)	# No runway. Bye
+                self.apt.pop(i)	# No runway. Bye
             
         if not self.apt:
             if not self.dumplib:
@@ -484,7 +501,9 @@ class Output:
             filename=join(path, 'apt.dat')
             f=file(filename, 'wt')
             f.write("I\n810\t# %s\n" % banner)
-            for k in sorted(self.apt):
+            keys=self.apt.keys()
+            keys.sort()
+            for k in keys:
                 v=self.apt[k]
                 v.sort()
                 helibase=True	# Should do the same for seaplane bases
@@ -503,6 +522,7 @@ class Output:
                     else:
                         f.write("%s\n" % l)
                 f.write("\n")
+            f.write("99\n")	# eof marker
             f.close()
                     
         if self.nav:
@@ -527,13 +547,14 @@ class Output:
                 objdef[name].append(scale)
                 
         # write out objects
-        n = len(objdef)
+        keys=objdef.keys()
+        keys.sort()
+        n = len(keys)
         i = 0
-        for name in sorted(objdef):
+        for name in keys:
             if name in self.objdat:
                 self.status(i*100.0/n, name)
                 for scale in objdef[name]:
-                    count=1
                     for obj in self.objdat[name]:
                         obj.export(scale, self)
             else:
@@ -688,7 +709,7 @@ class Output:
                 for exc in self.exc:
                     (typ, bl,tr)=exc
                     if bl.within(sw,ne) or tr.within(sw,ne):
-                        dst.write('PROPERTY sim/exclude_%s\t%11.6f,%10.6f,%11.6f,%10.6f\n' % (typ, bl.lon,bl.lat, tr.lon,tr.lat))
+                        dst.write('PROPERTY sim/exclude_%s\t%11.6f/%10.6f/%11.6f/%10.6f\n' % (typ, bl.lon,bl.lat, tr.lon,tr.lat))
                 # XXX flattening?
                 dst.write('PROPERTY sim/creation_agent\t%s' % banner)
                 # Following must be the last properties

@@ -1,3 +1,5 @@
+#!/usr/bin/python
+
 from convutil import version
 from distutils.core import setup
 from os import listdir, name
@@ -32,10 +34,14 @@ manifest=('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'+
 if platform=='win32':
     # http://www.py2exe.org/  Invoke with: setup.py py2exe
     import py2exe
-    platdata=[('win32',
+    platdata=[('',
+               ['win32/FakeFS2004.cmd',
+                ]),
+              ('win32',
                ['win32/bglxml.exe',
                 'win32/bglunzip.exe',
                 'win32/bmp2png.exe',
+                'win32/DSFTool.exe',
                 'win32/FS2XPlane.ico',
                 ])
               ]
@@ -43,15 +49,15 @@ if platform=='win32':
 elif platform.lower().startswith('darwin'):
     # http://undefined.org/python/py2app.html  Invoke with: setup.py py2app
     import py2app
-    platdata=[('mac',
-               ['mac/bglxml',
-                'mac/bmp2png',
-                'mac/FS2XPlane.icns',
+    platdata=[('MacOS',
+               ['MacOS/bglxml',
+                'MacOS/bmp2png',
+                #'MacOS/FS2XPlane.icns',
                 ]),
               # Include wxPython 2.4
-              ('../Frameworks',
-               ['/usr/local/lib/libwx_mac-2.4.0.rsrc',
-                ]),
+              #('../Frameworks',
+              # ['/usr/local/lib/libwx_mac-2.4.0.rsrc',
+              #  ]),
               ]
 
 objs=[]
@@ -67,7 +73,6 @@ setup(name='FS2XPlane',
       data_files=[('',
                    ['FS2XPlane.html',
                     'bglxml.copying.txt',
-                    'objfile.txt',
                     ]),
                   ('Resources',
                    ['Resources/FS2X-ApronLight.png',
@@ -75,6 +80,7 @@ setup(name='FS2XPlane',
                     'Resources/FS2X-palette.png',
                     'Resources/FS2X-Taxi.png',
                     'Resources/FS2X-Taxi_LIT.png',
+                    'Resources/objfile.txt',
                     'Resources/Tree_side.png',
                     ]+objs),
                   ] + platdata,
@@ -82,11 +88,14 @@ setup(name='FS2XPlane',
       options = {'py2exe': {#'dll_excludes':['w9xpopen.exe'],
                             'bundle_files':True,
                             'compressed':True,
+                            'excludes':['socket', 'urllib', 'webbrowser'],
                             'optimize':2,
                             },
-                 'py2app': {'iconfile':'mac/FS2XPlane.icns',
+                 'py2app': {'argv_emulation':False,
+                            'iconfile':'MacOS/FS2XPlane.icns',
                             'compressed':True,
                             'optimize':2,
+                            'semi_standalone':True,
                             },
                  },
 
@@ -98,5 +107,5 @@ setup(name='FS2XPlane',
                   }],
 
       # mac
-      app = ['FS2XPlane.py'],
+      #app = ['FS2XPlane.py'],
 )
