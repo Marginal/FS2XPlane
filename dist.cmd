@@ -1,12 +1,12 @@
 @echo off
 @setlocal
 
-for /f "usebackq" %%I in (`c:\Progra~1\Python24\python.exe -c "from convutil import version; print '%%03.0f'%%(float(version)*100)"`) do set VER=%%I
+for /f "usebackq tokens=1,2" %%I in (`c:\Progra~1\Python24\python.exe -c "from convutil import appversion; print '%%s %%03d'%%(appversion, float(appversion)*100)"`) do (set VERSION=%%I&set VER=%%J)
 
 @if exist FS2XPlane_%VER%_src.zip del FS2XPlane_%VER%_src.zip
 @if exist FS2XPlane_%VER%_linux.tar.gz del FS2XPlane_%VER%_linux.tar.gz
 @if exist FS2XPlane_%VER%_mac.zip del FS2XPlane_%VER%_mac.zip
-@if exist FS2XPlane_%VER%_win32.zip del FS2XPlane_%VER%_win32.zip
+@if exist FS2XPlane_%VER%_win32.zip del FS2XPlane_%VER%_win32.exe
 
 rd  /s /q FS2XPlane.app
 del /s /q dist >nul:  2>&1
@@ -18,7 +18,7 @@ del /s /q *.pyc >nul: 2>&1
 @set RSRC=Resources/*.obj Resources/FS2X-ApronLight.png Resources/FS2X-ApronLight_LIT.png Resources/FS2X-palette.png Resources/FS2X-Taxi.png Resources/FS2X-Taxi_LIT.png Resources/Tree_side.png Resources/objfile.txt Resources/FS2XPlane.png
 
 @REM source
-zip -r FS2XPlane_%VER%_src.zip dist.cmd %PY% setup.py %DATA% %RSRC% linux MacOS win32/*.exe win32/*.ico |findstr -vc:"adding:"
+zip -r FS2XPlane_%VER%_src.zip dist.cmd %PY% %DATA% %RSRC% linux MacOS win32 |findstr -vc:"adding:"
 
 @REM linux
 tar -zcf FS2XPlane_%VER%_linux.tar.gz %PY% %DATA% %RSRC% linux win32/bglunzip.exe win32/DSFTool.exe
@@ -36,7 +36,7 @@ move FS2XPlane.app\Contents\MacOS\FS2XPlane.icns FS2XPlane.app\Contents\Resource
 zip -r FS2XPlane_%VER%_mac.zip FS2XPlane.app |findstr -vc:"adding:"
 
 @REM win32
-setup.py -q py2exe
+win32\setup.py -q py2exe
 REM @set cwd="%CD%"
 REM cd dist
 REM zip -r ..\FS2XPlane_%VER%_win32.zip * |findstr -vc:"adding:"

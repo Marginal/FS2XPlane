@@ -426,7 +426,7 @@ class Airport:
                 txt+=" 1"
             else:
                 txt+=" 0"
-            txt+=(" 0 %s %s" % (ident, self.name))
+            txt+=(" 0 %s %s" % (ident, asciify(self.name, True)))
             aptdat.append(AptNav(1, airloc, txt))
 
         # Runways

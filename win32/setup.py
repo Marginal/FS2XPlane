@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-from convutil import version
+from convutil import appversion
 from distutils.core import setup
 from os import listdir, name
 from sys import platform
@@ -10,7 +10,7 @@ from sys import platform
 manifest=('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'+
           '<assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">\n'+
           '<assemblyIdentity\n'+
-          '    version="%s.0.0"\n' % version +
+          '    version="%s.0.0"\n' % appversion +
           '    processorArchitecture="X86"\n'+
           '    name="FS2XPlane"\n'+
           '    type="win32"\n'+
@@ -65,7 +65,7 @@ for f in listdir('Resources'):
     if f[-4:]=='.obj': objs.append('Resources/%s' % f)
     
 setup(name='FS2XPlane',
-      version=version,
+      version=appversion,
       description='Convert FS2004 sceneries to X-Plane',
       author='Jonathan Harris',
       author_email='x-plane@marginal.org.uk',

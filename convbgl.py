@@ -487,24 +487,7 @@ class ProcScen:
         l=tex.find('.')
         if l!=-1:	# Sometimes formatted as 8.3 with spaces
             tex=tex[:l].rstrip(' \0')+tex[l:]
-        f=listdir(self.texdir)
-        if type(self.texdir)==types.UnicodeType:
-            tex=unicodeify(tex)
-            for i in range(len(f)):
-                f[i]=normalize(f[i])
-        # Extension is ignored by MSFS
-        (s,e)=splitext(tex)
-        for ext in [e, '.bmp', '.r8']:
-            candidate=(s+ext).lower()
-            for i in range(len(f)):
-                if f[i].lower()==candidate:
-                    self.tex=[join(self.texdir,f[i])]
-                    break
-            else:
-                continue
-            break
-        else:	# Not found
-            self.tex=[join(self.texdir,tex)]
+        self.tex=[self.findtex(tex)]
         self.t=0
         if self.debug: self.debug.write("%s\n" % basename(self.tex[0]))
         if x or y:
@@ -856,21 +839,7 @@ class ProcScen:
                 break
             tex=tex+c
             size=size-1
-        tex=tex.rstrip()
-        # Extension is ignored by MSFS?
-        (s,e)=splitext(tex)
-        for ext in [e, '.bmp', '.r8']:
-            if exists(join(self.texdir,s+ext)):
-                tex=s+ext
-                break
-        # Fix case for case sensitive filesystems
-        for f in listdir(self.texdir):
-            if tex.lower()==f.lower():
-                tex=f
-                break
-        else:
-            tex=tex.lower()
-        self.tex=[join(self.texdir, tex)]
+        self.tex=[self.findtex(tex.rstrip())]
         if self.debug: self.debug.write("%s\n" % basename(self.tex[0]))
         self.t=0
         
@@ -1107,7 +1076,7 @@ class ProcScen:
     def ReScale(self):		# 83
         self.bgl.read(6)	# jump,range (LOD) (may be 0),size
         (scale,)=unpack('<I', self.bgl.read(4))
-        self.scale=scale/65536.0	# Not according to documentation
+        self.scale=65536.0/scale
 
     def Jump32(self):		# 88
         (off,)=unpack('<i', self.bgl.read(4))
@@ -1379,25 +1348,7 @@ class ProcScen:
         for i in range(count):
             cls=unpack('<I', self.bgl.read(4))
             self.bgl.read(12)
-            tex=self.bgl.read(64).rstrip(' \0')
-            f=listdir(self.texdir)
-            if type(self.texdir)==types.UnicodeType:
-                tex=unicodeify(tex)
-                for i in range(len(f)):
-                    f[i]=normalize(f[i])
-            # Extension is ignored by MSFS
-            (s,e)=splitext(tex)
-            for ext in [e, '.bmp', '.r8']:
-                candidate=(s+ext).lower()
-                for i in range(len(f)):
-                    if f[i].lower()==candidate:
-                        self.tex.append(join(self.texdir, f[i]))
-                        break
-                else:
-                    continue
-                break
-            else:	# Not found
-                self.tex.append(join(self.texdir, tex))
+            self.tex.append(self.findtex(self.bgl.read(64).rstrip(' \0')))
 
     def SetMaterial(self):	# b8
         (self.m,self.t)=unpack('<2h', self.bgl.read(4))
@@ -1519,6 +1470,8 @@ class ProcScen:
         pass
 
 
+    # Helpers
+
     # helper to read lat, lon, alt
     def LLA(self):
         (lo,hi)=unpack('<Hi',self.bgl.read(6))
@@ -1543,7 +1496,25 @@ class ProcScen:
 
         return (lat,lon,alt)
 
-
+    # Helper to return fully-qualified case-sensitive texture filename
+    def findtex(self, name):
+        f=listdir(self.texdir)
+        # Handle unicode
+        if type(self.texdir)==types.UnicodeType:
+            name=unicodeify(name)
+            for i in range(len(f)):
+                f[i]=normalize(f[i])
+        # Extension is ignored by MSFS?
+        (s,e)=splitext(name)
+        for ext in [e, '.bmp', '.r8']:
+            candidate=(s+ext).lower()
+            # Fix case for case sensitive filesystems
+            for i in range(len(f)):
+                if f[i].lower()==candidate:
+                    return join(self.texdir, f[i])
+        # Not found - maker lower-case to prevent dupes
+        return join(self.texdir, name.lower())        
+        
     def makeobjs(self):
         if not self.lightdat and not self.linedat and not self.objdat:
             return	# Only contained non-scenery stuff
@@ -1717,12 +1688,13 @@ class ProcScen:
             # Check whether this object is a 'decal' and apply poly_os
             poly=0
             minx=minz=maxint
-            maxx=maxz=-maxint
+            maxx=maxz=maxy=-maxint
             if vt:
                 decal=True
                 for (x,y,z, nx,ny,nz, tu,tv) in vt:
                     minx=min(minx,x)
                     maxx=max(maxx,x)
+                    maxy=max(maxy,y)
                     minz=min(minz,z)
                     maxz=max(maxz,z)
                     if y>=0.125:	# Arbitrary. 0.124 used in UNNT
@@ -1802,6 +1774,8 @@ class ProcScen:
                 self.output.objdat[fname]=[obj]
                 self.output.objplc.append((loc, heading,
                                            self.complexity, fname, 1))
+                if self.debug and maxy>250:	# arbitrary
+                    self.debug.write("!Ludicrous size for object %s\n" % fname)
 
         # Add objs to library with one name
         if self.libname and objs:

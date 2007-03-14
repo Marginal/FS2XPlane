@@ -42,8 +42,8 @@ if not 'startfile' in dir(os):
     import webbrowser
 
 
-version='1.00'	# Must be numeric
-banner="Converted by FS2XPlane %s\n" % version
+appversion='1.01'	# Must be numeric
+banner="Converted by FS2XPlane %s\n" % appversion
 
 # MSFS oblate spheroid
 diae=12756270	# Equatorial diameter [m]
@@ -382,7 +382,7 @@ class Object:
             if not isdir(path): mkdir(path)
             objfile=file(objpath, 'wt')
             if not filename in listdir(path):
-                raise IOError
+                raise IOError	# case mixup
             objfile.write("I\n800\t# %sOBJ\n" % banner)
             objfile.write("\n# %s\n\n" % comment)
             if tex:
@@ -546,7 +546,7 @@ def viewer(filename):
 
 
 # Turn string into ascii
-def asciify(s):
+def asciify(s, fordisplay=False):
     if type(s)==types.UnicodeType:
         s=normalize(s)
     # s may be unicode, so can't use translate()
@@ -558,6 +558,8 @@ def asciify(s):
             a=a+' '
         elif ord(c)<0x7b:
             a=a+chr(ord(c))	# convert from unicode string
+        elif ord(c)<0x80 and not fordisplay:
+            a=a+chr(ord(c))	# X-Plane won't show {|}~ either
         else:
             a=a+asciitbl[ord(c)-0x7b]
     return a

@@ -807,3 +807,4 @@ class Output:
             x=helper('%s -text2dsf "%s" "%s"' %(self.dsfexe, dstname, dsfname))
             if (x or not exists(dsfname)):
                 raise FS2XError("Can't write DSF %s.dsf (%s)" % (tilename, x))
+            unlink(dstname)
