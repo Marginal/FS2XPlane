@@ -1770,7 +1770,7 @@ class ProcScen:
             #if da<0.2:	# eg KBOS taxilines.bgl uses 0.2
             #    self.mat.append(None)	# transparent
             #else:
-            #    self.mat.append(m)
+            self.mat.append(m)
 
     def TextureList(self):	# b7
         self.tex=[]
