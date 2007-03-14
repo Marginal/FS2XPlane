@@ -26,13 +26,14 @@
 #
 
 from math import sin, cos, tan, asin, acos, atan, atan2, fmod, pi
+from locale import getpreferredencoding
 from os import listdir, mkdir, popen3, stat, unlink
 from os.path import basename, curdir, dirname, exists, isdir, join, normpath, splitext
 from shutil import copyfile
 from struct import pack
 from tempfile import gettempdir
 
-version='0.96'
+version='0.99'	# Must be numeric
 banner="Converted by FS2XPlane %s\n" % version
 
 # MSFS oblate spheroid
@@ -51,6 +52,33 @@ m2f=3.28084	# 1 metre [ft]
 NM2m=1852	# 1 international nautical mile [m]
 
 complexities=3
+
+apronlightspacing=60.96	# [m] = 200ft
+taxilightspacing=30.48	# [m] = 100ft
+
+# for asciify
+# find corresponing Windows code page for the user's locale
+encoding=getpreferredencoding().lower()
+if   encoding in ['cp1250', 'mac_latin2', 'iso8859_2', 'iso8859_16']:
+    # Central European
+    asciitbl='[|]-_E ,f_.||^%S<STZZ \'\'"".--- s>stzz   LxA|S"cS<--rZd+ l\'uP. as>L"lzRAAAALCCCEEEEIIDDNNOOOO*RUUUUYTsraaaalccceeeeiiddnnoooo/ruuuuyty'
+elif encoding in ['cp1251', 'mac_cyrillic', 'iso8859_5', 'koi8_r', 'koi8_u']:
+    # Cyrillic
+    asciitbl='[|]-_DG,g_.||E%L<_KH_d\'\'"".--- l>_kh_ YyJxG|SEcE<--rId+IiguP.eNe>jSsiABWGDEVJIIKLMNOPRSTUFHC_S_XYXE_Qabwgdevjiiklmnoprstufhc_s_xyxe_q'
+elif encoding in ['cp1253', 'mac_greek', 'iso8859_7']:
+    # Greek
+    asciitbl='[|]-_E ,f_.||^%S<O Z  \'\'"".--- s>o zY "ALxY|S"ca<--r-d+23\'uP.EHI>O_YOiABGDEZHOIKLMNXOPRSSTYFX_OIYaehiuabgdezhoiklmnxoprsstufx_oiuouoy'
+elif encoding in ['cp1254', 'mac_turkish', 'iso8859_3', 'iso8859_9']:
+    # Turkish / Latin-5
+    asciitbl='[|]-_E ,f_.||^%S<O Z  \'\'"".--- s>o zY !cLxY|S"ca<--r d+23\'uP. 10>___?AAAAAAACEEEEIIIIGNOOOOO*OUUUUISsaaaaaaaceeeeiiiignooooo/ouuuuisy'
+elif encoding in ['cp1257', 'mac_iceland', 'iso8859_4', 'iso8859_10', 'iso8859_13']:
+    # Baltic
+    asciitbl='[|]-_E ,f_.||^%S<O"   \'\'"".--- s>o  Y !cLxY|SOcR<- rAd+23\'uP.o1r>___aAIACAAEECEZEGKILSNNOOOO*ULSUUZZsaiacaaeecezegkilsnnoooo/ulsuuzz '
+else:	       # ['cp1252', 'mac_roman', 'latin1', 'iso8859_1', 'iso8859_15']:
+    # Can't do anything with other encodings (incl CJK), so just use latin1
+    # Western / Latin-1
+    asciitbl='[|]-_E ,f_.||^%S<O Z  \'\'"".--- s>o zY !cLxY|S"ca<--r d+23\'uP. 10>___?AAAAAAACEEEEIIIIDNOOOOO*OUUUUYPsaaaaaaaceeeeiiiidnooooo/ouuuuypy'
+
 
 def complexity(fscmplx):
     mapping=[-1,0,0,1,2,2]
@@ -137,10 +165,11 @@ class Matrix:
         # Derive heading from matrix, assuming no pitch or bank
         #if self.m[1][1]!=1:
         #    raise ValueError
+        h=round(self.m[0][0], 4)	# arbitrary - handle rounding errors
         if self.m[2][0]>=0:
-            return r2d*acos(self.m[0][0])
+            return r2d*acos(h)
         else:
-            return 360-r2d*acos(self.m[0][0])
+            return 360-r2d*acos(h)
 
     def offset(self, x, y, z):
         n=Matrix(self.m)
@@ -204,13 +233,14 @@ class AptNav:
     def __init__(self, code, loc, text):
         self.code=code
         self.loc=loc
-        self.text=text
+	# X-Plane only renders a subset of ascii - see interface.png
+        self.text=asciify(text)
 
     def __repr__(self):
         if self.code==1 or self.code>=50:
-            return "\"%-2d %s\"" % (self.code, self.text)
+            return '"%-2d %s"' % (self.code, self.text)
         else:
-            return "\"%-2d %10.6f %11.6f %s\"" % (
+            return '"%-2d %10.6f %11.6f %s"' % (
                 self.code, self.loc.lat, self.loc.lat, self.text)
 
     def __str__(self):
@@ -262,70 +292,71 @@ class Object:
         else:
             comment=self.comment
             filename=self.filename
-        lit=None
 
-        if self.tex:
+        if not self.tex:
+            tex=None
+            lit=None
+        else:	# self.tex is case-corrected full pathname to source texture
+
+            # Special handling for trees using default MSFS tree texture
+            if not exists(self.tex) and basename(self.tex).lower() in ['treeswi.bmp', 'treessp.bmp', 'treessu.bmp', 'treesfa.bmp', 'treeshw.bmp']:
+                self.tex='Resources/Tree_side.png'	# X-Plane v8 texture
+                mapping=[[(1,0),(0,6),(1,6),(1,4)],
+                         [(7,2),(5,7),(3,0),(2,5)],
+                         [(7,2),(1,7),(2,6),(5,4)],
+                         [(7,2),(6,7),(2,6),(6,4)]]
+                newvt=[]
+                for (x,y,z,nx,ny,nz,u,v) in self.vt:
+                    (un,vn)=mapping[min(int(u*4),3)][min(int(v*4),3)]
+                    if un==1 and vn==0 and (v*4)%1>=0.125:	# shrub
+                        v=v-0.125
+                    newvt.append((x,y,z,nx,ny,nz,
+                                  (un+(u*4)%1)/8.0, (vn+(v*4)%1)/8.0))
+                self.vt=newvt
+
             path=join(output.xppath, 'textures')
             if not isdir(path): mkdir(path)
-            (dst,ext)=splitext(basename(self.tex.replace(' ','_')))
+            (tex,ext)=splitext(basename(self.tex))
             if not ext.lower() in ['.bmp', '.png']:
-                dst+=ext	# For *.xAF etc
-            dst=normpath(join(path, dst+'.png'))
-            try:
-                # Special handling for trees if no texture supplied
-                if not exists(self.tex) and basename(self.tex).upper() in ['TREESWI.BMP', 'TREESSP.BMP', 'TREESSU.BMP', 'TREESFA.BMP', 'TREESHW.BMP']:
-                    self.tex='Resources/Tree_side.png'	# X-Plane v8 texture
-                    dst=normpath(join(path, basename(self.tex)))
-                    if not exists(dst): copyfile(self.tex, dst)
-                    mapping=[[(1,0),(0,6),(1,6),(1,4)],
-                             [(7,2),(5,7),(3,0),(2,5)],
-                             [(7,2),(1,7),(2,6),(5,4)],
-                             [(7,2),(6,7),(2,6),(6,4)]]
-                    newvt=[]
-                    for (x,y,z,nx,ny,nz,u,v) in self.vt:
-                        (un,vn)=mapping[min(int(u*4),3)][min(int(v*4),3)]
-                        if un==1 and vn==0 and (v*4)%1>=0.125:	# shrub
-                            v=v-0.125
-                        newvt.append((x,y,z,nx,ny,nz,
-                                      (un+(u*4)%1)/8.0, (vn+(v*4)%1)/8.0))
-                    self.vt=newvt
+                tex+=ext	# For *.xAF etc
+            # Spaces not allowed in textures. Avoid Mac/PC interop problems
+            tex=asciify(tex).replace(' ','_')+'.png'
+            dst=join(path, tex)
 
-                elif dirname(self.tex)=='Resources':
-                    # texture is supplied with this program (ie Taxi2.png)
-                    copyfile(self.tex, dst)
-                    (lit,ext)=splitext(self.tex)
-                    lit+='_LIT.png'
-                    self.tex=basename(dst)
-                    if exists(lit):
-                        (dst,foo)=splitext(dst)
-                        dst+='_LIT.png'
-                        copyfile(lit, dst)
-                        lit=basename(dst)
-                    else:
-                        lit=None
-                    
+            if dirname(self.tex)=='Resources':
+                # texture is supplied with this program (ie Taxi2.png)
+                copyfile(self.tex, dst)
+                (src,ext)=splitext(self.tex)
+                src+='_LIT.png'
+                if exists(src):
+                    (dst,ext)=splitext(dst)
+                    dst+='_LIT.png'
+                    copyfile(src, dst)
+                    lit=basename(dst)
                 else:
-                    if self.tex in output.haze:
-                        palno=output.haze[self.tex]
-                    else:
-                        palno=None
-                    self.maketex(self.tex, dst, output, palno)
-                    (lit,ext)=splitext(self.tex)
-                    lit+='_LM.BMP'
-                    self.tex=basename(dst)
-                    if exists(lit):
-                        (dst,foo)=splitext(dst)
-                        dst+='_LM.png'
-                        self.maketex(lit, dst, output, palno)
+                    lit=None
+                
+            else:
+                if self.tex in output.haze:
+                    palno=output.haze[self.tex]
+                else:
+                    palno=None
+                tex=basename(dst)	# Name output in OBJ file
+                self.maketex(self.tex, dst, output, palno)
+                (src,ext)=splitext(self.tex)
+                src+='_lm.bmp'
+                # Fix case for case sensitive filesystems
+                bn=basename(src).lower()
+                for f in listdir(dirname(src)):
+                    if bn==f.lower():
+                        (dst,ext)=splitext(dst)
+                        dst+='_LIT.png'
+                        self.maketex(join(dirname(src),f), dst, output, palno)
                         lit=basename(dst)
-                    else:
-                        lit=None
+                        break
+                else:
+                    lit=None
 
-            except IOError:
-                output.dufftex[dst]=True
-                output.log("Can't create texture %s from %s" % (
-                    basename(dst), basename(self.tex)))
-                lit=None
 
         if 0: #output.debug:	# XXX
             # Generate line at object origin
@@ -346,10 +377,12 @@ class Object:
                 raise IOError
             objfile.write("I\n800\t# %sOBJ\n" % banner)
             objfile.write("\n# %s\n\n" % comment)
-            if self.tex:
-                objfile.write("TEXTURE\t\t../textures/%s\n" % basename(self.tex))
+            if tex:
+                objfile.write("TEXTURE\t\t../textures/%s\n" % (
+                    basename(tex)))
                 if lit:
-                    objfile.write("TEXTURE_LIT\t../textures/%s\n" % basename(lit))
+                    objfile.write("TEXTURE_LIT\t../textures/%s\n" % (
+                        basename(lit)))
             else:
                 objfile.write("TEXTURE\t\n")
     
@@ -367,7 +400,7 @@ class Object:
 
             for (x,y,z,nx,ny,nz,u,v) in self.vt:
                 #if self.poly: y=0	# Adjust for bogus layering attempts
-                objfile.write("VT\t%8.3f %8.3f %8.3f\t%6.3f %6.3f %6.3f\t%6.3f %6.3f\n" % (x*scale, y*scale, z*scale, nx,ny,nz, u,v))
+                objfile.write("VT\t%8.3f %8.3f %8.3f\t%6.3f %6.3f %6.3f\t%6.4f %6.4f\n" % (x*scale, y*scale, z*scale, nx,ny,nz, u,v))
             if self.vt: objfile.write("\n")
 
             n=len(self.idx)
@@ -386,7 +419,12 @@ class Object:
                     objfile.write("ATTR_LOD\t0 16000\n")
                 objfile.write("LIGHTS\t0 %d\n\n" % len(self.vlight))
             if self.vline:
-                objfile.write("LINES\t0 %d\n\n" % len(self.vline))
+                # Infer number of line indices from first tri index
+                if self.mattri:
+                    (m, n, count, dbl)=self.mattri[0]
+                else:
+                    n=len(self.idx)
+                objfile.write("LINES\t0 %d\n\n" % n)
 
             # Maybe a decal
             if self.poly:
@@ -396,6 +434,9 @@ class Object:
             else:
                 objfile.write("ATTR_no_blend\n")
 
+            # Ambient and Specular don't work, according to 
+            # xplanescenery.blogspot.com/2006/01/obj8-what-not-to-use.html
+            # Also, Diffuse is to be avoided because its slow
             a=(1.0,1.0,1.0)
             s=(0.0,0.0,0.0)
             e=(0.0,0.0,0.0)
@@ -406,66 +447,61 @@ class Object:
                 elif d and not dbl:
                     objfile.write("ATTR_cull\n")
                 d=dbl
-                (ar,ag,ab)=m[0]
-                (sr,sg,sb)=m[1]
-                (er,eg,eb)=m[2]
-                if a!=(ar,ag,ab) or s!=(sr,sg,sb) or e!=(er,eg,eb):
-                    objfile.write("\n")
-                if a!=(ar,ag,ab):
-                    a=(ar,ag,ab)
-                    objfile.write("ATTR_ambient_rgb\t%5.3f %5.3f %5.3f\n" % (
-                        ar,ag,ab))
-                if s!=(sr,sg,sb):
-                    s=(sr,sg,sb)
-                    objfile.write("ATTR_specular_rgb\t%5.3f %5.3f %5.3f\n" % (
-                        sr,sg,sb))
-                if e!=(er,eg,eb):
-                    e=(er,eg,eb)
-                    objfile.write("ATTR_emission_rgb\t%5.3f %5.3f %5.3f\n" % (
+                if e!=m[2]:
+                    e=(er,eg,eb)=m[2]
+                    objfile.write("\nATTR_emission_rgb\t%5.3f %5.3f %5.3f\n" %(
                         er,eg,eb))
                 objfile.write("TRIS\t%d %d\n" % (start, count))
     
             objfile.close()
         except IOError:
             raise FS2XError("Can't write \"%s\"" % objpath)
-        
+
+
+    # Assumes src filename has correct case
     def maketex(self, src, dst, output, palno):
-        if exists(dst) or dst in output.dufftex:
-            return	# assume it's already been converted
-        # Extension is ignored by MSFS?
-        #(s,e)=splitext(src)
-        #for ext in [e, '.bmp', '.r8']:
-        #    if exists(s+ext):
-        #        src=s+ext
-        #        break
+        if exists(dst):
+            return True	# assume it's already been converted
+        if src in output.dufftex:
+            return False
         if not exists(src):
+            output.dufftex[src]=True
             output.log("Texture %s not found" % basename(src))
-            raise IOError
-
-        # If size=65536 assume RAW and add standard BMP header
-        # What about compressed RAW?
-        (s,e)=splitext(src)
-        tmp=join(gettempdir(), basename(s)+'.bmp')
-        if stat(src).st_size==65536:
+            return False
+        try:
+            (s,e)=splitext(src)
+            tmp=join(gettempdir(), basename(s)+'.bmp')
             f=file(src, 'rb')
-            t=file(tmp, 'wb')
-            for x in rawbmphdr:
-                t.write(pack('<H',x))
-            t.write(f.read())
-            t.close()
-            f.close()
-        else:
-            copyfile(src, tmp)
+            c=f.read(2)
+            if stat(src).st_size==65536 or c!='BM':
+                # Not a BMP. Assume RAW and add standard BMP header
+                f.seek(0)
+                t=file(tmp, 'wb')
+                for x in rawbmphdr:
+                    t.write(pack('<H',x))
+                t.write(f.read())
+                t.close()
+                f.close()
+            else:
+                f.close()
+                copyfile(src, tmp)
 
-        if palno:
-            x=helper('%s -xbrqep%d -o "%s" "%s"' % (
-                output.pngexe, palno-1, dst, tmp))
-        else:
-            x=helper('%s -xbrqe -o "%s" "%s"' % (
-                output.pngexe, dst, tmp))
-        if not exists(dst):
-            output.log("Can't convert texture %s (%s)" % (basename(src), x))
-            raise IOError
+            if palno:
+                x=helper('%s -xbrqep%d -o "%s" "%s"' % (
+                    output.pngexe, palno-1, dst, tmp))
+            else:
+                x=helper('%s -xbrqe -o "%s" "%s"' % (
+                    output.pngexe, dst, tmp))
+            if not exists(dst):
+                output.dufftex[src]=True
+                output.log("Can't convert texture %s (%s)" % (basename(src),x))
+                return False
+            return True
+
+        except IOError:
+            output.dufftex[src]=True
+            output.log("Can't convert texture %s" % basename(src))
+            return False
 
 
 # Run helper app and return stderr
@@ -477,6 +513,35 @@ def helper(cmds):
     o.close()
     e.close()
     return txt.strip().replace('\n', ', ')
+
+
+# Turn string into ascii
+def asciify(s):
+    # s may be unicode, so can't use translate()
+    a=''
+    for c in s:
+        if ord(c)>255:
+            a=a+'_'
+        elif ord(c)<32:
+            a=a+' '
+        elif ord(c)<0x7b:
+            a=a+chr(ord(c))	# convert from unicode string
+        else:
+            a=a+asciitbl[ord(c)-0x7b]
+    return a
+
+
+# cross product of two triples
+def cross(a, b):
+    (ax,ay,az)=a
+    (bx,by,bz)=b
+    return (ay*bz-az*by, az*bx-ax*bz, ax*by-ay*bx)
+
+# dot product of two triples
+def dot(a, b):
+    (ax,ay,az)=a
+    (bx,by,bz)=b
+    return ax*bx + ay*by + az*bz
 
 
 # Standard BMP header & palette for RAW data

@@ -1,4 +1,4 @@
-#!python
+#!/usr/bin/python
 
 #
 # Copyright (c) 2005 Jonathan Harris
@@ -29,8 +29,9 @@
 
 import os	# for startfile
 from os import chdir, listdir, mkdir
-from os.path import abspath, curdir, dirname, exists, isdir, join, sep
+from os.path import abspath, basename, curdir, dirname, exists, isdir, join, sep
 from sys import argv, exit, platform
+from traceback import print_exc
 import wx
 
 from convmain import Output
@@ -255,21 +256,34 @@ class MainWindow(wx.Frame):
             else:
                 dlg=wx.MessageDialog(None, 'Done.',
                                      appname, wx.ICON_INFORMATION|wx.OK)
-            dlg.ShowModal()
-            dlg.Destroy()
+
         except FS2XError, e:
             dlg=wx.MessageDialog(None, e.msg,
                                  appname, wx.ICON_ERROR|wx.CANCEL)
-            dlg.ShowModal()
-            dlg.Destroy()
-            if self.progress:
-                self.progress.Destroy()
-                self.progress=None
+
+        except:
+            if not isdir(dirname(self.logname)):
+                mkdir(dirname(self.logname))
+            logfile=file(self.logname, 'at')
+            logfile.write('\nInternal error\n')
+            print_exc(None, logfile)
+            logfile.close()
+            dlg=wx.MessageDialog(None, 'Internal error.\nPlease report error in log\n"%s"' % self.logname, appname, wx.ICON_EXCLAMATION|wx.CANCEL)
+            if 'startfile' in dir(os):
+                os.startfile(self.logname)
+
+        dlg.ShowModal()
+        dlg.Destroy()
+        if self.progress:
+            self.progress.Destroy()
+            self.progress=None
 
 
 # main
 frame=MainWindow(None,wx.ID_ANY,appname)
 if platform=='win32':
     frame.SetIcon(wx.Icon('win32/FS2XPlane.ico', wx.BITMAP_TYPE_ICO))
+elif platform.lower().startswith('linux'):	# PNG supported by GTK
+    frame.SetIcon(wx.Icon('linux/FS2XPlane.png', wx.BITMAP_TYPE_PNG))
 app.SetTopWindow(frame)
 app.MainLoop()

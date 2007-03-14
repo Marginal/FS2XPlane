@@ -1,4 +1,4 @@
-#!python
+#!/usr/bin/python
 
 #
 # Copyright (c) 2005 Jonathan Harris
@@ -30,8 +30,9 @@
 from getopt import getopt, GetoptError
 import os	# for startfile
 from os import chdir, mkdir
-from os.path import abspath, dirname, exists, isdir, join
+from os.path import abspath, basename, dirname, exists, isdir, join
 from sys import exit, argv
+from traceback import print_exc
 
 from convmain import Output
 from convutil import FS2XError
@@ -49,7 +50,7 @@ def log(msg):
     logfile.close()
 
 def usage():
-    exit("\nUsage:\tfs2x.py [options] <MSFS scenery location> <X-Plane scenery location>\noptions:\t-l <Additional MSFS library location>\n\t\t-s Spring|Summer|Autumn|Winter\n")
+    exit('\nUsage:\t%s [options] "MSFS scenery location" "X-Plane scenery location"\noptions:\t-l "Additional MSFS library location"\n\t\t-s Spring|Summer|Autumn|Winter\n\t\t-x\n' % basename(argv[0]))
 
 
 # Path validation
@@ -84,9 +85,11 @@ for (opt, arg) in opts:
             print '\nError:\tSeason %s not recognized' % arg
             usage()
         season=seasons.index(arg.lower())
+if dumplib and lbpath:
+    exit("\nError:\tSpecify only one of -l and -x\n")
 if len(args)!=2:
     usage()
-
+    
 
 fspath=abspath(args[0])
 xppath=abspath(args[1])
@@ -110,3 +113,16 @@ try:
     status(-1, 'Done.')
 except FS2XError, e:
     exit('Error:\t%s\n' % e.msg)
+except:
+    status(-1, 'Internal error')
+    print_exc()
+    if not isdir(dirname(logname)):
+        mkdir(dirname(logname))
+    logfile=file(logname, 'at')
+    logfile.write('\nInternal error\n')
+    print_exc(None, logfile)
+    logfile.close()
+    if 'startfile' in dir(os):
+        status(-1, 'Displaying error log "%s"' % logname)
+        os.startfile(logname)
+    exit(1)

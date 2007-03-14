@@ -25,6 +25,9 @@
 #   http://creativecommons.org/licenses/by-sa/2.5/legalcode
 #
 
+from os import listdir
+from os.path import join
+
 from convutil import Object
 
 def makeapronlight():
@@ -235,4 +238,41 @@ def maketaxisign(label):
                     0,frameilen,False),
                    ([(1,1,1),(0,0,0),(1,1,1)],
                     frameilen,len(idx)-frameilen,False)], 0)
+
+
+def makestock(output, uid, name):
+    objname=name+'.obj'
+    defaultobj=Object(objname, "Placeholder for built-in object %s (%s)" %
+                      (uid, name), None, [], [], [], [], [], 0)
+    if not objname in listdir('Resources'):
+        return defaultobj
+
+    tex=None
+    vt=[]
+    idx=[]
+    obj=file(join('Resources', objname), 'rU')
+    if obj.next() not in ['A\n', 'I\n']: return defaultobj
+    if not obj.next().startswith('800'): return defaultobj
+    if obj.next()!='OBJ\n': return defaultobj
+    for line in obj:
+        tokens=line.split()
+        if not tokens:
+            continue
+        if tokens[0]=='TEXTURE' and len(tokens)==2:
+            tex='Resources/'+tokens[1]
+        elif tokens[0]=='VT' and len(tokens)==9:
+            vt.append((float(tokens[1]), float(tokens[2]), float(tokens[3]),
+                       float(tokens[4]), float(tokens[5]), float(tokens[6]),
+                       float(tokens[7]), float(tokens[8])))
+        elif tokens[0]=='IDX' and len(tokens)==2:
+            idx.append(int(tokens[1]))
+        elif tokens[0]=='IDX10' and len(tokens)==11:
+            idx.extend([int(tokens[1]), int(tokens[2]), int(tokens[3]),
+                        int(tokens[4]), int(tokens[5]), int(tokens[6]),
+                        int(tokens[7]), int(tokens[8]), int(tokens[9]),
+                        int(tokens[10])])
+    obj.close()
+    return Object(objname, "Built-in object %s (%s)" %
+                  (uid, name), tex, [], [], vt, idx,
+                  [([(1,1,1),(0,0,0),(0,0,0)], 0, len(idx), False)], 0)
 

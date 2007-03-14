@@ -24,17 +24,20 @@ h5 { font-family: Arial,Helvetica,sans-serif; }
   </tbody>
 </table>
 <hr style="width: 100%; height: 2px;">
-<h2>FS2004 Add-on Scenery converter for X-Plane</h2>
+<h2>FS2004 Add-on Scenery converter for X-Plane<small><sup>&reg;</sup></small></h2>
 <h3>Overview</h3>
 <p>This application converts MS Flight Simulator 2004 add-on
-scenery packages to X-Plane<small><sup>&reg;</sup></small>
-scenery packages. The application currently
-only runs on Windows, however the resulting X-Plane scenery
-packages will work on any platform supported by X-Plane 8.30 and
-later, provided that the standard "ENV" or "DSF" scenery for the area
-is also installed.
-Some users have also reported good results
-under Virtual PC on Mac and under Wine on Linux.</p>
+scenery packages to X-Plane scenery packages. It is intended for
+scenery developers; the converted scenery often requires some
+re-work to look good in X-Plane.</p>
+<p>The application currently runs on Windows 98 and later and
+Linux. Some users have also reported good results under
+Virtual PC on Mac <small>(to avoid filenames problems unzip the
+MSFS package within the VirtualPC environment and zip up the
+resulting X-Plane package before transferring it out)</small>.</p>
+<p>The resulting X-Plane scenery packages work under X-Plane 8.30
+and later on Windows, MacOS and Linux. Standard "ENV" or "DSF"
+scenery for the relevant areas must also have been installed.
 <p>See the <a href="#license">license</a>
 section below before using this application.</p>
 <p> The following scenery features are converted:</p>
@@ -46,83 +49,102 @@ section below before using this application.</p>
 <p>See the <a href="#limitations">limitations</a>
 section for details of features that are not converted.</p>
 <p>This application works best with scenery packages that have
-been specifically designed for FS2004 - <span style="font-style: italic;">ie</span> containing
-airports authored in AFCAD2 and objects authored in Gmax. The
-application also works with FS2004 scenery packages that contain
-old-style BGL procedural scenery, but produces less efficient
-X-Plane scenery <font size="-1">(mostly this is due to
-the fact that older MSFS scenery packages tend to use lots of small
-texture files)</font>.</p>
+been specifically designed for FS2004 - <span style="font-style: italic;">ie</span> containing airports authored in AFCAD2 and objects authored
+in Gmax. The application also works with FS2004 scenery packages
+that contain old-style BGL procedural scenery, but produces
+poorer and less efficient X-Plane scenery <small>(this is mostly
+due to the fact that older MSFS scenery packages tend to use lots
+of small texture files)</small>.</p>
 <h3>Setting Up</h3>
+<h5>Windows</h5>
 <ul>
   <li>Extract the contents of this zip file to a folder. The rest
 of these notes refer to this as the FS2XPlane folder.</li>
   <li><a name="DSF2Text"></a>Download
-the&nbsp;DSF2Text package from <a target="_blank" href="http://scenery.x-plane.com/tools.php">here</a>.
-Copy the&nbsp;<code>DSFTool</code> program from this
+the DSF2Text package from <a target="_blank" href="http://scenery.x-plane.com/tools.php">here</a>.
+Copy the <code>DSFTool.exe</code> program from this
 package to the FS2XPlane folder.</li>
 </ul>
-<h3>Usage</h3>
+<p>Windows 95/98/ME users please note that the GUI application
+does not work on 95/98/ME - use the command-line program instead.</p>
+<h5>Linux</h5>
+<p>This application requires "Wine". Wine is shipped with most
+distros, or you can download a binary package from <a target="_blank" href="http://www.winehq.com/site/download">here</a>.</p>
+<p>The GUI application additionally requires wxPython.
+You can download the wxPython runtime from <a target="_blank" href="http://www.wxpython.org/download.php#binaries">here</a>
+(or you can just stick with the command-line program).</p>
 <ul>
-  <li>Find the location of the scenery package that you want to
-convert. For scenery packages that have been installed in FS2004 this
-will most likely be a folder under <code>C:\Program&nbsp;Files\Microsoft&nbsp;Games\Flight&nbsp;Simulator&nbsp;9\Addon&nbsp;Scenery\</code></li>
+  <li>Extract the contents of this archive to a folder. The rest
+of these notes refer to this as the FS2XPlane folder.</li>
+  <li>Download the <span style="text-decoration: underline;">Windows</span>
+DSF2Text package from <a target="_blank" href="http://scenery.x-plane.com/tools.php">here</a>.
+Copy the <code>DSFTool.exe</code> program from this
+package to the FS2XPlane folder.</li>
+</ul>
+<h3><a name="usage"></a>Usage</h3>
+<ul>
+  <li>Download and the scenery package that you want to convert.
+If you have FS2004 installed then follow the installation
+notes in the scenery package. Otherwise create a folder
+called<code> Addon&nbsp;Scenery </code> and unzip the scenery
+package into a subfolder of this folder.</li>
   <li>Read the installation notes for the scenery package. Look
 for:</li>
   <ul>
-    <li>Whether the package depends on a scenery library (<span style="font-style: italic;">eg</span> the "rwy12"
-library). If so, download and follow the insallation notes for this
-additional scenery library.</li>
+    <li>Whether the package depends on a scenery library. If so,
+download and follow the installation notes for this additional
+scenery library. See the notes <a href="#rwy12">below</a>
+if your package depends on the "rwy12" library.</li>
     <li>Whether the packages supplies multiple alternative
-airport definitions (these are sometimes described as "AFCAD" files in
-the installation notes). If so, delete or move all but one of these
-out of the way.</li>
+airport definitions (these are sometimes described as "AFCAD files" in
+the installation notes). If so, the installation notes may advise you
+to copy one of these files to the package's <code>scenery</code>
+folder.</li>
   </ul>
-  <li>Find the location of the <code>Custom&nbsp;Scenery</code> folder
-in X-Plane. By default this will be <code>C:\X-Plane\Custom&nbsp;Scenery</code>
+  <li>Find the location of the <code>Custom&nbsp;Scenery</code>
+folder in X-Plane. By default on Windows this will be <code>C:\X-Plane\Custom&nbsp;Scenery</code>
   </li>
-</ul>
-<ul>
 </ul>
 <h5>The application</h5>
 <ul>
-  <li>Run the <samp>FS2XPlane</samp> program in the FS2XPlane folder.</li>
-  <li>Supply the location of the MSFS scenery package.</li>
-  <li>Supply the location of any additional libraries that the MSFS
-package depends on. (Leave this blank for none, or specify the
-MSFS <code>Addon&nbsp;Scenery</code> folder to search all
-installed libraries.)</li>
-  <li>Specify the location for the new
-X-Plane scenery package. This should be a non-existent or empty folder
-directly under X-Plane's <code>Custom&nbsp;Scenery</code> folder.</li>
+  <li>Run the <samp>FS2XPlane</samp> program in the
+FS2XPlane folder.</li>
+  <li>Supply the location of the MSFS scenery package. For scenery
+packages that have been installed in FS2004 this will most likely
+be a folder under <code>C:\Program&nbsp;Files\Microsoft&nbsp;Games\Flight&nbsp;Simulator&nbsp;9\Addon&nbsp;Scenery\</code></li>
+  <li>Supply the location of any additional MSFS libraries that the package depends on. (Leave this blank for none, or specify the
+<code>Addon&nbsp;Scenery</code> folder to search all installed
+libraries.)</li>
+  <li>Specify the location for the new X-Plane scenery package.
+This should be a non-existent or empty folder directly under
+X-Plane's <code>Custom&nbsp;Scenery</code> folder.</li>
   <li>Select the season for converted textures. <font size="-1">(Not all MSFS scenery packages supply seasonal
 textures, in which case this setting will be ignored).</font></li>
   <li>Press <samp>Convert</samp>.<font size="-1"><br>
     </font></li>
 </ul>
 <p>The application runs for a while and displays the names of the
-files that it is processing. It will stop and display an <a href="FS2XPlane.html#fatal">error</a> if it encounters a fatal problem during the conversion. Otherwise, on completion, the application will
-say "Done" and an error log may be displayed. The error log is
-described <a href="FS2XPlane.html#errors">below</a>.</p>
+files that it is processing. It will stop and display an <a href="FS2XPlane.html#fatal">error</a> if it encounters
+a fatal problem during the conversion. Otherwise, on completion, the
+application will say "Done" and an error log may be displayed. The
+error log is described <a href="FS2XPlane.html#errors">below</a>.</p>
 <h5>Command line</h5>
-<p>Usage is:<code></code></p>
-<p style="margin-left: 40px;"><code>fs2x </code>[options]
-<span style="font-style: italic;">&lt;location&nbsp;of&nbsp;MSFS&nbsp;scenery&nbsp;package&gt;
-&lt;location&nbsp;for&nbsp;new&nbsp;X-Plane&nbsp;scenery&gt;</span></p>
+<p>Windows:</p>
+<p style="margin-left: 40px;"><code>fs2x </code>[options]&nbsp;"<span style="font-style: italic;">location&nbsp;of&nbsp;MSFS&nbsp;scenery&nbsp;package</span>"
+"<span style="font-style: italic;">location&nbsp;for&nbsp;new&nbsp;X-Plane&nbsp;scenery</span>"</p>
+<p>Linux:</p>
+<p style="margin-left: 40px;"><code>fs2x.py </code>[options]
+"<span style="font-style: italic;">location&nbsp;of&nbsp;MSFS&nbsp;scenery&nbsp;package</span>"
+"<span style="font-style: italic;">location&nbsp;for&nbsp;new&nbsp;X-Plane&nbsp;scenery</span>"</p>
 <p>The following options are
 supported:</p>
 <ul>
-  <li>
-    <p>Additional scenery library:<code> -l&nbsp;</code><span style="font-style: italic;">&lt;</span><span style="font-style: italic;">location of a</span><span style="font-style: italic;">dditional&nbsp;MSFS scenery
-library&gt;</span></p>
+  <li> Additional scenery libraries:<code> -l</code> "<span style="font-style: italic;">location&nbsp;of&nbsp;additional&nbsp;MSFS&nbsp;scenery&nbsp;libraries</span>"
   </li>
-  <li>
-    <p>Season for textures:<code> -s&nbsp;Spring </code>or<code>
+  <li> Season for textures:<code> -s Spring </code>or<code>
 Summer </code>or<code> Autumn </code>or<code>
-Winter</code></p>
-  </li>
-  <ul>
-  </ul>
+Winter</code> </li>
+  <li>Just extract library objects:<code> -x</code> </li>
 </ul>
 <h3>Files produced</h3>
 <p>The application produces the following files in the X-Plane
@@ -150,8 +172,8 @@ runway, taxiway and COM data.</td>
       <td style="vertical-align: top; background-color: white;"><code>Earth&nbsp;nav&nbsp;data\nav.dat</code></td>
       <td style="background-color: white;">ILS,
 DME and VOR navaids.<br>
-Note that X-Plane will not pick up entries from this file. You
-need to use <a href="http://x-plane.org/home/robinp/#Updates" target="_blank">this</a>
+Note that X-Plane will not pick up entries from this file. Use
+      <a href="http://x-plane.org/home/robinp/#Updates" target="_blank">this</a>
 procedure if you want to update X-Plane's master navaid database.
 You'll need to justify any changes based on real-world data.</td>
     </tr>
@@ -220,8 +242,8 @@ work so well in X-Plane.
 </ul>
 <p>The following MSFS scenery data are discarded:</p>
 <ul>
-  <li>Data that X-Plane does not understand, <span style="font-style: italic;">eg</span> airspace
-boundaries.</li>
+  <li>Data that X-Plane does not understand, <span style="font-style: italic;">eg</span>
+airspace boundaries.</li>
   <li>FS2004-style taxiway/apron lines and other
 markings (this may be addressed in a future X-Plane release).</li>
   <li>Flattening of terrain regions (this may be addressed
@@ -250,13 +272,20 @@ permitted by law in some jurisdictions).</p>
 resides with the copyright holder of the original (MSFS format)
 files. You may not redistribute the derived files without the
 permission of the copyright holder.</p>
-<p>This application may copy the file <code>Tree_side.png</code>
+<p>This application may copy the file <code>Resources/Tree_side.png</code>
 into the derived scenery package. This file is
 &copy;&nbsp;Laminar&nbsp;Research and may only be
-redistributed
-in freeware X-Plane scenery packages. You will need to replace
-this file with your own alternative version if you wish to
-distribute a commercial scenery package.</p>
+redistributed in freeware X-Plane scenery packages. You will
+need to replace this file with your own alternative version if
+you wish to distribute a commercial scenery package.</p>
+<p>This application may copy various <code>.obj</code> files
+from the <code>Resources</code> folder into the derived scenery
+package. These files are &copy;&nbsp;Jonathan&nbsp;Harris and are
+licensed under a Creative Commons
+<a rel="license" href="http://creativecommons.org/licenses/by-sa/2.5/">Attribution-ShareAlike</a>
+license. The license allows for re-distribution of these files in
+a commerical or non-commerical scenery package under certain
+conditions.</p>
 <h4>License</h4>
 <p>Your license to use this application is subject to
 your acceptance of the following terms. If you do not agree to these
@@ -264,7 +293,8 @@ terms, then you may not use this application.</p>
 <ul>
   <li>The included progam <code>bglxml.exe</code> is
 &copy;&nbsp;2004-2005 Alessandro&nbsp;G.&nbsp;Antonini,
-and is licensed under the GNU <a target="_blank" href="bglxml.copying.txt">General Public License</a> (GPL). (The full distribution, including source, can
+and is licensed under the GNU <a target="_blank" href="bglxml.copying.txt">General Public License</a>
+(GPL). (The full distribution, including source, can
 be obtained <a target="_blank" href="http://library.avsim.net/search.php?SearchTerm=bglx180.zip">here</a>).</li>
   <li>The included program <code>bmp2png.exe</code>
 is derived from
@@ -309,8 +339,8 @@ is not empty<br>
       </td>
       <td style="background-color: white;">The location
 that you specify for the new X-Plane scenery package should be a
-non-existent or empty folder directly under X-Plane's
-      <code>Custom&nbsp;Scenery</code> folder (which
+non-existent or empty folder directly under X-Plane's <code>Custom&nbsp;Scenery</code>
+folder (which
 must itself exist).</td>
     </tr>
     <tr>
@@ -340,6 +370,13 @@ Read the installation notes that came with the scenery
 package, delete the alternative layout, and run the application again.</td>
     </tr>
     <tr>
+      <td style="background-color: white; vertical-align: top;">Internal
+error</td>
+      <td style="background-color: white;">The application
+crashed.<br>
+Please report the details of the crash which are listed in the log.</td>
+    </tr>
+    <tr>
       <td style="background-color: white; vertical-align: top;">No
 data found!</td>
       <td style="background-color: white;">The application
@@ -360,39 +397,32 @@ and remedial action</td>
     <tr>
       <td style="background-color: white; vertical-align: top;">Absolute
 altitude (&lt;n&gt;m) for object &lt;id&gt; at
-(&lt;lat&gt;, &lt;lon&gt;) in &lt;filename&gt;</td>
+(&lt;lat&gt;, &lt;lon&gt;) in file
+&lt;filename&gt;</td>
       <td style="background-color: white;">This object was
 placed in MSFS at &lt;n&gt; metres above mean sea level (MSL).
 In X-Plane, all scenery objects are placed at ground level.<br>
-You will likely need to edit the converted object to make it
-appear correctly in X-Plane. </td>
+You may need to edit the converted object to make it appear
+correctly in X-Plane. </td>
     </tr>
     <tr>
       <td style="background-color: white; vertical-align: top;">Can't
-create texture &lt;filename&gt; from &lt;source
-filename&gt;</td>
+convert texture &lt;filename&gt;</td>
       <td style="background-color: white;">Conversion of
-the texture file from R8 or BMP format to PNG format failed for some
+this texture file from R8 or BMP format to PNG format failed for some
 reason.<br>
 Objects that use this texture will appear grey in X-Plane. You can fix
 this by converting the texture by hand.</td>
     </tr>
     <tr>
       <td style="background-color: white; vertical-align: top;">Can't
-find an airport for &lt;thing&gt; at
+find an airport for &lt;beacon or windsock&gt; at
 (&lt;lat&gt;, &lt;lon&gt;)</td>
       <td style="background-color: white;">The application
 couldn't find an airport in the MSFS scenery package within 10NM of
-this beacon or windsock. In X-Plane, beacons and windsocks must be
-attached to an airport, and within 10NM of the main runway.<br>
+this beacon or windsock. In X-Plane, beacons and windsocks
+must be attached to an airport, and within 10NM of the main runway.<br>
 The beacon or windsock was omitted.</td>
-    </tr>
-    <tr>
-      <td style="background-color: white; vertical-align: top;">Can't
-parse &lt;filename&gt;</td>
-      <td style="background-color: white;">This is most
-likely caused by a corrupt BGL file.<br>
-This file will not be converted.</td>
     </tr>
     <tr>
       <td style="background-color: white; vertical-align: top;">Can't
@@ -407,8 +437,14 @@ but any other areas or objects in the same file will be OK.</td>
       <td style="background-color: white; vertical-align: top;">Can't
 parse compressed file &lt;filename&gt;</td>
       <td style="background-color: white;">The file is
-compressed.
-Compressed files can only be read on Windows.<br>
+compressed. Compressed files can only be read on Windows.<br>
+This file will not be converted.</td>
+    </tr>
+    <tr>
+      <td style="background-color: white; vertical-align: top;">Can't
+parse file &lt;filename&gt;</td>
+      <td style="background-color: white;">This is most
+likely caused by a corrupt BGL file.<br>
 This file will not be converted.</td>
     </tr>
     <tr>
@@ -419,9 +455,24 @@ likely caused by a corrupt BGL file.<br>
 This file will not be converted.</td>
     </tr>
     <tr>
+      <td style="background-color: white; vertical-align: top;">No
+airport definition found!</td>
+      <td style="background-color: white;">The MSFS
+scenery
+package does not contain any information (in FS2004 format)
+describing airport runways, taxiways, navaids etc. Runways and
+taxiways will likely be incorrectly placed or missing.<br>
+Look in the installation notes for the scenery package to see if
+it tells you to copy an airport definition file (or "AFCAD file")
+into the package's <code>scenery</code> folder, or if
+there is an
+additional airport definition file that you should download. </td>
+    </tr>
+    <tr>
       <td style="background-color: white; vertical-align: top;">Non-zero
 altitude (&lt;n&gt;m) for object &lt;id&gt; at
-(&lt;lat&gt;, &lt;lon&gt;) in &lt;filename&gt;</td>
+(&lt;lat&gt;, &lt;lon&gt;) in file
+&lt;filename&gt;</td>
       <td style="background-color: white;">This object was
 placed in MSFS at &lt;n&gt; metres above ground level (AGL). In
 X-Plane, all scenery objects are placed at ground level.<br>
@@ -432,6 +483,7 @@ appear correctly in X-Plane.</td>
       <td style="background-color: white; vertical-align: top;">Non-zero
 pitch/bank (&lt;pitch&gt;/&lt;bank&gt;) for object
 &lt;id&gt; at (&lt;lat&gt;, &lt;lon&gt;) in
+file
 &lt;filename&gt;</td>
       <td style="background-color: white;">This object was
 placed in MSFS with non-zero pitch and/or bank. In
@@ -457,30 +509,41 @@ package used a library object that was not included in the
 scenery package.<br>
 You should read the installation notes that came with the scenery
 package to identify the missing library that supplies the object. Then
-copy the missing library
-into the scenery package and run the application again.</td>
+copy the missing library into the scenery package and run the
+application again.</td>
+    </tr>
+    <tr>
+      <td style="background-color: white; vertical-align: top;">Shortened ICAO airport code from &lt;code1&gt; to &lt;code2&gt;</td>
+      <td style="background-color: white;">The scenery used an
+ICAO airport code longer than 4 digits. X-Plane only supports
+4-digit ICAO codes.<br>
+The shortened code was substituted. You should check that this
+shortened code is not a duplicate of an existing airport.</td>
     </tr>
     <tr>
       <td style="background-color: white; vertical-align: top;">Skipping
-animation in [&lt;object&nbsp;id&gt; in]
+animation in [&lt;object&nbsp;id&gt; in] file
 &lt;filename&gt;</td>
       <td style="background-color: white;">Animated
-scenery was
-found.<br>
+scenery was found.<br>
 The scenery is converted as static scenery.</td>
     </tr>
     <tr>
       <td style="background-color: white; vertical-align: top;">Skipping
 duplicate of taxiway at (&lt;lat&gt;,
-&lt;lon&gt;) in &lt;filename&gt;</td>
-      <td style="background-color: white;">Some scenery
-packages supply alternative airport layouts.<br>
-Read the installation notes that came with the scenery
-package, delete the alternative layout, and run the application again.</td>
+&lt;lon&gt;) in file &lt;filename&gt;</td>
+      <td style="background-color: white;">This is
+probably caused by an error in the MSFS scenery package. The
+duplicate taxiway is ignored.<br>
+If you see lots of these errors, this may indicate that you have
+multiple alternative airport definitions installed.
+Read the installation notes that came with the scenery package,
+delete all but one of the alternative layouts, and run the
+application again.</td>
     </tr>
     <tr>
       <td style="background-color: white; vertical-align: top;">Skipping
-misc data in &lt;filename&gt;</td>
+misc data in file &lt;filename&gt;</td>
       <td style="background-color: white;">This is most
 likely caused by a request in the MSFS scenery package to flatten an
 area.<br>
@@ -488,7 +551,7 @@ The request is ignored.</td>
     </tr>
     <tr>
       <td style="background-color: white; vertical-align: top;">Skipping
-pre-FS2002 scenery in [&lt;object&nbsp;id&gt; in]
+pre-FS2002 scenery in [&lt;object&nbsp;id&gt; in] file
 &lt;filename&gt;</td>
       <td style="background-color: white;">Old pre-FS2002
 opcodes were found.<br>
@@ -497,27 +560,26 @@ file or library object will be OK.</td>
     </tr>
     <tr>
       <td style="background-color: white; vertical-align: top;">Skipping
-pre-FS2004 runways, taxiways and/or roads in
-[&lt;object&nbsp;id&gt; in]
+pre-FS2004 runways and/or roads in [&lt;object&nbsp;id&gt;
+in] file
 &lt;filename&gt;</td>
-      <td style="background-color: white;">Runways,
-taxiways and/or roads were found in the old pre-FS2004 format.
-This application only handles FS2004-format runways and taxiways
-(<span style="font-style: italic;">ie</span> those
-authored
-with AFCAD2 or similar).<br>
-The runways, taxiways and/or roads are ignored.</td>
+      <td style="background-color: white;">Runways and/or
+roads
+were found in the old pre-FS2004 format. This application only
+handles FS2004-format runways (<span style="font-style: italic;">ie</span>
+those authored with AFCAD2 or similar).<br>
+The runways and/or roads are ignored.</td>
     </tr>
     <tr>
       <td style="background-color: white; vertical-align: top;">Skipping
-terrain data in &lt;filename&gt;</td>
+terrain data in file &lt;filename&gt;</td>
       <td style="background-color: white;">The scenery
 package includes terrain and/or landclass data.<br>
 This data is ignored.</td>
     </tr>
     <tr>
       <td style="background-color: white; vertical-align: top;">Skipping
-traffic data in &lt;filename&gt;</td>
+traffic data in file &lt;filename&gt;</td>
       <td style="background-color: white;">The scenery
 package includes AI traffic data.<br>
 This data is ignored.</td>
@@ -534,17 +596,17 @@ textures that are bundled with the MSFS program.
 Objects that use this texture will appear grey in X-Plane. You can fix
 this by providing a replacement for this texture.</li>
         <li>This scenery package relies on another package or on
-a library package, which
-supplies the missing file. Read the installation notes that came with
-this scenery package to identify the missing package. Then copy the
-missing package into this package and run the application again.</li>
+a library package, which supplies the missing file. Read the
+installation notes that came with this scenery package to identify
+the missing package. Then copy the missing package into this package
+and run the application again.</li>
       </ul>
       </td>
     </tr>
     <tr>
       <td style="background-color: white; vertical-align: top;">Unsupported
 generic building at (&lt;lat&gt;, &lt;lon&gt;) in
-[&lt;object&nbsp;id&gt; in] &lt;filename&gt;</td>
+[&lt;object&nbsp;id&gt; in] file &lt;filename&gt;</td>
       <td style="background-color: white;">X-Plane doesn't
 support the concept of "generic buildings". The nearest X-Plane
 equivalent is "library" objects. However there is no simple mapping
@@ -555,7 +617,7 @@ library object at this location.</td>
     <tr>
       <td style="background-color: white; vertical-align: top;">Unsupported
 request for object &lt;id1&gt; within object
-&lt;id2&gt; in &lt;filename&gt;</td>
+&lt;id2&gt; in file &lt;filename&gt;</td>
       <td style="background-color: white;">X-Plane doesn't
 support nested objects within library objects.<br>
 The nested object &lt;id1&gt; is ignored.</td>
@@ -563,16 +625,58 @@ The nested object &lt;id1&gt; is ignored.</td>
   </tbody>
 </table>
 <br>
+<h3><a name="rwy12"></a>rwy12 installation</h3>
+<p>Many scenery packages depend on the "rwy12" library.
+Unfortunately the installation notes for this library are a little
+confusing. You may find these notes easier to follow:</p>
+<ul>
+</ul>
+<ol>
+  <li>Download the following zip files:</li>
+  <ul>
+    <li><a href="http://library.avsim.net/sendfile.php?Location=AVSIM&amp;Proto=ftp&amp;DLID=71795">rwy12_lib1_v1.2.zip</a><span style="text-decoration: underline;"></span></li>
+    <li><span style="text-decoration: underline;"></span><a href="http://library.avsim.net/sendfile.php?Location=AVSIM&amp;Proto=ftp&amp;DLID=71797">rwy12_lib2_v1.2.zip</a><span style="text-decoration: underline;"></span></li>
+    <li><span style="text-decoration: underline;"></span><a href="http://library.avsim.net/sendfile.php?Location=AVSIM&amp;Proto=ftp&amp;DLID=71798">rwy12_lib3_v1.2.zip</a><span style="text-decoration: underline;"></span></li>
+  </ul>
+  <li>If you have FS2004 installed: Find your<code>
+Addon&nbsp;Scenery </code>folder; by default this will be<code>
+C:\Program&nbsp;Files\Microsoft&nbsp;Games\Flight&nbsp;Simulator&nbsp;9\Addon&nbsp;Scenery\</code>.
+Open the first zip file and copy the folder<code>
+Static&nbsp;Objects&nbsp;Library </code>into the<code>
+Addon&nbsp;Scenery </code>folder.</li>
+  <li>If you don't have FS2004 installed: Open the first zip file
+and copy the folder<code>
+Static&nbsp;Objects&nbsp;Library </code>to anywhere that
+you like.</li>
+  <li>Close the first zip file.</li>
+  <li>Open the new<code>
+Static&nbsp;Objects&nbsp;Library&nbsp;</code>folder
+that you just created. You should see two sub-folders called<code>
+scenery </code>and<code> texture</code>.</li>
+  <li>Open the second zip file. Amongst other things it contains
+folders called<code> scenery&nbsp;files </code>and<code>
+texture&nbsp;files</code>.</li>
+  <ul>
+    <li>Open the<code> scenery&nbsp;files </code>folder. Select all the files and copy them to the<code> scenery </code>folder inside the<code>&nbsp;Static&nbsp;Objects&nbsp;Library </code>folder that you&nbsp;created in step 2 or 3.</li>
+    <li>Open the<code> texture&nbsp;files </code>folder. Select all the files and copy them to the<code> texture </code>folder inside the<code>&nbsp;Static&nbsp;Objects&nbsp;Library </code>folder that you&nbsp;created in step 2 or 3.</li>
+  </ul>
+  <li>Open the third zip file and repeat step 6.</li>
+</ol>
+<p>When you <a href="#usage">run</a> <samp>FS2XPlane</samp>, supply the location of the<code>
+Static&nbsp;Objects&nbsp;Library&nbsp;</code>folder
+that you just created as the location for "Additional MSFS libraries".</p>
+<ul>
+</ul>
 <h3>Stuff</h3>
-This application &copy;&nbsp;2005&nbsp;<a href="mailto:Jonathan%20Harris%20%3Cx-plane@marginal.org.uk%3E">Jonathan&nbsp;Harris&nbsp;&lt;x-plane@marginal.org.uk&gt;</a>.<br>
-Beta&nbsp;0.96<br>
+This application &copy;&nbsp;2006&nbsp;<a href="mailto:Jonathan%20Harris%20%3Cx-plane@marginal.org.uk%3E">Jonathan&nbsp;Harris&nbsp;&lt;x-plane@marginal.org.uk&gt;</a>.<br>
+Linux port by Pierluigi Vittori
+(<a href="http://forums.x-plane.org/index.php?showuser=5530">tango13</a>).<br>
+Beta&nbsp;0.99b<br>
 <a href="http://marginal.org.uk/x-planescenery/">http://marginal.org.uk/x-planescenery/</a>
-<p>
-<!-- Creative Commons License --><a rel="license" href="http://creativecommons.org/licenses/by-sa/2.5/"><img alt="Creative Commons License" src="http://creativecommons.org/images/public/somerights20.gif" style="border: 0px solid ;" align="middle"></a>This
+<p><!-- Creative Commons License --><a rel="license" href="http://creativecommons.org/licenses/by-sa/2.5/"><img alt="Creative Commons License" src="http://creativecommons.org/images/public/somerights20.gif" style="border: 0px solid ;" align="middle"></a>This
 work is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by-sa/2.5/">Creative
 Commons License</a>.
-<!-- /Creative Commons License --><!-- <rdf:RDF xmlns="http://web.resource.org/cc/" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"> <Work rdf:about=""> <dc:type rdf:resource="http://purl.org/dc/dcmitype/Text" /> <license rdf:resource="http://creativecommons.org/licenses/by-sa/2.5/" /> </Work> <License rdf:about="http://creativecommons.org/licenses/by-sa/2.5/"> <permits rdf:resource="http://web.resource.org/cc/Reproduction" /> <permits rdf:resource="http://web.resource.org/cc/Distribution" /> <requires rdf:resource="http://web.resource.org/cc/Notice" /> <requires rdf:resource="http://web.resource.org/cc/Attribution" /> <permits rdf:resource="http://web.resource.org/cc/DerivativeWorks" /> <requires rdf:resource="http://web.resource.org/cc/ShareAlike" /> </License> </rdf:RDF> -->
-</p>
+<!-- /Creative Commons License --><!-- <rdf:RDF xmlns="http://web.resource.org/cc/" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"> <Work rdf:about=""> <dc:type rdf:resource="http://purl.org/dc/dcmitype/Text" /> <license rdf:resource="http://creativecommons.org/licenses/by-sa/2.5/" /> </Work> <License rdf:about="http://creativecommons.org/licenses/by-sa/2.5/"> <permits rdf:resource="http://web.resource.org/cc/Reproduction" /> <permits rdf:resource="http://web.resource.org/cc/Distribution" /> <requires rdf:resource="http://web.resource.org/cc/Notice" /> <requires rdf:resource="http://web.resource.org/cc/Attribution" /> <permits rdf:resource="http://web.resource.org/cc/DerivativeWorks" /> <requires rdf:resource="http://web.resource.org/cc/ShareAlike" /> </License> </rdf:RDF> --></p>
 <hr style="width: 100%; height: 2px;">
 <table style="width: 100%;" cellpadding="0">
   <tbody>

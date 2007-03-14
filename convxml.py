@@ -26,16 +26,14 @@
 #
 
 from math import sin, cos
-from os.path import basename
+from os import unlink
+from os.path import basename, exists, join
 from sys import maxint
 import xml.parsers.expat
+from tempfile import gettempdir
 
-from convutil import d2r, r2d, m2f, NM2m, complexity, AptNav, Object, Point, Matrix, FS2XError
+from convutil import d2r, r2d, m2f, NM2m, complexity, AptNav, Object, Point, Matrix, FS2XError, apronlightspacing, taxilightspacing
 from convobjs import makeapronlight, maketaxilight, maketaxisign
-
-
-apronlightspacing=60.96	# [m] = 200ft
-taxilightspacing=30.48	# [m] = 100ft
 
 
 # member var is defined
@@ -55,19 +53,11 @@ surfaces={'ASPHALT':1, 'BITUMINOUS':1, 'MACADAM':1,
           'CORAL':5, 'GRAVEL':5,
           'CLAY':12, 'PLANKS':12,
           'ICE':13, 'SNOW':13, 'WATER':13}
+# From 8.40: 'ICE':36, 'SNOW':36}
+
 
 # Set up XML parser for new-style scenery
-
-class FSData:
-    def __init__(self, attrs):
-        self.airport=[]
-        self.marker=[]
-        self.vor=[]
-        self.ndb=[]
-        self.sceneryobject=[]
-        self.exclusionrectangle=[]
-
-    
+  
 class SceneryObject:
     def __init__(self, attrs):
         for k, v in attrs.iteritems():
@@ -142,17 +132,17 @@ class SceneryObject:
 
         if self.genericbuilding:
             # XXX Implement me!
-            output.log('Unsupported generic building at [%10.6f, %11.6f] in %s' % (loc.lat, loc.lon, self.filename))
+            output.log('Unsupported generic building at (%10.6f, %11.6f) in file %s' % (loc.lat, loc.lon, self.filename))
 
         for l in self.libraryobject:
             scale=1.0
             if D(l, 'scale'): scale=round(float(l.scale),2)
             if D(self, 'altitudeIsAgl') and not T(self, 'altitudeIsAgl'):
-                output.log('Absolute altitude (%sm) for object %s at [%10.6f, %11.6f] in %s' % (round(alt,2), l.name, loc.lat, loc.lon, self.filename))
+                output.log('Absolute altitude (%sm) for object %s at (%10.6f, %11.6f) in file %s' % (round(alt,2), l.name, loc.lat, loc.lon, self.filename))
             elif alt!=0:
-                output.log('Non-zero altitude (%sm) for object %s at [%10.6f, %11.6f] in %s' % (round(alt,2), l.name, loc.lat, loc.lon, self.filename))
+                output.log('Non-zero altitude (%sm) for object %s at (%10.6f, %11.6f) in file %s' % (round(alt,2), l.name, loc.lat, loc.lon, self.filename))
             if pitch or bank:
-                output.log('Non-zero pitch/bank (%s/%s) for object %s at [%10.6f, %11.6f] in %s' % (pitch, bank, l.name, loc.lat, loc.lon, self.filename))
+                output.log('Non-zero pitch/bank (%s/%s) for object %s at (%10.6f, %11.6f) in file %s' % (pitch, bank, l.name, loc.lat, loc.lon, self.filename))
             output.objplc.append((loc, heading, cmplx, l.name.lower(), scale))
 
         for w in self.windsock:
@@ -348,12 +338,18 @@ class Airport:
     def export(self, output):
 
         airloc=Point(float(self.lat), float(self.lon))
-
-        if output.apt.has_key(self.ident):
-            aptdat=output.apt[self.ident]
+        ident=self.ident
+        if len(self.ident)>4:
+            ident=ident[0:4]
+            
+        if output.apt.has_key(ident):
+            aptdat=output.apt[ident]
         else:
             aptdat=[]
-            output.apt[self.ident]=aptdat
+            output.apt[ident]=aptdat
+            if ident!=self.ident:
+                output.log('Shortened ICAO airport code from "%s" to "%s"' % (
+                    self.ident, ident))
 
         # Might just be a placeholder - only create header if it has a name
         if D(self, 'name'):
@@ -362,7 +358,7 @@ class Airport:
                 txt+=" 1"
             else:
                 txt+=" 0"
-            txt+=(" 0 %s %s" % (self.ident, self.name))
+            txt+=(" 0 %s %s" % (ident, self.name))
             aptdat.append(AptNav(1, airloc, txt))
 
         # Runways
@@ -595,7 +591,7 @@ class Airport:
                 dupl=False
                 for a in aptdat:
                     if a.code==10 and loc.lat==a.loc.lat and loc.lon==a.loc.lon:
-                        output.log('Skipping duplicate of taxiway at (%10.6f, %11.6f) in %s' % (loc.lat, loc.lon, self.filename))
+                        output.log('Skipping duplicate of taxiway at (%10.6f, %11.6f) in file %s' % (loc.lat, loc.lon, self.filename))
                         dupl=True
                         break
                 if dupl:
@@ -615,14 +611,18 @@ class Airport:
                     'xxx', heading, length, 0, 0, 0, 0, width,
                     lights, lights, surface, 0, 0, 0.25, 0, 0, 0)))
 
-                l=start.distanceto(end)-taxilightspacing/2
-                if T(t, 'centerLineLighted') and l>0:
+                l=start.distanceto(end)
+                if T(t, 'centerLineLighted') and l>taxilightspacing/8:
                     output.objdat[fname]=[obj]
-                    h=start.headingto(end)*d2r
+                    if l<taxilightspacing/2:
+                        l=start.distanceto(end)	# Just do one in the middle
+                    else:
+                        l=l-taxilightspacing/2
                     n=1+int(l/taxilightspacing)
+                    (x,y,z)=Matrix().headed(
+                        start.headingto(end)).transform(0,0,l/n)
                     for j in range(n):
-                        l=(j+0.5)*taxilightspacing
-                        loc=start.biased(-sin(h)*l*j,cos(h)*l*j)
+                        loc=start.biased(x*(j+0.5),z*(j+0.5))
                         output.objplc.append((loc, 0, 1, fname, 1))
 
 
@@ -668,7 +668,7 @@ class Airport:
                     dupl=False
                     for a in aptdat:
                         if a.code==10 and loc.lat==a.loc.lat and loc.lon==a.loc.lon:
-                            output.log('Skipping duplicate of apron at (%10.6f, %11.6f) in %s' % (loc.lat, loc.lon, self.filename))
+                            output.log('Skipping duplicate of apron at (%10.6f, %11.6f) in file %s' % (loc.lat, loc.lon, self.filename))
                             dupl=True
                             break
                     if dupl:
@@ -786,11 +786,11 @@ class Airport:
                'DEPARTURE':'DEP'}
         for com in self.com:
             if abbrv.has_key(com.type):
-                type=abbrv[com.type]
+                ctype=abbrv[com.type]
             else:
-                type=com.type
+                ctype=com.type
             aptdat.append(AptNav(codes[com.type], None, "%5d %s %s" % (
-                float(com.frequency)*100, com.name, type)))
+                float(com.frequency)*100, com.name, ctype)))
 
         for n in self.ndb:
             # Call top-level Ndb class
@@ -828,14 +828,14 @@ class Vor:
     # Export to nav.dat
     def export(self, output):
         if self.dme:
-            type='VOR'
+            dtype='VOR'
         else:
-            type='VOR-DME'
+            dtype='VOR-DME'
         if D(self, 'name'):
             name=self.name
-            if name[-3:].upper()!=type: name+=(' '+type)
+            if name[-3:].upper()!=dtype: name+=(' '+dtype)
         else:
-            name=self.ident+' '+type
+            name=self.ident+' '+dtype
         if D(self, 'range'):
             rng=float(self.range)/NM2m
         elif self.type in ['VOT', 'TERMINAL']:
@@ -895,45 +895,38 @@ class Marker:
     # Export to nav.dat
     def export(self, output):
         if self.type=='INNER':
-            type='IM'
+            mtype='IM'
             code=9
         elif self.type=='MIDDLE':
-            type='MM'
+            mtype='MM'
             code=8
         elif self.type=='OUTER':
-            type='OM'
+            mtype='OM'
             code=7
         else:	# 'BACKCOURSE'
             return
         if D(self, 'name'):
             name=self.name
-            if name[-3:].upper()!=type: name+=(' '+type)
+            if name[-3:].upper()!=mtype: name+=(' '+mtype)
         else:
-            name=self.ident+' '+type
+            name=self.ident+' '+mtype
         output.nav.append(AptNav(code, Point(float(self.lat),float(self.lon)),
                                  "%6d %05d %3d %11.3f %-5s %s" % (
             m2f*float(self.alt), 0, 0,
             float(self.heading), '---', name)))
 
 
-class Waypoint:
-    def __init__(self, attrs):
-        pass	# ignored
-
-
-class Boundary:
-    def __init__(self, attrs):
-        pass	# ignored
-
-
 class ModelData:
     def __init__(self, attrs):
-        pass	# ignored - handled in library phase
+        for k, v in attrs.iteritems():
+            exec("self.%s=v" % k)
 
-
-class Geopol:
-    def __init__(self, attrs):
-        pass	# ignored
+    def export(self, output):
+        # Just clean up MDL: files in %TMP%
+        if D(self, 'sourceFile'):
+            tmp=join(gettempdir(), self.sourceFile)
+            if exists(tmp):
+                unlink(tmp)
 
 
 class Parse:
