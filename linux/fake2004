@@ -1,0 +1,5 @@
+#!/bin/bash
+
+wine ./win32/fake2004.exe
+mkdir ~/.wine/dosdevices/c:/Program\ Files/Microsoft\ Games
+ln -s ~/FS2004  ~/.wine/dosdevices/c:/Program\ Files/Microsoft\ Games/Flight\ Simulator\ 9

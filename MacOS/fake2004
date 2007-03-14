@@ -1,0 +1,31 @@
+#!/bin/bash
+
+# Find lsregister
+if [ -x /System/Library/Frameworks/ApplicationServices.framework/Frameworks/LaunchServices.framework/Support/lsregister ] ;then
+    LS=/System/Library/Frameworks/ApplicationServices.framework/Frameworks/LaunchServices.framework/Support/lsregister;
+elif [ -x /System/Library/Frameworks/ApplicationServices.framework/Versions/A/Frameworks/LaunchServices.framework/Versions/A/Support/lsregister ] ; then
+    # From http://developer.apple.com/documentation/Carbon/Conceptual/MDImporters/Concepts/Troubleshooting.html
+    LS=/System/Library/Frameworks/ApplicationServices.framework/Versions/A/Frameworks/LaunchServices.framework/Versions/A/Support/lsregister;
+else
+    echo Can\'t find the lsregister tool!
+    exit 1;
+fi
+
+# Candidate application locations
+WINES=$($LS -dump | awk 'match($0, "/.*/Wine.bundle") { print substr($0, RSTART) "/Contents/bin/wine" }' | sort -u)
+for I in $WINES; do
+    if [ -x "$I" ]; then
+	export WINELOADER="$I"
+	break;
+    fi;
+done
+if [ ! "$WINELOADER" ]; then
+    echo Can\'t find wine!
+    exit 1;
+fi
+
+unset DISPLAY
+export WINESERVER="${WINELOADER}server"
+"$WINELOADER" ./win32/fake2004.exe
+mkdir ~/.wine/dosdevices/c:/Program\ Files/Microsoft\ Games
+ln -s ~/FS2004  ~/.wine/dosdevices/c:/Program\ Files/Microsoft\ Games/Flight\ Simulator\ 9

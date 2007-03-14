@@ -1,0 +1,2 @@
+#!/bin/sh
+exec -a fs2xplane python -OO `dirname $0`/../lib/fs2xplane/FS2XPlane.py

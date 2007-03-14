@@ -1,7 +1,7 @@
 #!/usr/bin/pythonw
 
 #
-# Copyright (c) 2006 Jonathan Harris
+# Copyright (c) 2006,2007 Jonathan Harris
 # 
 # Mail: <x-plane@marginal.org.uk>
 # Web:  http://marginal.org.uk/x-planescenery/
@@ -28,15 +28,30 @@
 #
 
 import os	# for startfile
-from os import chdir, getenv, listdir, mkdir
+from os import chdir, getenv, listdir, mkdir, makedirs
 from os.path import abspath, basename, curdir, dirname, expanduser, exists, isdir, join, normpath, pardir, sep
 from sys import argv, exit, platform
 from traceback import print_exc
-import wx
+
+from convutil import asciify
+
+if platform.lower().startswith('linux') and not getenv("DISPLAY"):
+    print "Can't run: DISPLAY is not set"
+    exit(1)
+    
+try:
+    import wx
+except:
+    import Tkinter
+    import tkMessageBox
+    Tkinter.Tk().withdraw()	# make and suppress top-level window
+    tkMessageBox._show("wxPython is not installed.", "This application requires wxPython 2.5.3 (py%s build) or later." % version[:3], icon="question", type="ok")
+    exit(1)
 
 from convmain import Output
-from convutil import FS2XError, viewer
-
+from convutil import FS2XError, viewer, helper
+from MessageBox import myMessageBox
+from version import appname, appversion
 
 if platform=='darwin':
     # Hack: wxMac 2.5 requires the following to get shadows to look OK:
@@ -48,14 +63,10 @@ else:
     browse="Browse..."
 
 
-appname='FS2XPlane'
-app=wx.PySimpleApp()
-
-
 mypath=dirname(abspath(argv[0]))
 if not isdir(mypath):
     myMessageBox('"%s" is not a folder' % mypath,
-                  appname, wx.ICON_ERROR|wx.CANCEL)
+                  "Can't run", wx.ICON_ERROR|wx.CANCEL)
     exit(1)
 if basename(mypath)=='MacOS':
     chdir(normpath(join(mypath,pardir)))	# Starts in MacOS folder
@@ -97,58 +108,102 @@ def log(msg):
     logfile.close()
     
 
+# Set up paths
+newfsroot=None
 if platform=='win32':
-    from _winreg import OpenKey, QueryValueEx, HKEY_LOCAL_MACHINE, HKEY_CURRENT_USER, REG_SZ, REG_EXPAND_SZ
+    from _winreg import OpenKey, CreateKey, QueryValueEx, SetValueEx, HKEY_LOCAL_MACHINE, HKEY_CURRENT_USER, REG_SZ, REG_EXPAND_SZ
     if isdir('C:\\X-Plane\\Custom Scenery'):
         xppath='C:\\X-Plane\\Custom Scenery'
-    for key in [HKEY_LOCAL_MACHINE, HKEY_CURRENT_USER]:
-        try:
-            handle=OpenKey(key, 'SOFTWARE\\Microsoft\\Microsoft Games\\Flight Simulator\\9.0\\')
-            (v,t)=QueryValueEx(handle, 'EXE Path')
-            handle.Close()
-            if t==REG_EXPAND_SZ:
-                dirs=v.split('\\')
-                for i in range(len(dirs)):
-                    if dirs[i][0]==dirs[i][-1]=='%':
-                        dirs[i]=getenv(dirs[i][1:-1],dirs[i])
-                v='\\'.join(dirs)
-            if t in [REG_SZ,REG_EXPAND_SZ] and isdir(v):
-                v=v+'\\Addon Scenery'	# Don't think this is localised?
-                fspath=v+'\\'+listdir(v)[0]
-                lbpath=v+'\\Scenery'
-                break
-        except:
-            pass
-    else:
-        try:
-            v="C:\\Program Files\\Microsoft Games\\Flight Simulator 9\\Addon Scenery"
-            fspath=v+'\\'+listdir(v)[0]
-            if exists(v+'\\Scenery'): lbpath=v+'\\Scenery'
-        except:
-            pass
-        if 0:	# Don't do this - not very helpful
-            handle=OpenKey(HKEY_CURRENT_USER, 'Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\User Shell Folders\\')
-            (v,t)=QueryValueEx(handle, 'Personal')
-            handle.Close()
-            if t==REG_EXPAND_SZ:
-                dirs=v.split('\\')
-                for i in range(len(dirs)):
-                    if dirs[i][0]==dirs[i][-1]=='%':
-                        dirs[i]=getenv(dirs[i][1:-1],dirs[i])
-                v='\\'.join(dirs)
-            if t in [REG_SZ,REG_EXPAND_SZ] and isdir(v):
-                fspath=v
-        #except:
-        #    pass
-elif 0:	# Don't do this - more confusing than helpful
-    home=expanduser('~')
-    if home:
-        if isdir(join(home, 'Desktop')):
-            fspath=join(home, 'Desktop')
+    elif isdir(join(getenv("USERPROFILE", ""), "Desktop", "X-Plane", "Custom Scenery")):
+        xppath=join(getenv("USERPROFILE", ""), "Desktop", "X-Plane", "Custom Scenery")
+
+    for (ver,value) in [('10.0', 'AppPath'), ('10.0', 'SetupPath'), ('9.0', 'EXE Path')]:
+        for key in [HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE]:
+            try:
+                handle=OpenKey(key, join('SOFTWARE\\Microsoft\\Microsoft Games\\Flight Simulator', ver))
+                (v,t)=QueryValueEx(handle, value)
+                handle.Close()
+                if t==REG_EXPAND_SZ:
+                    dirs=v.rstrip('\0').strip().split('\\')
+                    for i in range(len(dirs)):
+                        if dirs[i][0]==dirs[i][-1]=='%':
+                            dirs[i]=getenv(dirs[i][1:-1],dirs[i])
+                    v='\\'.join(dirs)
+                if t in [REG_SZ,REG_EXPAND_SZ] and isdir(v):
+                    v=join(v.rstrip('\0').strip(), 'Addon Scenery')
+                    fspath=join(v, listdir(v)[0])
+                    lbpath=v	#join(v, 'Scenery')
+                    break
+            except:
+                pass
         else:
-            fspath=home
-        if isdir(join(fspath, 'X-Plane', 'Custom Scenery')):
-            xppath=join(fspath, 'X-Plane', 'Custom Scenery')
+            continue
+        break
+    else:
+        if getenv("ProgramFiles"):
+            fsroot=join(getenv("ProgramFiles"),"Microsoft Games","Flight Simulator 9")
+            try:
+                handle=CreateKey(HKEY_LOCAL_MACHINE, 'SOFTWARE\\Microsoft\\Microsoft Games\\Flight Simulator\\9.0')
+                SetValueEx(handle, 'EXE Path', 0, REG_SZ, fsroot)
+                handle.Close()
+                handle=CreateKey(HKEY_LOCAL_MACHINE, "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Flight Simulator 9.0")
+                #SetValueEx(handle, 'DisplayName', 0, REG_SZ, 'Fake FS2004')
+                SetValueEx(handle, 'InstallLocation', 0, REG_SZ, fsroot)
+                handle.Close()
+            except:
+                pass
+            v=join(fsroot, "Addon Scenery")
+            if isdir(v):
+                fspath=v+'\\'+listdir(v)[0]
+                lbpath=v
+            else:
+                newfsroot=fsroot
+
+else:
+    home=expanduser('~')
+    for xppath in [join(home, 'Desktop', 'X-Plane', 'Custom Scenery'),
+                   join(home, 'X-Plane', 'Custom Scenery')]:
+        if isdir(xppath): break
+    else:
+        xppath=''
+    fsroot=join(home, "FS2004")
+    try:
+        if platform.lower().startswith('linux'):
+            helper(join(curdir,'linux','fake2004'))
+        else:
+            helper(join(curdir,'MacOS','fake2004'))
+        newfsroot=fsroot
+    except:
+        pass
+    v=join(fsroot, "Addon Scenery")
+    if isdir(v):
+        dirs=listdir(v)
+        dirs.sort()
+        fspath=v+'/'+dirs[0]
+        lbpath=v
+    else:
+        newfsroot=fsroot
+
+# Create fake FS2004 installation
+if newfsroot:
+    try:
+        makedirs(newfsroot)
+        v=join(newfsroot,"Addon Scenery")
+        mkdir(v)
+        mkdir(join(v,"scenery"))
+        mkdir(join(v,"texture"))
+        mkdir(join(newfsroot,"Effects"))
+        mkdir(join(newfsroot,"Flights"))
+        mkdir(join(newfsroot,"Scenery"))
+        mkdir(join(newfsroot,"Texture"))
+        open(join(newfsroot,"fs9.exe"), 'ab').close()
+        open(join(newfsroot,"fs2002.exe"), 'ab').close()
+        cfg=open(join(newfsroot,"scenery.cfg"), 'at')
+        cfg.write("[General]\nTitle=FS9 World Scenery\nDescription=FS9 Scenery Data\n\n[Area.001]\nTitle=Addon Scenery\nLocal=Addon Scenery\nRemote=\nActive=TRUE\nRequired=FALSE\nLayer=1\n\n")
+        cfg.close()
+        fspath=lbpath=v
+    except:
+        newfsroot=None
 
 
 class MainWindow(wx.Frame):
@@ -158,6 +213,14 @@ class MainWindow(wx.Frame):
         self.logname = None
         
         wx.Frame.__init__(self,parent,id,title)
+
+        if platform=='win32':
+            self.SetIcon(wx.Icon('win32/%s.ico' % appname, wx.BITMAP_TYPE_ICO))
+        elif platform.lower().startswith('linux'):	# PNG supported by GTK
+            self.SetIcon(wx.Icon('Resources/%s.png' % appname,
+                                 wx.BITMAP_TYPE_PNG))
+        elif platform=='darwin':
+            pass	# icon pulled from Resources via Info.plist
 
         panel0 = wx.Panel(self,-1)
         panel1 = wx.Panel(panel0,-1)
@@ -266,6 +329,10 @@ class MainWindow(wx.Frame):
         self.SetSizeHints(sz.width+50, height, -1, height)
         self.Show(True)
 
+        if newfsroot:
+            myMessageBox('Install your MSFS sceneries under\n%s' % fspath, 'Created a fake FS2004 installation.', wx.ICON_INFORMATION|wx.OK, None)
+
+
     def onDump(self, evt):
         if self.dumplib.GetValue():
             self.fspath.Disable()
@@ -311,14 +378,14 @@ class MainWindow(wx.Frame):
         xppath=self.xppath.GetValue().strip()
         if not xppath:
             myMessageBox('You must specify an X-Plane scenery location',
-                         appname, wx.ICON_ERROR|wx.CANCEL, self)
+                         "Can't convert.", wx.ICON_ERROR|wx.CANCEL, self)
             return
         xppath=abspath(xppath)
 
         if not dumplib:
             if not fspath:
                 myMessageBox('You must specify a MSFS scenery location',
-                             appname, wx.ICON_ERROR|wx.CANCEL, self)
+                             "Can't convert.", wx.ICON_ERROR|wx.CANCEL, self)
                 return
             fspath=abspath(fspath)
             if not lbpath:
@@ -326,18 +393,18 @@ class MainWindow(wx.Frame):
             else:
                 lbpath=abspath(lbpath)
             if basename(xppath).lower()=='custom scenery':
-                xppath=join(xppath, basename(fspath))
+                xppath=join(xppath, asciify(basename(fspath)))
         else:
             fspath=None
             if not lbpath:
                 myMessageBox('You must specify a MSFS library location',
-                             appname, wx.ICON_ERROR|wx.CANCEL, self)
+                             "Can't convert.", wx.ICON_ERROR|wx.CANCEL, self)
                 return
             lbpath=abspath(lbpath)
             if basename(xppath).lower()=='custom scenery':
-                xppath=join(xppath, basename(lbpath))
+                xppath=join(xppath, asciify(basename(lbpath)))
             
-        self.logname=abspath(join(xppath, 'errors.txt'))
+        self.logname=abspath(join(xppath, 'summary.txt'))
         season=self.season.GetSelection()	# zero-based
 
         try:
@@ -351,11 +418,13 @@ class MainWindow(wx.Frame):
                 self.progress=None
             if exists(self.logname):
                 viewer(self.logname)
-                myMessageBox('Done.\nDisplaying error log "%s"' %(
-                    self.logname), appname, wx.ICON_INFORMATION|wx.OK, self)
+                myMessageBox('Displaying error log "%s"' %(
+                    self.logname), 'Done.', wx.ICON_INFORMATION|wx.OK, self)
+            else:
+                myMessageBox('', 'Done.', wx.ICON_INFORMATION|wx.OK, self)
 
         except FS2XError, e:
-            myMessageBox(e.msg, appname, wx.ICON_ERROR|wx.CANCEL, self)
+            myMessageBox(e.msg, 'Error during conversion.', wx.ICON_ERROR|wx.CANCEL, self)
 
         except:
             if not isdir(dirname(self.logname)):
@@ -365,97 +434,22 @@ class MainWindow(wx.Frame):
             print_exc(None, logfile)
             logfile.close()
             viewer(self.logname)
-            myMessageBox('Internal error.\nPlease report error in log\n"%s"'%(
-                self.logname), appname, wx.ICON_ERROR|wx.CANCEL, self)
+            myMessageBox('Please report error in log\n"%s"'%(self.logname),
+                         'Internal error.', wx.ICON_ERROR|wx.CANCEL, self)
 
         if self.progress:
             self.progress.Destroy()
             self.progress=None
 
 
-# Custom MessageBox/MessageDialog to replace crappy wxMac icons
-def myMessageBox(message, caption, style, parent=None):
-    if platform!='darwin':
-        wx.MessageBox(message, caption, style, parent)
-    else:
-        # Spacings from http://developer.apple.com/documentation/UserExperience/Conceptual/OSXHIGuidelines/XHIGLayout/chapter_19_section_2.html
-
-        style=style&255
-        assert (style in [wx.OK,wx.CANCEL])	# we ony handle one button
-        txtwidth=362
-        
-        dlg=wx.Dialog(parent)
-
-        panel0 = wx.Panel(dlg)
-        panel1 = wx.Panel(panel0)
-        panel2 = wx.Panel(panel0)
-
-        bitmap=wx.StaticBitmap(panel1, -1, wx.Bitmap('Resources/FS2XPlane.png',
-                                                     wx.BITMAP_TYPE_PNG))
-        text=wx.StaticText(panel1, -1)
-        font=text.GetFont()
-        font.SetWeight(wx.FONTWEIGHT_BOLD)
-        text.SetFont(font)
-        # Manually word-wrap
-        words=message.split(' ')
-        message=''
-        startofline=0
-        for word in words:
-            if '\n' in word:
-                firstword=word[:word.index('\n')]
-            else:
-                firstword=word
-            (x,y)=text.GetTextExtent(message[startofline:]+firstword)
-            if x>txtwidth:
-                if startofline!=len(message):
-                    message+='\n'
-                    startofline=len(message)
-                else:
-                    txtwidth=x	# Grow dialog to fit long word
-            message+=word+' '
-            if '\n' in word:
-                startofline=len(message)-len(word)+len(firstword)
-        text.SetLabel(message)
-
-        box1=wx.BoxSizer(wx.HORIZONTAL)
-        box1.Add([24,0])
-        box1.Add(bitmap)
-        box1.Add([16,0])
-        box1.Add(text, 1)
-        box1.Add([24,0])
-        panel1.SetSizer(box1)
-
-        button2=wx.Button(panel2, wx.ID_OK)
-        box2=wx.BoxSizer(wx.HORIZONTAL)
-        box2.Add([0,0], 1)	# push following buttons to right
-        box2.Add(button2, 0, wx.ALL, pad)
-        box2.Add([22,0])
-        button2.SetDefault()
-        panel2.SetSizer(box2)
-
-        box0=wx.BoxSizer(wx.VERTICAL)
-        box0.Add([0,15])
-        box0.Add(panel1, 0, wx.ALL|wx.EXPAND)
-        box0.Add([0,10-pad])
-        box0.Add(panel2, 0, wx.ALL|wx.EXPAND)
-        box0.Add([0,20-pad])
-        panel0.SetSizer(box0)
-
-        # Manually resize since can't get dlg.GetBestSize to work correctly
-        (x,y)=text.GetBestSize()
-        dlg.SetClientSize((24+48+16+txtwidth+24, max(y,48)+15+10+20+20))
-        dlg.CenterOnParent()
-        dlg.ShowModal()
-        dlg.Destroy()
-
-
 # main
-frame=MainWindow(None, wx.ID_ANY, appname)
+app=wx.PySimpleApp()
 if platform=='win32':
-    frame.SetIcon(wx.Icon('win32/FS2XPlane.ico', wx.BITMAP_TYPE_ICO))
-elif platform.lower().startswith('linux'):	# PNG supported by GTK
-    frame.SetIcon(wx.Icon('Resources/FS2XPlane.png', wx.BITMAP_TYPE_PNG))
-elif platform=='darwin':
-    pass	# icon pulled from Resources via Info.plist
+    if app.GetComCtl32Version()>=600 and wx.DisplayDepth()>=32:
+        wx.SystemOptions.SetOptionInt('msw.remap', 2)
+    else:
+        wx.SystemOptions.SetOptionInt('msw.remap', 0)
+
+frame=MainWindow(None, wx.ID_ANY, appname)
 app.SetTopWindow(frame)
 app.MainLoop()

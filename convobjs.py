@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2005 Jonathan Harris
+# Copyright (c) 2005,2006,2007 Jonathan Harris
 # 
 # Mail: <x-plane@marginal.org.uk>
 # Web:  http://marginal.org.uk/x-planescenery/
@@ -31,6 +31,9 @@ from os.path import join
 
 from convutil import Object, rgb2uv
 
+# X-Plane autonmatically generates versions of these from nav.dat data 
+ignorestock=['air_localizerantenna01', 'ndb','sco_gen_checkershed','sco_gen_ilstransmitter']
+
 def makeapronlight():
     vlight=[(0,1,0, 0.3125,0.3125,1)]
     vt=[(-1.5,0,-1.5, 0,1,0, 0,0),
@@ -39,14 +42,16 @@ def makeapronlight():
         ( 1.5,0,-1.5, 0,1,0, 1,0)]
     idx=[2,1,0,3,2,0]
     return Object("ApronLight.obj", "ApronEdgeLights",
-                  'Resources/FS2X-ApronLight.png', vlight, [], vt, idx,
+                  'Resources/FS2X-ApronLight.png', None, None,
+                  vlight, [], vt, idx,
                   [([(1,1,1),(0,0,0),(0,0,0)],0,6,False)], 2)
     
 
 def maketaxilight():
     vlight=[(0,0.1,0, 0.75,0.75,0)]
-    return Object("TaxiwayLight.obj", "TaxiwayPath.centerLineLighted",
-                  None, vlight, [], [], [], [], 0)
+    return Object("TaxiwayLight.obj",
+                  "TaxiwayPath.centerLineLighted", None, None, None,
+                  vlight, [], [], [], [], 0)
     
 
 def maketaxisign(label):
@@ -234,7 +239,7 @@ def maketaxisign(label):
         fname=fname.replace(c,'_')
     fname="TaxiwaySign-%s.obj" % fname
     return Object(fname, 'TaxiwaySign "%s"' % label,
-                  'Resources/FS2X-Taxi.png', [], [], vt, idx,
+                  'Resources/FS2X-Taxi.png', None, None, [], [], vt, idx,
                   [([(1,1,1),(0,0,0),(0,0,0)],
                     0,frameilen,False),
                    ([(1,1,1),(0,0,0),(1,1,1)],
@@ -242,19 +247,23 @@ def maketaxisign(label):
 
 
 def makestock(output, uid, name):
+    libobjs={}
+    if name in libobjs:
+        return Object(libobjs[name], "X-Plane library object", None,None,None,
+                      None, None, None, None, None, 0)
+    
     objname=name+'.obj'
-    defaultobj=Object(objname, "Placeholder for built-in object %s (%s)" %
-                      (uid, name), None, [], [], [], [], [], 0)
-    if not objname in listdir('Resources'):
-        return defaultobj
+    #defaultobj=Object(objname, "Placeholder for built-in object %s (%s)" %
+    #                  (uid, name), None, None, None, [], [], [], [], [], 0)
+    if not objname in listdir('Resources'): return None
 
     tex=None
     vt=[]
     idx=[]
     obj=file(join('Resources', objname), 'rU')
-    if obj.next() not in ['A\n', 'I\n']: return defaultobj
-    if not obj.next().startswith('800'): return defaultobj
-    if obj.next()!='OBJ\n': return defaultobj
+    if obj.next() not in ['A\n', 'I\n']: return None
+    if not obj.next().startswith('800'): return None
+    if obj.next()!='OBJ\n': return None
     for line in obj:
         tokens=line.split()
         if not tokens:
@@ -273,12 +282,12 @@ def makestock(output, uid, name):
                         int(tokens[7]), int(tokens[8]), int(tokens[9]),
                         int(tokens[10])])
     obj.close()
-    return Object(objname, "Built-in object %s (%s)" %
-                  (uid, name), tex, [], [], vt, idx,
+    return Object(objname, "(c) Jonathan Harris 2007. http://creativecommons.org/licenses/by-sa/2.5/",
+                  tex, None, None, [], [], vt, idx,
                   [([(1,1,1),(0,0,0),(0,0,0)], 0, len(idx), False)], 0)
 
 
-def makegenquad(name, x, z, incx, incz, heights, texs, roof):
+def makegenquad(name, layer, x, z, incx, incz, heights, texs, roof):
     # roof types: 0=flat, 1=pointy, 2=gabled, 3=slanty
     cumheight=0
     vt=[]
@@ -399,12 +408,13 @@ def makegenquad(name, x, z, incx, incz, heights, texs, roof):
                    (-x0, topheight, -z0, 0,0,-1, u,v)])
         idx.extend([base+2,base+1,base, base,base+3,base+2])
         
-    return Object(name, "Generic building", 'Resources/FS2X-palette.png',
-                  [], [], vt, idx,
+    if layer>=32: layer=None
+    return Object(name, "Generic building", 'Resources/FS2X-palette.png', None,
+                  layer, [], [], vt, idx,
                   [([(1,1,1),(0,0,0),(0,0,0)], 0, len(idx), False)], 0)
 
 
-def makegenmulti(name, sides, x, z, heights, texs):
+def makegenmulti(name, layer, sides, x, z, heights, texs):
     # building fits inside an oval inscribed in a x*z box
     slice=2*pi/sides
     halfslice=pi/sides
@@ -469,8 +479,9 @@ def makegenmulti(name, sides, x, z, heights, texs):
                         base+(corner*2+1)%sides2,
                         base+(corner*2+2)%sides2])
 
-    return Object(name, "Generic building", 'Resources/FS2X-palette.png',
-                  [], [], vt, idx,
+    if layer>=32: layer=None
+    return Object(name, "Generic building", 'Resources/FS2X-palette.png', None,
+                  layer, [], [], vt, idx,
                   [([(1,1,1),(0,0,0),(0,0,0)], 0, len(idx), False)], 0)
 
 

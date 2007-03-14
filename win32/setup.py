@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-from convutil import appversion
+from convutil import appname, appversion
 from distutils.core import setup
 from os import listdir, name
 from sys import platform
@@ -10,9 +10,9 @@ from sys import platform
 manifest=('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'+
           '<assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">\n'+
           '<assemblyIdentity\n'+
-          '    version="%s.0.0"\n' % appversion +
+          '    version="%4.2f.0.0"\n' % appversion +
           '    processorArchitecture="X86"\n'+
-          '    name="FS2XPlane"\n'+
+          '    name="%s"\n' % appname +
           '    type="win32"\n'+
           '/>\n'+
           '<description>Convert FS2004 sceneries to X-Plane.</description>\n'+
@@ -34,10 +34,7 @@ manifest=('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'+
 if platform=='win32':
     # http://www.py2exe.org/  Invoke with: setup.py py2exe
     import py2exe
-    platdata=[('',
-               ['win32/FakeFS2004.cmd',
-                ]),
-              ('win32',
+    platdata=[('win32',
                ['win32/bglxml.exe',
                 'win32/bglunzip.exe',
                 'win32/bmp2png.exe',
@@ -65,7 +62,7 @@ for f in listdir('Resources'):
     if f[-4:]=='.obj': objs.append('Resources/%s' % f)
     
 setup(name='FS2XPlane',
-      version=appversion,
+      version=("%4.2f" % appversion),
       description='Convert FS2004 sceneries to X-Plane',
       author='Jonathan Harris',
       author_email='x-plane@marginal.org.uk',
@@ -75,20 +72,21 @@ setup(name='FS2XPlane',
                     'bglxml.copying.txt',
                     ]),
                   ('Resources',
-                   ['Resources/FS2X-ApronLight.png',
-                    'Resources/FS2X-ApronLight_LIT.png',
+                   ['Resources/blank.png',
+                    'Resources/gaspump1.r8.png',
                     'Resources/FS2X-palette.png',
-                    'Resources/FS2X-Taxi.png',
-                    'Resources/FS2X-Taxi_LIT.png',
-                    'Resources/objfile.txt',
+                    'Resources/transparent.png',
                     'Resources/Tree_side.png',
+                    'Resources/library objects.txt',
                     ]+objs),
                   ] + platdata,
 
-      options = {'py2exe': {#'dll_excludes':['w9xpopen.exe'],
+      options = {'py2exe': {'ascii':True,
+                            #'dll_excludes':['w9xpopen.exe'],
                             'bundle_files':True,
                             'compressed':True,
-                            'excludes':['socket', 'urllib', 'webbrowser'],
+                            'excludes':['tcl', 'Tkinter', 'mx', 'socket', 'urllib', 'webbrowser'],
+                            'packages':['encodings.ascii','encodings.mbcs','encodings.latin_1'],
                             'optimize':2,
                             },
                  'py2app': {'argv_emulation':False,
@@ -100,7 +98,7 @@ setup(name='FS2XPlane',
                  },
 
       # win32
-      console = ['fs2x.py'],
+      console = ['fs2xp.py'],
       windows = [{'script':'FS2XPlane.py',
                   'icon_resources':[(1,'win32/FS2XPlane.ico')],
                   'other_resources':[(24,1,manifest)],

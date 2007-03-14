@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2005 Jonathan Harris
+# Copyright (c) 2005,2006,2007 Jonathan Harris
 # 
 # Mail: <x-plane@marginal.org.uk>
 # Web:  http://marginal.org.uk/x-planescenery/
@@ -25,13 +25,14 @@
 #   http://creativecommons.org/licenses/by-sa/2.5/legalcode
 #
 
-from math import sin, cos, tan, asin, acos, atan, atan2, fmod, pi
+from math import sin, cos, tan, asin, acos, atan, atan2, fmod, pi, degrees, radians
 from locale import getpreferredencoding
 import os	# for startfile
 from os import listdir, mkdir, popen3, stat, unlink
 from os.path import abspath, basename, curdir, dirname, exists, isdir, join, normpath, splitext
 from shutil import copyfile
 from struct import pack
+from sys import platform
 from tempfile import gettempdir
 import types
 import unicodedata
@@ -41,9 +42,9 @@ if not 'startfile' in dir(os):
     from urllib import quote
     import webbrowser
 
+from version import appname, appversion
 
-appversion='1.02'	# Must be numeric
-banner="Converted by FS2XPlane %s\n" % appversion
+banner="Converted by %s %4.2f\n" % (appname, appversion)
 
 # MSFS oblate spheroid
 diae=12756270	# Equatorial diameter [m]
@@ -51,10 +52,8 @@ diap=12734620	# Polar diameter [m]
 cire=40075000	# Equatorial circumference [m]
 cirp=40007000	# Polar circumference [m]
 
-diaa=12748000	# Average diameter [m]
+diaa=12748000	# Average diameter [m]	= 12756000 in X-Plane
 
-d2r=pi/180.0
-r2d=180.0/pi
 twopi=pi+pi
 
 m2f=3.28084	# 1 metre [ft]
@@ -68,7 +67,7 @@ taxilightspacing=30.48	# [m] = 100ft
 # for asciify
 # find corresponing Windows code page for the user's locale
 encoding=getpreferredencoding().lower()
-if encoding=='us-ascii': encoding='latin1'	# 2.3 on Mac
+#if encoding=='us-ascii': encoding='latin1'	# 2.3 on Mac
 if   encoding in ['cp1250', 'mac_latin2', 'iso8859_2', 'iso8859_16']:
     # Central European
     asciitbl='[|]-_E ,f_.||^%S<STZZ \'\'"".--- s>stzz   LxA|S"cS<--rZd+ l\'uP. as>L"lzRAAAALCCCEEEEIIDDNNOOOO*RUUUUYTsraaaalccceeeeiiddnnoooo/ruuuuyty'
@@ -111,35 +110,49 @@ class Point:
         # biases are in m
         # Approximation
         return Point(self.lat+biasZ*360.0/cirp,
-                     self.lon+biasX*360.0/(cire*cos(d2r*self.lat)))
+                     self.lon+biasX*360.0/(cire*cos(radians(self.lat))))
 
     # From http://www.mathforum.com/library/drmath/view/51711.html
     def distanceto(self, to):
-        a1=d2r*self.lat
-        b1=d2r*self.lon
-        a2=d2r*to.lat
-        b2=d2r*to.lon
+        a1=radians(self.lat)
+        b1=radians(self.lon)
+        a2=radians(to.lat)
+        b2=radians(to.lon)
+        if a1==a2 and b1==b2: return 0
         return (diaa/2) * acos(cos(a1)*cos(b1)*cos(a2)*cos(b2) +
                                cos(a1)*sin(b1)*cos(a2)*sin(b2) +
                                sin(a1)*sin(a2))
 
     # From http://www.mathforum.org/library/drmath/view/55417.html
     def headingto(self, to):
-        lat1=d2r*self.lat
-        lon1=d2r*self.lon
-        lat2=d2r*to.lat
-        lon2=d2r*to.lon
-        return r2d*(atan2(sin(lon2-lon1)*cos(lat2),
-                          (cos(lat1)*sin(lat2)-
-                           sin(lat1)*cos(lat2)*cos(lon2-lon1))) %
-                    twopi)
+        lat1=radians(self.lat)
+        lon1=radians(self.lon)
+        lat2=radians(to.lat)
+        lon2=radians(to.lon)
+        return degrees(atan2(sin(lon2-lon1)*cos(lat2),
+                             (cos(lat1)*sin(lat2)-
+                              sin(lat1)*cos(lat2)*cos(lon2-lon1))) %
+                       twopi)
 
     def within(self, bl, tr):
         return (self.lat>=bl.lat and self.lat<=tr.lat and
                 self.lon>=bl.lon and self.lon<=tr.lon)
     
     def __str__(self):
-        return "%s %s" % (self.lat, self.lon)
+        return "%10.6f %11.6f" % (self.lat, self.lon)
+
+    def equals(self, other):
+        return round(self.lat,6)==round(other.lat,6) and round(self.lon,6)==round(other.lon,6)
+
+    #def __cmp__(self, other):
+    #    return self.lat==other.lat and self.lon==other.lon
+    #
+    #def __hash__(self):
+    #    return hash(self.lat) ^ hash(self.lon)
+    #
+    #def __setattr__(self, name, value):
+    #    # make immutable
+    #    raise TypeError
 
 
 class Matrix:
@@ -176,9 +189,9 @@ class Matrix:
         #    raise ValueError
         h=round(self.m[0][0], 4)	# arbitrary - handle rounding errors
         if self.m[2][0]>=0:
-            return r2d*acos(h)
+            return degrees(acos(h))
         else:
-            return 360-r2d*acos(h)
+            return 360-degrees(acos(h))
 
     def offset(self, x, y, z):
         n=Matrix(self.m)
@@ -187,7 +200,7 @@ class Matrix:
         
     def headed(self, angle):
         # about y axis
-        a=d2r*angle
+        a=radians(angle)
         t=Matrix([[cos(a), 0,-sin(a), 0],
                   [     0, 1,      0, 0],
                   [sin(a), 0, cos(a), 0],
@@ -196,7 +209,7 @@ class Matrix:
           
     def pitched(self, angle):
         # about x axis
-        a=d2r*angle
+        a=radians(angle)
         t=Matrix([[1,      0,      0, 0],
                   [0, cos(a),-sin(a), 0],
                   [0, sin(a), cos(a), 0],
@@ -205,7 +218,7 @@ class Matrix:
 
     def banked(self, angle):
         # about x axis
-        a=d2r*angle
+        a=radians(angle)
         t=Matrix([[cos(a),-sin(a), 0, 0],
                   [sin(a), cos(a), 0, 0],
                   [0,      0,      1, 0],
@@ -239,42 +252,43 @@ class Matrix:
 
 
 class AptNav:
-    def __init__(self, code, loc, text):
+    def __init__(self, code, text):
         self.code=code
-        self.loc=loc
 	# X-Plane only renders a subset of ascii - see interface.png
         self.text=asciify(text)
 
     def __repr__(self):
-        if self.code==1 or self.code>=50:
-            return '"%-2d %s"' % (self.code, self.text)
-        else:
-            return '"%-2d %10.6f %11.6f %s"' % (
-                self.code, self.loc.lat, self.loc.lat, self.text)
+        return '"%-3d %s"' % (self.code, self.text)
 
     def __str__(self):
-        if self.code==1 or self.code>=50:
-            return "%-2d %s" % (self.code, self.text)
-        else:
-            return "%-2d %10.6f %11.6f %s" % (
-                self.code, self.loc.lat, self.loc.lon, self.text)
+        return "%-3d %s" % (self.code, self.text)
 
-    def __cmp__(self,other):
-        # Hack!
-        code=cmp(self.code,other.code)
-        if code!=0 or self.code==10:
-            return code
-        else:
-            # Compare on textual info
-            return cmp(self.text[6:],other.text[6:])
+    def __cmp__(self, other):
+        # Just sort on code
+        return self.code-other.code
+        #if c:
+        #    return c
+        #elif self.text > other.text:
+        #    return 1
+        #elif self.text < other.text:
+        #    return -1
+        #else:
+        #    return 0
 
 
 class Object:
-    def __init__(self, filename, comment, tex, vlight, vline, vt, idx,
-                 mattri, poly):
+    def __init__(self, filename, comment, tex, lit, layer,
+                 vlight, vline, vt, idx, mattri, poly):
         self.filename=filename
         self.comment=comment
         self.tex=tex
+        self.lit=lit
+        if poly:
+            self.layer=layer
+            self.surface=(layer!=None and layer>4)
+        else:
+            self.layer=None
+            self.surface=False
         self.vlight=vlight
         self.vline=vline
         self.vt=vt
@@ -286,6 +300,9 @@ class Object:
         return (self.filename==o.filename and
                 self.comment==o.comment and
                 self.tex==o.tex and
+                self.lit==o.lit and
+                self.layer==o.layer and
+                #self.surface==o.surface and	# redundant
                 self.vlight==o.vlight and
                 self.vline==o.vline and
                 self.vt==o.vt and
@@ -293,7 +310,8 @@ class Object:
                 self.mattri==o.mattri and
                 self.poly==o.poly)
 
-    def export(self, scale, output):
+    def export(self, scale, output, fslayers):
+        if self.comment=="X-Plane library object": return
         if scale!=1:
             comment="%s scaled x%s" % (self.comment, scale)
             filename="%s_%02d%02d.obj" % (
@@ -302,71 +320,27 @@ class Object:
             comment=self.comment
             filename=self.filename
 
-        if not self.tex:
-            tex=None
-            lit=None
-        else:	# self.tex is case-corrected full pathname to source texture
+        # Special handling for trees using default MSFS tree texture
+        if self.tex and not exists(self.tex) and basename(self.tex).lower() in ['treeswi.bmp', 'treessp.bmp', 'treessu.bmp', 'treesfa.bmp', 'treeshw.bmp']:
+            self.tex='Resources/Tree_side.png'	# X-Plane v8 texture
+            self.lit=None
+            mapping=[[(1,0),(0,6),(1,6),(1,4)],
+                     [(7,2),(5,7),(3,0),(2,5)],
+                     [(7,2),(1,7),(2,6),(5,4)],
+                     [(7,2),(6,7),(2,6),(6,4)]]
+            newvt=[]
+            for (x,y,z,nx,ny,nz,u,v) in self.vt:
+                (un,vn)=mapping[min(int(u*4),3)][min(int(v*4),3)]
+                if un==1 and vn==0 and (v*4)%1>=0.125:	# shrub
+                    v=v-0.125
+                newvt.append((x,y,z,nx,ny,nz,
+                              (un+(u*4)%1)/8.0, (vn+(v*4)%1)/8.0))
+            self.vt=newvt
 
-            # Special handling for trees using default MSFS tree texture
-            if not exists(self.tex) and basename(self.tex).lower() in ['treeswi.bmp', 'treessp.bmp', 'treessu.bmp', 'treesfa.bmp', 'treeshw.bmp']:
-                self.tex='Resources/Tree_side.png'	# X-Plane v8 texture
-                mapping=[[(1,0),(0,6),(1,6),(1,4)],
-                         [(7,2),(5,7),(3,0),(2,5)],
-                         [(7,2),(1,7),(2,6),(5,4)],
-                         [(7,2),(6,7),(2,6),(6,4)]]
-                newvt=[]
-                for (x,y,z,nx,ny,nz,u,v) in self.vt:
-                    (un,vn)=mapping[min(int(u*4),3)][min(int(v*4),3)]
-                    if un==1 and vn==0 and (v*4)%1>=0.125:	# shrub
-                        v=v-0.125
-                    newvt.append((x,y,z,nx,ny,nz,
-                                  (un+(u*4)%1)/8.0, (vn+(v*4)%1)/8.0))
-                self.vt=newvt
-
-            path=join(output.xppath, 'textures')
-            if not isdir(path): mkdir(path)
-            (tex,ext)=splitext(basename(self.tex))
-            if not ext.lower() in ['.bmp', '.png']:
-                tex+=ext	# For *.xAF etc
-            # Spaces not allowed in textures. Avoid Mac/PC interop problems
-            tex=asciify(tex).replace(' ','_')+'.png'
-            dst=join(path, tex)
-
-            if dirname(self.tex)=='Resources':
-                # texture is supplied with this program (ie Taxi2.png)
-                copyfile(self.tex, dst)
-                (src,ext)=splitext(self.tex)
-                src+='_LIT.png'
-                if exists(src):
-                    (dst,ext)=splitext(dst)
-                    dst+='_LIT.png'
-                    copyfile(src, dst)
-                    lit=basename(dst)
-                else:
-                    lit=None
-                
-            else:
-                if self.tex in output.haze:
-                    palno=output.haze[self.tex]
-                else:
-                    palno=None
-                tex=basename(dst)	# Name output in OBJ file
-                self.maketex(self.tex, dst, output, palno)
-                (src,ext)=splitext(self.tex)
-                src+='_lm.bmp'
-                # Fix case for case sensitive filesystems
-                bn=basename(src).lower()
-                for f in listdir(dirname(src)):
-                    if bn==f.lower():
-                        (dst,ext)=splitext(dst)
-                        dst+='_LIT.png'
-                        self.maketex(join(dirname(src),f), dst, output, palno)
-                        lit=basename(dst)
-                        break
-                else:
-                    lit=None
-
-        if 0: #output.debug:	# XXX
+        # self.tex & .lit are case-corrected full pathname to source texture
+        (tex,lit)=maketexs(self.tex, self.lit, output)
+            
+        if False: #output.debug:
             # Generate line at object origin
             self.vline.insert(0, (0, 0, 0,  1, 0.5, 0.5))
             self.vline.insert(1, (0, 25, 0, 1, 0.5, 0.5))
@@ -378,17 +352,17 @@ class Object:
         
         try:
             path=join(output.xppath, 'objects')
-            objpath=join(path, filename)
             if not isdir(path): mkdir(path)
+            objpath=join(path, filename)
             objfile=file(objpath, 'wt')
             if not filename in listdir(path):
                 raise IOError	# case mixup
             objfile.write("I\n800\t# %sOBJ\n" % banner)
             objfile.write("\n# %s\n\n" % comment)
             if tex:
-                objfile.write("TEXTURE\t\t../textures/%s\n" % (basename(tex)))
+                objfile.write("TEXTURE\t\t%s\n" % (basename(tex)))
                 if lit:
-                    objfile.write("TEXTURE_LIT\t../textures/%s\n" % (
+                    objfile.write("TEXTURE_LIT\t%s\n" % (
                         basename(lit)))
             else:
                 objfile.write("TEXTURE\t\n")
@@ -406,7 +380,6 @@ class Object:
             if self.vline: objfile.write("\n")
 
             for (x,y,z,nx,ny,nz,u,v) in self.vt:
-                #if self.poly: y=0	# Adjust for bogus layering attempts
                 objfile.write("VT\t%8.3f %8.3f %8.3f\t%6.3f %6.3f %6.3f\t%6.4f %6.4f\n" % (x*scale, y*scale, z*scale, nx,ny,nz, u,v))
             if self.vt: objfile.write("\n")
 
@@ -420,26 +393,28 @@ class Object:
                 objfile.write("IDX\t%d\n" % self.idx[j])
             if self.idx: objfile.write("\n")
 
+            # Maybe a decal
+            if self.layer!=None:
+                objfile.write("ATTR_layer_group\t%s\n" % fslayers[self.layer])
+            if self.poly:
+                objfile.write("ATTR_poly_os\t%d\n\n" % self.poly)
+            else:
+                objfile.write("ATTR_no_blend\n\n")
+            if self.surface:
+                objfile.write("ATTR_hard\tconcrete\n")
+
             if self.vlight:
                 if len(self.vlight)==1 and not self.vline and not self.vt:
                     # X-Plane 8.30 optimises single lights away otherwise
                     objfile.write("ATTR_LOD\t0 16000\n")
-                objfile.write("LIGHTS\t0 %d\n\n" % len(self.vlight))
+                objfile.write("LIGHTS\t0 %d\n" % len(self.vlight))
             if self.vline:
                 # Infer number of line indices from first tri index
                 if self.mattri:
                     (m, n, count, dbl)=self.mattri[0]
                 else:
                     n=len(self.idx)
-                objfile.write("LINES\t0 %d\n\n" % n)
-
-            # Maybe a decal
-            if self.poly:
-                objfile.write("ATTR_poly_os %d\n" % self.poly)
-                if self.poly==1 and len(self.vt)==4:
-                    objfile.write("ATTR_hard\n")	# Hack!
-            else:
-                objfile.write("ATTR_no_blend\n")
+                objfile.write("LINES\t0 %d\n" % n)
 
             # Ambient and Specular don't work, according to 
             # xplanescenery.blogspot.com/2006/01/obj8-what-not-to-use.html
@@ -450,9 +425,9 @@ class Object:
             d=False
             for (m, start, count, dbl) in self.mattri:
                 if dbl and not d:
-                    objfile.write("ATTR_no_cull\n")
+                    objfile.write("\nATTR_no_cull\n")
                 elif d and not dbl:
-                    objfile.write("ATTR_cull\n")
+                    objfile.write("\nATTR_cull\n")
                 d=dbl
                 if e!=m[2]:
                     e=(er,eg,eb)=m[2]
@@ -465,50 +440,174 @@ class Object:
             raise FS2XError("Can't write \"%s\"" % objpath)
 
 
-    # Assumes src filename has correct case
-    def maketex(self, src, dst, output, palno):
-        if exists(dst):
-            return True	# assume it's already been converted
-        if src in output.dufftex:
-            return False
-        if not exists(src):
-            output.dufftex[src]=True
-            output.log("Texture %s not found" % basename(src))
-            return False
+class Polygon:
+    def __init__(self, filename, tex, lit, nowrap, scale, layer):
+        self.filename=filename
+        self.tex=tex
+        self.lit=lit
+        self.nowrap=nowrap
+        self.scale=scale
+        self.layer=layer
+        self.surface=(layer!=None and layer>4)
+
+    def __eq__(self, o):
+        return (self.filename==o.filename and
+                self.tex==o.tex and
+                self.lit==o.lit and
+                self.nowrap==o.nowrap and
+                #self.scale==o.scale and	# scale is boring
+                #self.surface==o.surface and	# redundant
+                self.layer==o.layer)
+
+    def export(self, output, fslayers):
+        if self.tex and not exists(self.tex):
+            # Missing texture in polygon causes crash
+            if not self.tex in output.dufftex:
+                output.log("Texture %s not found" % basename(self.tex))
+            self.tex="Resources/blank.png"
+            output.dufftex[self.tex]=True
+            
+        (tex,lit)=maketexs(self.tex, self.lit, output)
         try:
-            (s,e)=splitext(src)
-            tmp=join(gettempdir(), basename(s)+'.bmp')
+            path=join(output.xppath, 'objects')
+            objpath=join(path, self.filename)
+            if not isdir(path): mkdir(path)
+            objfile=file(objpath, 'wt')
+            if not self.filename in listdir(path):
+                raise IOError	# case mixup
+            objfile.write("I\n850\t# %sDRAPED_POLYGON\n\n" % banner)
+            if tex:
+                if self.nowrap:
+                    suffix='_NOWRAP'
+                else:
+                    suffix=''                    
+                objfile.write("TEXTURE%s\t\t%s\n" % (
+                    suffix, basename(tex)))
+                if lit:
+                    objfile.write("TEXTURE_LIT%s\t%s\n" % (
+                        suffix, basename(lit)))
+            else:
+                objfile.write("TEXTURE\t\n")
+            objfile.write("SCALE\t\t%d %d\n" % (self.scale, self.scale))
+            if self.layer!=None:
+                objfile.write("LAYER_GROUP\t%s\n" % fslayers[self.layer])
+            if self.surface:
+                objfile.write("SURFACE\t\tconcrete\n")
+            objfile.close()
+        except IOError:
+            raise FS2XError("Can't write \"%s\"" % objpath)
+
+
+def maketexs(fstex, fslit, output):
+    path=join(output.xppath, 'objects')
+    if not isdir(path): mkdir(path)
+    palno=None
+    if fstex or fslit:
+        if not fstex: fstex='Resources/transparent.png'
+        (tex,ext)=splitext(basename(fstex))
+        if not ext.lower() in ['.bmp', '.png']:
+            tex+=ext	# For *.xAF etc
+        # Spaces not allowed in textures. Avoid Mac/PC interop problems
+        tex=asciify(tex).replace(' ','_')+'.png'
+        dst=join(path, tex)
+
+        if dirname(fstex)=='Resources':
+            # texture is supplied with this program (eg FS2X-palette.png)
+            copyfile(fstex, dst)
+        else:
+            if fstex in output.haze: palno=output.haze[fstex]
+            maketex(fstex, dst, output, palno)
+    else:
+        tex=None
+
+    if fslit:
+        (lit,ext)=splitext(basename(fslit))
+        if lit[-3:].lower()=='_lm':
+            lit=lit[:-3]+'_LIT'
+        if not ext.lower() in ['.dds', '.bmp', '.png']:
+            lit+=ext	# For *.xAF etc
+        # Spaces not allowed in textures. Avoid Mac/PC interop problems
+        lit=asciify(lit).replace(' ','_')+'.png'
+        if fslit in output.haze: palno=output.haze[fslit]
+        maketex(fslit, join(path, lit), output, palno)
+        return (tex,lit)
+    elif False: #was fstex, now done in makekey
+        (src,e)=splitext(basename(fstex).lower())
+        src+='_lm'
+        for ext in [e, '.dds', '.bmp', '.r8']:
+            for i in listdir(dirname(fstex)):
+                if i.lower()==src+ext:
+                    lit=i[:len(src)-3]
+                    if not ext.lower() in ['.dds', '.bmp', '.png']:
+                        lit+=ext	# For *.xAF etc
+                    lit=asciify(lit).replace(' ','_')+'_LIT.png'
+                    maketex(join(dirname(fstex),i), join(path, lit), output, palno)
+                    print basename(fstex), lit
+                    return (tex,lit)
+    return (tex,None)
+
+
+# Assumes src filename has correct case
+def maketex(src, dst, output, palno):
+    if exists(dst):
+        return True	# assume it's already been converted
+    if src in output.dufftex:
+        return False
+    if not exists(src):
+        (s,e)=splitext(basename(src.lower()))
+        for f in listdir('Resources'):
+            if f.lower().startswith(s) and f.endswith('.png'):
+                copyfile(join('Resources', f), dst)
+                return True
+        output.dufftex[src]=True
+        output.log("Texture %s not found" % basename(src))
+        return False
+    try:
+        tmp=None
+        if stat(src).st_size>=65536 and stat(src).st_size<65600:
+            # Fucking nl2000 guys append crud to eof
             f=file(src, 'rb')
-            c=f.read(2)
-            if stat(src).st_size==65536 or c!='BM':
-                # Not a BMP. Assume RAW and add standard BMP header
+            c=f.read(4)
+            if c[:2]!='BM' and c!='DDS ':
+                # Not a BMP or DDS. Assume RAW and add standard BMP header
                 f.seek(0)
+                tmp=join(gettempdir(), basename(src))
                 t=file(tmp, 'wb')
                 for x in rawbmphdr:
                     t.write(pack('<H',x))
                 t.write(f.read())
                 t.close()
-                f.close()
-            else:
-                f.close()
-                copyfile(src, tmp)
+                src=tmp
+            f.close()
 
-            if palno:
-                x=helper('%s -xbrqep%d -o "%s" "%s"' % (
-                    output.pngexe, palno-1, dst, tmp))
-            else:
-                x=helper('%s -xbrqe -o "%s" "%s"' % (
-                    output.pngexe, dst, tmp))
-            if not exists(dst):
-                output.dufftex[src]=True
-                output.log("Can't convert texture %s (%s)" % (basename(src),x))
-                return False
-            return True
-
-        except IOError:
+        if palno:
+            x=helper('%s -xbrqp%d -o "%s" "%s"' % (
+                output.pngexe, palno-1, dst, src))
+        else:
+            x=helper('%s -xbrq -o "%s" "%s"' % (
+                output.pngexe, dst, src))
+        if tmp: unlink(tmp)
+        if not exists(dst):
             output.dufftex[src]=True
-            output.log("Can't convert texture %s" % basename(src))
+            output.log("Can't convert texture %s (%s)" % (basename(src),x))
             return False
+        return True
+
+    except IOError:
+        output.dufftex[src]=True
+        output.log("Can't convert texture %s" % basename(src))
+        return False
+
+# Uniquify list, retaining order. Assumes list items are hashable
+def unique(seq):
+    # Can't use set() - not in Python 2.3
+    seen = {}
+    result = []
+    for item in seq:
+        if item in seen: continue
+        seen[item] = True
+        result.append(item)
+    return result
 
 
 # Convert r,g,b to offset in palette texture
@@ -522,6 +621,9 @@ def rgb2uv(rgb):
 
 # Run helper app and return stderr
 def helper(cmds):
+    if platform=='win32' and type(cmds)==types.UnicodeType:
+        # commands must be MBCS encoded
+        cmds=cmds.encode("mbcs")
     (i,o,e)=popen3(cmds)
     i.close()
     o.read()
@@ -567,7 +669,11 @@ def asciify(s, fordisplay=False):
 
 # Turn 8-bit string into unicode
 def unicodeify(s):
-    return unicode(s, encoding)
+    if type(s)==types.UnicodeType:
+        return s
+    else:
+        return unicode(s, 'latin_1')
+
 
 # Return normalized (pre-combined) unicode string
 def normalize(s):

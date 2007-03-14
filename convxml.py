@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2005 Jonathan Harris
+# Copyright (c) 2005,2006,2007 Jonathan Harris
 # 
 # Mail: <x-plane@marginal.org.uk>
 # Web:  http://marginal.org.uk/x-planescenery/
@@ -25,15 +25,16 @@
 #   http://creativecommons.org/licenses/by-sa/2.5/legalcode
 #
 
-from math import sin, cos, atan
+from math import sin, cos, atan, radians
 from os import unlink
 from os.path import basename, exists, join
 from sys import maxint
 import xml.parsers.expat
 from tempfile import gettempdir
 
-from convutil import d2r, r2d, m2f, NM2m, complexity, asciify, AptNav, Object, Point, Matrix, FS2XError, apronlightspacing, taxilightspacing
+from convutil import m2f, NM2m, complexity, asciify, AptNav, Object, Point, Matrix, FS2XError, apronlightspacing, taxilightspacing
 from convobjs import makeapronlight, maketaxilight, maketaxisign, makegenquad, makegenmulti
+from convtaxi import designators, surfaces, taxilayout, Node, Link
 
 
 # member var is defined
@@ -43,18 +44,6 @@ def D(c, v):
 # member var is defined and true
 def T(c, v):
     return (v in dir(c) and eval("c.%s" % v)=='TRUE')
-
-# Runway & taxiway (but not helipad) surfaces
-surfaces={'ASPHALT':1, 'BITUMINOUS':1, 'MACADAM':1,
-          'OIL_TREATED':1, 'TARMAC':1, 
-          'BRICK':2, 'CEMENT':2, 'CONCRETE':2, 'STEEL_MATS':2,
-          'GRASS':3,
-          'DIRT':4, 'SAND':4, 'SHALE':4, 'UNKNOWN':4,
-          'CORAL':5, 'GRAVEL':5,
-          'CLAY':12, 'PLANKS':12,
-          'ICE':13, 'SNOW':13, 'WATER':13}
-# From 8.40: 'ICE':36, 'SNOW':36}
-
 
 # Set up XML parser for new-style scenery
   
@@ -111,7 +100,7 @@ class SceneryObject:
             for k, v in attrs.iteritems():
                 exec("self.%s=v" % k)
 
-    def export(self, parser, output):
+    def export(self, parser, output, aptdat=None):
         loc=Point(float(self.lat), float(self.lon))
         alt=float(self.alt)
         pitch=0
@@ -145,7 +134,7 @@ class SceneryObject:
                 parser.gencount += 1
                 name="%s-generic-%d.obj" % (asciify(parser.filename[:-4]),
                                             parser.gencount)
-                obj=makegenmulti(name, int(m.buildingSides),
+                obj=makegenmulti(name, None, int(m.buildingSides),
                                  scale*float(m.sizeX), scale*float(m.sizeZ),
                                  [scale*float(m.sizeBottomY),
                                   scale*float(m.sizeWindowY),
@@ -161,7 +150,7 @@ class SceneryObject:
                 parser.gencount += 1
                 name="%s-generic-%d.obj" % (asciify(parser.filename[:-4]),
                                             parser.gencount)
-                obj=makegenquad(name,
+                obj=makegenquad(name, None,
                                 scale*float(m.sizeX), scale*float(m.sizeZ),
                                 atan((float(m.sizeX)-float(m.sizeTopX))/h2),
                                 atan((float(m.sizeZ)-float(m.sizeTopZ))/h2),
@@ -196,7 +185,7 @@ class SceneryObject:
                 parser.gencount += 1
                 name="%s-generic-%d.obj" % (asciify(parser.filename[:-4]),
                                             parser.gencount)
-                obj=makegenquad(name,
+                obj=makegenquad(name, none,
                                 scale*float(m.sizeX), scale*float(m.sizeZ),
                                 0, 0, heights, rtexs, roof)
                 output.objdat[name]=[obj]
@@ -213,21 +202,29 @@ class SceneryObject:
                 output.log('Non-zero pitch/bank (%s/%s) for object %s at (%10.6f, %11.6f) in file %s' % (pitch, bank, l.name, loc.lat, loc.lon, parser.filename))
             output.objplc.append((loc, heading, cmplx, l.name.lower(), scale))
 
-        for w in self.windsock:
-            lit=0
-            if T(w, 'lighted'): lit=1
-            output.misc.append((19, loc, lit))
-            
         for b in self.beacon:
-            if D(b, 'type') and b.type=='MILITARY':
-                lit=4
-            elif D(b, 'baseType') and b.baseType=='SEA_BASE':
+            if D(b, 'baseType') and b.baseType=='SEA_BASE':
                 lit=2
             elif D(b, 'baseType') and b.baseType=='HELIPORT':
                 lit=3
+            elif D(b, 'type') and b.type=='MILITARY':
+                lit=4
             else:	# civilian land airport
                 lit=1
-            output.misc.append((18, loc, lit))
+            a=AptNav(18, '%10.6f %11.6f %d Beacon' % (loc.lat, loc.lon, lit))
+            if aptdat:
+                aptdat.append(a)
+            else:
+                output.misc.append((18, loc, [a]))
+
+        for w in self.windsock:
+            lit=0
+            if T(w, 'lighted'): lit=1
+            a=AptNav(19, '%10.6f %11.6f %d Windsock' %(loc.lat, loc.lon, lit))
+            if aptdat:
+                aptdat.append(a)
+            else:
+                output.misc.append((19, loc, [a]))
 
 
 class ExclusionRectangle:
@@ -242,10 +239,38 @@ class ExclusionRectangle:
             T(self, 'excludeGenericBuildingObjects') or
             T(self, 'excludeLibraryObjects')):
             output.exc.append(('obj', bl, tr))
-            output.exc.append(('fac', bl, tr))
+            #output.exc.append(('fac', bl, tr))
             #output.exc.append(('for', bl, tr))
             #output.exc.append(('net', bl, tr))
 
+
+class Ndb:
+    def __init__(self, attrs):
+        for k, v in attrs.iteritems():
+            exec("self.%s=v" % k)
+
+    # Export to nav.dat
+    def export(self, parser, output):
+        if D(self, 'name'):
+            name=self.name
+            if name[-3:].upper()!='NDB': name+=' NDB'
+        else:
+            name=self.ident+' NDB'
+        if D(self, 'range'):
+            rng=float(self.range)/NM2m
+        elif self.type=='COMPASS_POINT':
+            rng=15
+        elif self.type=='MH':
+            rng=25
+        elif self.type=='HH':
+            rng=75
+        else:	   # 'H'
+            rng=50
+        output.nav.append(AptNav(2, "%10.6f %11.6f %6d %-5d %3d %11.3f %-5s %s" % (
+            float(self.lat), float(self.lon),
+            m2f*float(self.alt), float(self.frequency), rng,
+            0, self.ident, name)))
+        
 
 class Airport:
     def __init__(self, attrs):
@@ -258,6 +283,7 @@ class Airport:
         self.taxiwaypoint=[]
         self.taxiwayparking=[]
         self.taxiwaypath=[]
+        self.taxiname=[]
         self.ndb=[]
         self.taxiwaysign=[]
         self.aprons=[]
@@ -267,6 +293,10 @@ class Airport:
         def __init__(self, attrs):
             for k, v in attrs.iteritems():
                 exec("self.%s=v" % k)
+            self.sceneryobject=[]
+
+        class SceneryObject(SceneryObject):
+            pass
 
     class Com:
         def __init__(self, attrs):
@@ -358,10 +388,13 @@ class Airport:
             for k, v in attrs.iteritems():
                 exec("self.%s=v" % k)
 
-    class Ndb:
+    class TaxiName:
         def __init__(self, attrs):
             for k, v in attrs.iteritems():
                 exec("self.%s=v" % k)
+
+    class Ndb(Ndb):
+        pass
 
     class TaxiwaySign:
         def __init__(self, attrs):
@@ -410,128 +443,163 @@ class Airport:
         if len(self.ident)>4:
             ident=ident[0:4]
             
-        if output.apt.has_key(ident):
-            aptdat=output.apt[ident]
-        else:
-            aptdat=[]
-            output.apt[ident]=aptdat
+        if ident not in output.apt:
+            output.apt[ident]=(airloc,[])
             if ident!=self.ident:
                 output.log('Shortened ICAO airport code from "%s" to "%s"' % (
                     self.ident, ident))
+        elif self.runway or self.helipad or self.taxiwaypoint:
+            # Duplicate
+            raise FS2XError('Found duplicate definition of airport %s in %s' % (self.ident, parser.filename))
 
+        aptdat=output.apt[ident][1]
+            
         # Might just be a placeholder - only create header if it has a name
-        if D(self, 'name'):
+        if D(self, 'name') :
             txt=("%5d" % (float(self.alt)*m2f))
             if self.tower:
                 txt+=" 1"
             else:
                 txt+=" 0"
             txt+=(" 0 %s %s" % (ident, asciify(self.name, True)))
-            aptdat.append(AptNav(1, airloc, txt))
+            aptdat.append(AptNav(1, txt))
 
         # Runways
         for runway in self.runway:
             # Data in X-Plane apt.dat order (distances in ft)
-            loc=Point(float(runway.lat), float(runway.lon))
-            number=''
+            cloc=Point(float(runway.lat), float(runway.lon))
             heading=float(runway.heading)
-            length=m2f*float(runway.length)	# including displaced
+            length=float(runway.length)	# includes displaced threshold
             displaced=[0,0]
             overrun=[0,0]
-            width=m2f*float(runway.width)
-            lights=[[1,1,1],[1,1,1]]
+            width=float(runway.width)
             surface=1
             shoulder=0
-            markings=0
             smoothing=0.25
+            centrelights=0
+            edgelights=0
             distance=0
-            angle=[3.0,3.0]
+            loc=[None,None]
+            number=['XXX','XXX']
+            angle=[3,3]
+            markings=[0,0]
+            lights=[0,0]
+            tdzl=[0,0]
+            reil=[0,0]
 
-            nos={'EAST':9, 'NORTH':0, 'NORTHEAST':4, 'NORTHWEST':31,
+            nos={'EAST':9, 'NORTH':36, 'NORTHEAST':4, 'NORTHWEST':31,
                  'SOUTH':18, 'SOUTHEAST':13, 'SOUTHWEST':22, 'WEST':27}
+            opp={'C':'C', 'CENTER':'C', 'L':'R', 'LEFT':'R', 'R':'L', 'RIGHT':'L'}
             if nos.has_key(runway.number):
-                number=("%02d" % nos[runway.number])
+                number[0]=("%02d" % nos[runway.number])
+                number[1]=("%02d" % ((18+nos[runway.number])%36))
             else:
-                number=("%02d" % int(runway.number))
+                number[0]=("%02d" % int(runway.number))
+                number[1]=("%02d" % ((18+int(runway.number))%36))
+            if number[1]=='00': number[1]='36'
             if D(runway, 'designator'):
-                des={'NONE':'', 'C':'C', 'CENTER':'C', 'L':'L', 'LEFT':'L',
-                     'R':'R', 'RIGHT':'R', 'W':'', 'WATER':''}
-                number+=des[runway.designator]
+                if runway.designator in designators:
+                    number[0]+=designators[runway.designator]
+                    number[1]+=opp[runway.designator]
+            else:
+                if D(runway, 'primaryDesignator') and runway.primaryDesignator in designators:
+                    number[0]+=designators[runway.primaryDesignator]
+                if D(runway, 'secondaryDesignator') and runway.secondaryDesignator in designators:
+                    number[1]+=designators[runway.secondaryDesignator]
+
+            loc[0]=cloc.biased(-sin(radians(heading))*length/2,
+                               -cos(radians(heading))*length/2)
+            loc[1]=cloc.biased( sin(radians(heading))*length/2,
+                                cos(radians(heading))*length/2)
 
             for off in runway.offsetthreshold:
                 if off.end=='PRIMARY':
                     end=0
                 else:
                     end=1
-                displaced[end]=m2f*float(off.length)
+                displaced[end]=float(off.length)
 
             for bp in runway.blastpad:
                 if bp.end=='PRIMARY':
                     end=0
                 else:
                     end=1
-                overrun[end]=m2f*float(bp.length)
+                overrun[end]=float(bp.length)
 
             surface=surfaces[runway.surface]
-            
-            for vasi in runway.vasi:
-                vasis={'PVASI':2, 'TRICOLOR':2, 'TVASI':2, 
-                       'VASI21':2, 'VASI22':2, 'VASI23':2, 'VASI31':2, 
-                       'VASI32':2, 'VASI33':2, 'BALL':2, 
-                       'PAPI2':3, 'PAPI4':3, 'APAP':3, 'PANELS':3}
-                if vasi.end=='PRIMARY':
-                    end=0
-                else:
-                    end=1
-                if vasis.has_key(vasi.type):
-                    lights[end][0]=vasis[vasi.type]
-                angle[end]=float(vasi.pitch)
 
             for light in runway.lights:
-                if D(light, 'edge') and light.edge!='NONE':
-                    lights[0][1]=2
-                    lights[1][1]=2
                 if D(light, 'center') and light.center!='NONE':
-                    # Implies Edge and REILS(strobes) in X-Plane
-                    lights[0][1]=4
-                    lights[1][1]=4
+                    centrelights=1
+                if D(light, 'edge'):
+                    if light.edge=='NONE':
+                        edgelights=0
+                    #elif light.edge=='LOW':
+                    #    edgelights=1	# not supported in 8.50
+                    #elif light.edge=='HIGH':
+                    #    edgelights=3	# not supported in 8.50
+                    else:
+                        edgelights=2
+
             for app in runway.approachlights:
-                sys={'MALS':2, 'MALSR':2, 'SALS':2, 'SSALR':2, 'SSALS':2, 'SSALSR':2, 'RAIL':2,
-                     'MALSF':3, 'SSALF':3, 'SSALSF':3,
-                     'ALSF1':4,
-                     'ALSF2':5,
-                     'ODALS':6,
-                     'CALVERT':7,
-                     'CALVERT2':8}
+                sys={'ALSF1':1, 'ALSF2':2,
+                     'CALVERT':3, 'CALVERT2':4,
+                     'MALS':10,
+                     'MALSF':9,
+                     'MALSR':8,
+                     'ODALS':11,
+                     'RAIL':12,
+                     'SALS':7, 'SSALS':7,
+                     'SALSF':6, 'SSALF':6,
+                     'SSALR':5, }
                 if app.end=='PRIMARY':
                     end=0
                 else:
                     end=1
                 if D(app, 'system') and app.system in sys:
-                    lights[end][2]=sys[app.system]
+                    lights[end]=sys[app.system]
                 else:
-                    lights[end][2]=1
-                if (D(app, 'strobes') and int(app.strobes)>0 and
-                    lights[end][1]<3):
-                    lights[end][1]=3
+                    lights[end]=0
+                #if D(app, 'strobes') and int(app.strobes)>0 and lights[end][1]<3:
+                #    lights[end][1]=3
+                if T(app, 'reil'):
+                    #if edgelights:	# X-Plane draws threshhold lighting
+                    #    reil[end]=2	# unidirectional
+                    #else:
+                    #    reil[end]=1	# omnidirectional
+                    reil[end]=1		# omnidirectional
                 if T(app, 'touchdown'):
-                    lights[end][1]=5
+                    tdzl[end]=1
 
             for m in runway.markings:
-                # Hack! Distance markings also add taxiwaysigns in X-Plane
-                #if T(m, 'fixedDistance') and not self.taxiwaysign:
-                #    distance=1
+                if T(m, 'fixedDistance'):
+                    distance=1
+                    
                 if T(m, 'edgePavement') and surface<=2:
                     shoulder=surface	# asphalt or concrete
-                if not surface in [6,7,8,9,13]:	# helipads or water
-                    # Not sure about these
-                    if T(m, 'edges') or T(m, 'dashes') or T(m, 'ident'):
-                        markings=1
-                    if (T(m, 'threshold') or T(m, 'fixedDistance') or
-                        T(m, 'touchdown')):
-                        markings=2
-                    if T(m, 'precision'):
-                        markings=3
+
+                if T(m, 'precision') or T(m, 'touchdown'):
+                    if lights[0] in [3,4] or lights[1] in [3,4]:
+                        markings[0]=markings[1]=5	# UK
+                    else:
+                        markings[0]=markings[1]=3
+                elif T(m, 'threshold'):			# non-precision
+                    if lights[0] in [3,4] or lights[1] in [3,4]:
+                        markings[0]=markings[1]=4	# UK
+                    else:
+                        markings[0]=markings[1]=2
+                elif T(m, 'ident') or T(m, 'dashes'):	# visual
+                    markings[0]=markings[1]=1
+                #elif T(m, 'edges'):	# not supported in 8.50
+                #    markings[0]=markings[1]=6		# dashes (grass)
+                        
+                if T(m, 'singleEnd'): markings[1]=0	# no markings
+                if T(m, 'primaryClosed'):		# closed
+                    #markings[0]=7	# not supported in 8.50
+                    markings[0]=0
+                if T(m, 'secondaryClosed'):		# closed
+                    #markings[1]=7	# not supported in 8.50
+                    markings[0]=0
 
             for ils in runway.ils:
                 if ils.end=='PRIMARY':
@@ -546,10 +614,8 @@ class Airport:
                     rng=float(ils.range)/NM2m
                 else:
                     rng=18
-                output.nav.append(AptNav(4, Point(float(ils.lat),
-                                                  float(ils.lon)),
-                                         "%6d %05d %3d %11.3f %-5s %s" % (
-                    m2f*float(ils.alt), float(ils.frequency)*100, rng,
+                output.nav.append(AptNav(4, "%10.6f %11.6f %6d %05d %3d %11.3f %-5s %s" % (
+                    float(ils.lat), float(ils.lon), m2f*float(ils.alt), float(ils.frequency)*100, rng,
                     float(ils.heading), ils.ident, name)))
                 
                 for gs in ils.glideslope:
@@ -562,10 +628,8 @@ class Airport:
                         rng=float(gs.range)/NM2m
                     else:
                         rng=10
-                    output.nav.append(AptNav(6, Point(float(gs.lat),
-                                                      float(gs.lon)),
-                                             "%6d %05d %3d %11.3f %-5s %s" % (
-                        m2f*float(gs.alt), float(ils.frequency)*100, rng,
+                    output.nav.append(AptNav(6, "%10.6f %11.6f %6d %05d %3d %11.3f %-5s %s" % (
+                        float(gs.lat), float(gs.lon), m2f*float(gs.alt), float(ils.frequency)*100, rng,
                         float(ils.heading)+100000*round(float(gs.pitch),2),
                         '---', name)))
 
@@ -578,206 +642,223 @@ class Airport:
                         rng=float(dme.range)/NM2m
                     else:
                         rng=18
-                    output.nav.append(AptNav(12, Point(float(dme.lat),
-                                                       float(dme.lon)),
-                                             "%6d %05d %3d %11.3f %-5s %s" % (
+                    output.nav.append(AptNav(12, "%10.6f %11.6f %6d %05d %3d %11.3f %-5s %s" % (
                         
-                        m2f*float(dme.alt), float(ils.frequency)*100, rng,
+                        float(dme.lat), float(dme.lon), m2f*float(dme.alt), float(ils.frequency)*100, rng,
                         0, ils.ident, name)))
 
-            if length<4 or width<4:
-                continue	# X-Plane considers size<4ft to be an error.
-                    
-            if len(number)<3: number+='x'
-            for a in aptdat:
-                if a.code==10 and a.text[0:3]==number:
-                    raise FS2XError('Found duplicate definition of runway %s in %s' % (number.replace('x',''), parser.filename))
-            aptdat.append(AptNav(10, loc, "%s %6.2f %6d %04d.%04d %04d.%04d %4d %d%d%d%d%d%d %02d %d %d %4.2f %d %04d.%04d" % (
-                number, heading, length,
-                displaced[0], displaced[1], overrun[0], overrun[1], width,
-                lights[0][0], lights[0][1], lights[0][2],
-                lights[1][0], lights[1][1], lights[1][2],
-                surface, shoulder, markings, smoothing, distance,
-                angle[0]*100, angle[1]*100)))
+            #if length<=1 or width<=1:
+            #    continue	# X-Plane considers size<1m to be an error.
+            #        
+            #if len(number)<3: number+='x'
+            # XXX
+            #for a in aptdat:
+            #    if a.code==100 and a.text[0:3]==number:
+            #        raise FS2XError('Found duplicate definition of runway %s in %s' % (number.replace('x',''), parser.filename))
+
+            if runway.surface=='WATER':
+                txt="%5.2f %d" %(width, distance or markings[0] or markings[1])
+                for end in [0,1]:
+                    txt=txt+(" %-3s %10.6f %11.6f" % (
+                        number[end], loc[end].lat, loc[end].lon))
+                aptdat.append(AptNav(101, txt))
+            else:
+                if output.excluded(cloc):
+                    # Make X-Plane happy by creating runways
+                    surface=15	# transparent
+                    shoulder=centrelights=edgelights=distance=markings[0]=markings[1]=tdzl[0]=tdzl[1]=reil[0]=reil[1]=0 #lights[0]=lights[1]
+                
+                txt="%5.2f %02d %02d %4.2f %d %d %d" % (width, surface, shoulder, smoothing, centrelights, edgelights, distance)
+                for end in [0,1]:
+                    txt=txt+(" %-3s %10.6f %11.6f %5.1f %5.1f %02d %02d %d %d" % (number[end], loc[end].lat, loc[end].lon, displaced[end], overrun[end], markings[end], lights[end], tdzl[end], reil[end]))
+                aptdat.append(AptNav(100, txt))
+                
+            # VASIs
+            for vasi in runway.vasi:
+                if vasi.type in ['PAPI2', 'PAPI4', 'APAP', 'PANEL']:
+                    if vasi.side=='RIGHT':
+                        vtype=3
+                    else:
+                        vtype=2
+                elif vasi.type in ['TRICOLOR', 'TVASI']:
+                    vtype=5
+                else:
+                    vtype=1
+                vangle=float(vasi.pitch)
+                if vasi.end=='PRIMARY':
+                    vheading=heading
+                else:
+                    vheading=(heading+180)%360
+                x=float(vasi.biasX)
+                z=float(vasi.biasZ)
+                # location in MSFS is of rear innermost light
+                if vtype==1:
+                    z=z+75
+                    x=x+1
+                else:
+                    x=x+12
+                if vasi.side=='RIGHT': x=-x
+                h=radians(vheading)
+                vloc=cloc.biased(-cos(h)*x-sin(h)*z, sin(h)*x-cos(h)*z)
+                if True: # not output.excluded(vloc):
+                    aptdat.append(AptNav(21, '%10.6f %11.6f %d %6.2f %3.1f' % (
+                        vloc.lat, vloc.lon, vtype, vheading, vangle)))
 
         # Helipads
         hno=0
         for h in self.helipad:
             loc=Point(float(h.lat), float(h.lon))
             heading=float(h.heading)
-            length=m2f*float(h.length)	# including displaced
-            width=m2f*float(h.width)
-            helisur={'ASPHALT':6, 'BITUMINOUS':6, 'MACADAM':6,
-                     'OIL_TREATED':6, 'TARMAC':6,
-                     'BRICK':7, 'CEMENT':7, 'CONCRETE':7, 'STEEL_MATS':7,
-                     'GRASS':8,
-                     'DIRT':9, 'SAND':9, 'SHALE':9, 'UNKNOWN':9,
-                     'CORAL':9, 'GRAVEL':9,
-                     'CLAY':9, 'PLANKS':9,
-                     'ICE':7, 'SNOW':7, 'WATER':7}
-            surface=helisur[h.surface]
-            hno+=1
-            if hno<9:
-                number=("H%dx" % hno)
+            length=float(h.length)
+            width=float(h.width)
+            if h.type=='NONE':
+                surface=15	# in 8.50 nothing displayed (no H)
             else:
-                number=("H%d" % hno)
+                surface=surfaces[h.surface]
+            markings=0		# in 8.50 yellow circle and H if surface!=15
+            if h.type in ['CIRCLE','SQUARE','MEDICAL']:
+                lights=1	# yellow: other colours not supported in 8.50
+            else:
+                lights=0
 
-            if length<4 or width<4:
-                continue	# X-Plane considers size<4ft to be an error.
+            # helpad marking and lights codes not supported in 8.50
+            #if T(h, 'transparent'):
+            #    surface=15	# in 8.50 nothing displayed (no H)
+            #else:
+            #    surface=surfaces[h.surface]
+            #if h.type=='NONE':
+            #    markings=10
+            #    lights=0
+            #elif h.type=='MEDICAL':
+            #    markings=12	# not supported in 8.50
+            #    lights=3
+            #else:
+            #    markings=10	# not supported in 8.50
+            #    lights=1
 
-            for a in aptdat:
-                if a.code==10 and a.text[0:3]==number:
-                    raise FS2XError('Found duplicate definition of helipad %s in %s' % (number.replace('x',''), parser.filename))
-            aptdat.append(AptNav(10, loc, "%s %6.2f %6d %04d.%04d %04d.%04d %4d 111111 %02d %d %d %4.2f %d %04d.%04d" % (
-                number, heading, length, 0, 0, 0, 0, width,
-                surface, 0, 0, 0.25, 0, 0, 0)))
+            shoulder=0
+            smoothing=0.25
 
-        # Taxiways - build array for easier access
-        nodes = [None for i in range(len(self.taxiwaypoint)+
-                                     len(self.taxiwayparking))]
-        for t in self.taxiwayparking:
-            nodes[int(t.index)]=t
-        for t in self.taxiwaypoint:
-            nodes[int(t.index)]=t
-        holdshorts=[]
+            # X-Plane considers size<1m to be an error.
+            if length<=1: length=20
+            if  width<=1: width =20
+            hno+=1
 
-        obj=maketaxilight()
-        fname=obj.filename[:-4]
-        for t in self.taxiwaypath:
-            if (t.type=='TAXI' and
-                ((not D(t, 'drawSurface')) or T(t, 'drawSurface'))):
-                snode=nodes[int(t.start)]
-                enode=nodes[int(t.end)]
-                start=Point(float(snode.lat),
-                            float(snode.lon))
-                end=Point(float(enode.lat),
-                          float(enode.lon))
-                loc=Point((start.lat+end.lat)/2, (start.lon+end.lon)/2)
-                heading=start.headingto(end)
-                width=m2f*float(t.width)
-                length=0.5*width + m2f*start.distanceto(end)
-                surface=surfaces[t.surface]
-                
-                l=start.distanceto(end)
-                if T(t, 'centerLineLighted') and l>taxilightspacing/8:
-                    output.objdat[fname]=[obj]
-                    if l<taxilightspacing/2:
-                        l=start.distanceto(end)	# Just do one in the middle
-                    else:
-                        l=l-taxilightspacing/2
-                    n=1+int(l/taxilightspacing)
-                    (x,y,z)=Matrix().headed(
-                        start.headingto(end)).transform(0,0,l/n)
-                    for j in range(n):
-                        loc=start.biased(x*(j+0.5),z*(j+0.5))
-                        output.objplc.append((loc, 0, 1, fname, 1))
+            #for a in aptdat:
+            #    if a.code==10 and a.text[0:3]==number:
+            #        raise FS2XError('Found duplicate definition of helipad %s in %s' % (number.replace('x',''), parser.filename))
+            if output.excluded(loc):
+                # Make X-Plane happy by creating runways
+                surface=15	# transparent
+                markings=shoulder=lights=0
+            aptdat.append(AptNav(102, "H%0d %10.6f %11.6f %6.2f %4.2f %4.2f %02d %02d %02d %4.2f %d" % (
+                hno, loc.lat, loc.lon, heading, length, width,
+                surface, markings, shoulder, smoothing, lights)))
 
-                if length<4 or width<4:
-                    continue	# X-Plane considers size<4ft to be an error.
-                
-                dupl=False
-                for a in aptdat:
-                    if a.code==10 and loc.lat==a.loc.lat and loc.lon==a.loc.lon:
-                        output.log('Skipping duplicate of taxiway at (%10.6f, %11.6f) in file %s' % (loc.lat, loc.lon, parser.filename))
-                        dupl=True
-                        break
-                if dupl:
-                    continue
-
-                if T(t, 'leftEdgeLighted') or T(t, 'rightEdgeLighted'):
-                    lights=6
-                else:
-                    lights=1
-                # XXX can't get hold points to work
-                if (0 and snode.type=='HOLD_SHORT' and
-                    surface in [1,2] and not snode in holdshorts):
-                    surface+=9
-                    if D(snode,'orientation') and snode.orientation=='REVERSE':
-                        heading=(heading+180) % 360.0
-                aptdat.append(AptNav(10, loc, "%s %6.2f %6d %04d.%04d %04d.%04d %4d 1%d11%d1 %02d %d %d %4.2f %d %04d.%04d" % (
-                    'xxx', heading, length, 0, 0, 0, 0, width,
-                    lights, lights, surface, 0, 0, 0.25, 0, 0, 0)))
-
-
-        # Aprons
-        # Just do bounding box aligned with main (first) runway
+        # Align aprons and taxiway grain with main (first) runway
         if self.runway:
-            heading=float(self.runway[0].heading)%180
-            rot=Matrix().headed(-heading)
-            back=Matrix().headed(heading)
+            surfaceheading=float(self.runway[0].heading)%180
         else:
-            heading=0
+            surfaceheading=0
+        
+        # Aprons - come before taxiways so that taxiways overlay them
         for a in self.aprons:
             for apron in a.apron:
-                if (not D(apron, 'drawSurface')) or T(apron, 'drawSurface'):
+                if (T(apron, 'drawSurface') or T(apron, 'drawDetail')) and not output.excluded(Point(float(apron.vertex[0].lat), float(apron.vertex[0].lon))):
                     surface=surfaces[apron.surface]
-                    minx=minz=maxint
-                    maxx=maxz=-maxint
+                    smoothing=0.25
+                    if self.runway:
+                        heading=float(self.runway[0].heading)%180
+                    else:
+                        heading=0
+                    aptdat.append(AptNav(110, "%02d %4.2f %6.2f Apron" % (
+                        surface, smoothing, surfaceheading)))
+
+                    l=[]
                     for v in apron.vertex:
                         if D(v, 'lat') and D(v, 'lon'):
                             loc=Point(float(v.lat), float(v.lon))
-                            z=airloc.distanceto(loc)
-                            (x,y,z)=Matrix().headed(airloc.headingto(
-                                loc)).transform(0,0,z)
                         elif D(v, 'biasX') and D(v, 'biasZ'):
-                            x=float(v.biasX)
-                            z=float(v.biasZ)
-                        else:
-                            continue
-                        # Rotate to be in line with runway
-                        if heading:
-                            (x,y,z)=rot.transform(x,0,z)
-                        minx=min(minx,x)
-                        maxx=max(maxx,x)
-                        minz=min(minz,z)
-                        maxz=max(maxz,z)
-                    width =m2f*(maxx-minx)
-                    length=m2f*(maxz-minz)
+                            loc=airloc.biased(float(v.biasX), float(v.biasZ))
+                        l.append(loc)
+                    # sort CCW
+                    area2=0
+                    count=len(l)
+                    for i in range(count):
+                        area2+=(l[i].lon * l[(i+1)%count].lat -
+                                l[(i+1)%count].lon * l[i].lat)
+                    if area2<0: l.reverse()
+                    for loc in l:
+                        aptdat.append(AptNav(111, "%10.6f %11.6f %d" % (
+                            loc.lat, loc.lon, 0)))
+                    aptdat[-1].code=113
 
-                    if length<4 or width<4:
-                        continue	# size<4ft is an error.
+        # Old taxiways
+        if False:
+            for t in self.taxiwaypath:
+                if T(t, 'drawSurface') and t.type not in ["PARKING","RUNWAY","PATH"]:
+                    snode=self.taxiwaypoint[int(t.start)]
+                    enode=self.taxiwaypoint[int(t.end)]
+                    start=Point(float(snode.lat),
+                                float(snode.lon))
+                    end=Point(float(enode.lat),
+                              float(enode.lon))
+                    if output.excluded(start) or output.excluded(end): continue
+                    loc=Point((start.lat+end.lat)/2, (start.lon+end.lon)/2)
+                    heading=start.headingto(end)
+                    width=round(m2f*float(t.width),0)
+                    length=0.5*width + m2f*start.distanceto(end)
+                    surface=surfaces[t.surface]
+                    surface=3	# grass
                     
-                    if heading:
-                        (x,y,z)=back.transform((maxx+minx)/2,0,(maxz+minz)/2)
-                        loc=airloc.biased(x,z)
-                    else:
-                        loc=airloc.biased((maxx+minx)/2, (maxz+minz)/2)
-                        
-                    dupl=False
-                    for a in aptdat:
-                        if a.code==10 and loc.lat==a.loc.lat and loc.lon==a.loc.lon:
-                            output.log('Skipping duplicate of apron at (%10.6f, %11.6f) in file %s' % (loc.lat, loc.lon, parser.filename))
-                            dupl=True
-                            break
-                    if dupl:
-                        continue
-                    aptdat.append(AptNav(10, loc, "%s %6.2f %6d %04d.%04d %04d.%04d %4d 111111 %02d %d %d %4.2f %d %04d.%04d" % (
-                        'xxx', heading, length, 0, 0, 0, 0, width,
-                        surface, 0, 0, 0.25, 0, 0, 0)))
+                    if length<=1 or width<=1:
+                        continue	# X-Plane considers size<1m to be an error.
+                    lights=1
+                    aptdat.append(AptNav(10, "%10.6f %11.6f %s %6.2f %6d %04d.%04d %04d.%04d %4d 1%d11%d1 %02d %d %d %4.2f %d %04d.%04d" % (
+                        loc.lat, loc.lon, 'xxx', heading, length, 0, 0, 0, 0,width,
+                        lights, lights, surface, 0, 0, 0.25, 0, 0, 0)))
+
+        # Taxiways - build arrays for easier access
+        allnodes = [Node(t) for t in self.taxiwaypoint]
+        parkingoffset=len(allnodes)
+        allnodes.extend([Node(t) for t in self.taxiwayparking])
+        alllinks = [Link(p, parkingoffset, self.taxiname) for p in self.taxiwaypath]
+        # replace indices with references, and setup node links
+        i=0
+        while i<len(alllinks):
+            l=alllinks[i]
+            for j in [0,1]:
+                l.nodes[j]=allnodes[l.nodes[j]]
+                # Layout assumes no duplicate links between nodes (eg FS9 EGKA)
+                for l2 in l.nodes[j].links:
+                    if l2.nodes==[l.nodes[0], l.nodes[1]] or l2.nodes==[l.nodes[1], l.nodes[0]]:
+                        #print "duplicate", ident, l.nodes[0].loc, l.nodes[1].loc
+                        break
+                else:
+                    continue
+                break
+            else:
+                for j in [0,1]: l.nodes[j].links.append(l)
+                i+=1
+                continue
+            alllinks.pop(i)
+
+        taxilayout(allnodes, alllinks, surfaceheading, output, aptdat, ident)
 
         # ApronEdgeLights
         for a in self.apronedgelights:
             for e in a.edgelights:
-                v=e.vertex
-                obj=makeapronlight()
-                fname=obj.filename[:-4]
-                if len(v)>1:
-                    for i in range(len(v)-1):
-                        start=Point(float(v[i].lat), float(v[i].lon))
-                        end=Point(float(v[i+1].lat), float(v[i+1].lon))
-                        l=start.distanceto(end)
-                        n=1+int(l/apronlightspacing)
-                        (x,y,z)=Matrix().headed(
-                            start.headingto(end)).transform(0,0,l/n)
-                        for j in range(n):
-                            loc=start.biased(x*j,z*j)
-                            output.objplc.append((loc, 0, 1, fname, 1))
-                # Last one
-                if len(v):
-                    output.objdat[fname]=[obj]
-                    output.objplc.append((Point(float(v[-1].lat),
-                                                float(v[-1].lon)),
-                                          0, 1, fname, 1))
+                if output.excluded(Point(float(e.vertex[0].lat), float(e.vertex[0].lon))): continue
+                aptdat.append(AptNav(120, "Apron edge"))
+                for v in e.vertex:
+                    if D(v, 'lat') and D(v, 'lon'):
+                        loc=Point(float(v.lat), float(v.lon))
+                    elif D(v, 'biasX') and D(v, 'biasZ'):
+                        loc=airloc.biased(float(v.biasX), float(v.biasZ))
+                    aptdat.append(AptNav(111, "%10.6f %11.6f %02d %03d" % (
+                        loc.lat, loc.lon, 3, 102)))
+                aptdat[-1].code=115
+                aptdat[-1].text=aptdat[-1].text[:22]
 
         # Tower view location
         if D(self, 'name'):
@@ -785,111 +866,106 @@ class Airport:
         else:
             view='Tower Viewpoint'
         for tower in self.tower:
-            aptdat.append(AptNav(14, Point(float(tower.lat),float(tower.lon)),
-                                 "%6.2f 0 %s" % (
-                (float(tower.alt)-float(self.alt))*m2f, view)))
+            aptdat.append(AptNav(14, "%10.6f %11.6f %6.2f 0 %s" % (
+                float(tower.lat), float(tower.lon), (float(tower.alt)-float(self.alt))*m2f, view)))
 
         # Ramp startup positions
-        for t in self.taxiwayparking:
-            if D(t, 'lat') and D(t, 'lon'):
-                loc=Point(float(t.lat), float(t.lon))
-            elif D(t, 'biasX') and D(t, 'biasZ'):
-                loc=airloc.biased(float(t.biasX), float(t.biasZ))
-            else:
-                continue
-            # type appears secondary to name
-            parking={'E_PARKING':'East ',
-                     'NE_PARKING':'North East ',
-                     'N_PARKING':'North ',
-                     'NW_PARKING':'North West ',
-                     'SE_PARKING':'South East ',
-                     'S_PARKING':'South ',
-                     'SW_PARKING':'South West ',
-                     'W_PARKING':'West ',
-                     'PARKING':''}
-            types={'RAMP_CARGO':'Cargo ',
-                   'RAMP_GA':'GA ',
-                   'RAMP_GA_LARGE':'GA ',
-                   'RAMP_GA_MEDIUM':'GA ',
-                   'RAMP_GA_SMALL':'GA ',
-                   'RAMP_MIL_CARGO':'Mil cargo ',
-                   'RAMP_MIL_COMBAT':'Military '}
-            if t.name in ['GATE_A', 'GATE_B', 'GATE_C', 'GATE_D', 'GATE_E',
-                          'GATE_F', 'GATE_G', 'GATE_H', 'GATE_I', 'GATE_J',
-                          'GATE_K', 'GATE_L', 'GATE_M', 'GATE_N', 'GATE_O',
-                          'GATE_P', 'GATE_Q', 'GATE_R', 'GATE_S', 'GATE_T',
-                          'GATE_U', 'GATE_V', 'GATE_W', 'GATE_X', 'GATE_Y',
-                          'GATE_Z']:
-                name='Gate '+t.name[5]
-            elif t.name=='GATE':
-                name='Gate'
-            elif t.name=='DOCK':
-                name='Dock'
-            elif t.name in parking:
-                name=parking[t.name]
-                if t.type in types:
-                    name+=types[t.type]
-                name+='Ramp'
+        startups=[]
+        for n in allnodes:
+            if n.startup:
+                startups.append(AptNav(15, "%10.6f %11.6f %6.2f %s" % (
+                    n.loc.lat, n.loc.lon, n.heading, n.startup)))
+        startups.sort(lambda x,y: cmp(x.text[30:], y.text[30:]))
+        aptdat.extend(startups)
 
-            # No name
-            elif t.type in ['GATE', 'GATE_HEAVY', 'GATE_MEDIUM', 'GATE_SMALL']:
-                name='Gate'
-            elif t.type=='DOC_GA':
-                name='Dock'
-            elif t.type in types:
-                name=types[t.type]+' Ramp'
+        # Tower attached objects, beacons and windsocks
+        for tower in self.tower:
+            for obj in tower.sceneryobject:
+                obj.export(parser, output, aptdat)
 
-            # wtf
+        # Taxiway signs
+        for t in self.taxiwaysign:
+            loc=Point(float(t.lat), float(t.lon))
+            if output.excluded(loc): continue
+            if t.justification=='LEFT':
+                heading=(float(t.heading)-90) % 360
             else:
-                name='Ramp'
+                heading=(float(t.heading)+90) % 360
+            size=2
+            smap={'SIZE1':1,'SIZE2':2,'SIZE3':3,'SIZE4':4,'SIZE5':5}
+            tmap={'l':'{@L}', 'd':'{@Y}', 'm':'{@R}', 'r':'{@R}'}
+            lmap={' ':'_', '>':'{^r}', '^':'{^u}', "'":'{^ru}', '<':'{^l}', 'v':'{^d}', '`':'{^lu}', '/':'{^ld}', '\\':'{^rd}', '[':'', ']':'', 'x':'{no-entry}', '#':'{critical}', '=':'{safety}', '.':'*', '|':'|', '{':'[', '}':']'}
+            if D(t, 'size') and t.size in smap: size=smap[t.size]
+            label=t.label
+            text=''
+            while label:
+                # type
+                if label[0] in tmap:
+                    text+=tmap[label[0]]
+                else:
+                    text+='{@Y}'	# information: should be black on white
+                label=label[1:]
+                while label:
+                    if label.startswith(']['):
+                        text+='|'
+                        label=label[2:]
+                    elif label[0] in 'ldmiru':
+                        break		# expect new type
+                    elif label.startswith('&gt;'):
+                        text+='{^r}'
+                        label=label[4:]
+                    elif label.startswith('&lt;'):
+                        text+='{^l}'
+                        label=label[4:]
+                    elif label.startswith('&apos;'):
+                        text+='{^ru}'
+                        label=label[6:]
+                    elif label[0] in lmap:
+                        text+=lmap[label[0]]
+                        label=label[1:]
+                    else:
+                        text+=label[0]
+                        label=label[1:]
                 
-            if int(t.number):
-                name=name+(" %d" % int(t.number))
-            aptdat.append(AptNav(15, loc, "%6.2f %s" % (
-                float(t.heading), name)))
-        
+            aptdat.append(AptNav(20, "%10.6f %11.6f %6.2f %d %d %s" % (
+                loc.lat, loc.lon, heading, 0, size, text)))
+
         # ATC
         codes={'AWOS':50, 'ASOS':50, 'ATIS':50, 'FSS':50,
                'UNICOM':51, 'MULTICOM':51, 'CTAF':51,
-               'CLEARANCE':52,
+               'CLEARANCE':52, 'CLEARANCE_PRE_TAXI':52, 'REMOTE_CLEARANCE_DELIVERY':52,
                'GROUND':53,
                'TOWER':54, 'CENTER':54,
                'APPROACH':55,
                'DEPARTURE':56}
-        abbrv={'CLEARANCE':'CLNC',
+        abbrv={'CLEARANCE':'CLD', 'CLEARANCE_PRE_TAXI':'CLD PRE-TAXI', 'REMOTE_CLEARANCE_DELIVERY':'CLD',
+               'UNICOM':'UNIC',
+               'MULTICOM':'MULT',
                'GROUND':'GND',
                'TOWER':'TWR',
-               'CENTER':'CTR',
+               'CENTER':'CNTR',
                'APPROACH':'APP',
                'DEPARTURE':'DEP'}
+        coms=[]
         for com in self.com:
-            if abbrv.has_key(com.type):
+            if com.type=='APPROACH' and com.name.endswith(' DIRECTOR'):
+                ctype='DIR'
+                com.name=com.name[:-9]
+            elif com.type=='CLEARANCE' and com.name.endswith(' DELIVERY'):
+                ctype='CLD'
+                com.name=com.name[:-9]
+            elif com.type in abbrv:
                 ctype=abbrv[com.type]
             else:
                 ctype=com.type
-            aptdat.append(AptNav(codes[com.type], None, "%5d %s %s" % (
+            coms.append(AptNav(codes[com.type], "%5d %s %s" % (
                 float(com.frequency)*100, com.name, ctype)))
+        coms.sort()
+        aptdat.extend(coms)
 
         for n in self.ndb:
             # Call top-level Ndb class
-            attrs={}
-            for k in dir(n):
-                if k[:1]!='_':
-                    attrs[k]=eval('n.'+k)
-            ndb=Ndb(attrs)
-            ndb.export(output)
-
-        for t in self.taxiwaysign:
-            loc=Point(float(t.lat), float(t.lon))
-            heading=float(t.heading)
-            scale=1
-            # Sizes are a guess. What does justification do?
-            smap={'SIZE1':0.67,'SIZE2':0.8,'SIZE3':1,'SIZE4':1.25,'SIZE5':1.5}
-            if D(t, 'size') and t.size in smap:
-                scale=smap[t.size]
-            obj=maketaxisign(t.label)
-            output.objdat[obj.filename[:-4]]=[obj]
-            output.objplc.append((loc, heading, 0, obj.filename[:-4], scale))
+            ndb.export(parser, output)
 
 
 class Vor:
@@ -906,9 +982,9 @@ class Vor:
     # Export to nav.dat
     def export(self, parser, output):
         if self.dme:
-            dtype='VOR'
-        else:
             dtype='VOR-DME'
+        else:
+            dtype='VOR'
         if D(self, 'name'):
             name=self.name
             if name[-3:].upper()!=dtype: name+=(' '+dtype)
@@ -923,47 +999,19 @@ class Vor:
         else: # 'LOW'
             rng=40
         if (not D(self, 'nav') or T(self, 'nav')) and not T(self, 'dmeOnly'):
-            output.nav.append(AptNav(3, Point(float(self.lat),float(self.lon)),
-                                     "%6d %05d %3d %11.3f %-5s %s" % (
+            output.nav.append(AptNav(3, "%10.6f %11.6f %6d %05d %3d %11.3f %-5s %s" % (
+                float(self.lat), float(self.lon),
                 m2f*float(self.alt), float(self.frequency)*100, rng,
                 0, self.ident, name)))
 
         for dme in self.dme:
             if D(self, 'range'):
                 rng=float(dme.range)/NM2m
-            output.nav.append(AptNav(12, Point(float(dme.lat),float(dme.lon)),
-                                     "%6d %05d %3d %11.3f %-5s %s" % (
+            output.nav.append(AptNav(12, "%10.6f %11.6f %6d %05d %3d %11.3f %-5s %s" % (
+                float(dme.lat), float(dme.lon),
                 m2f*float(dme.alt), float(self.frequency)*100, rng,
                 0, self.ident, name)))
            
-
-class Ndb:
-    def __init__(self, attrs):
-        for k, v in attrs.iteritems():
-            exec("self.%s=v" % k)
-
-    # Export to nav.dat
-    def export(self, parser, output):
-        if D(self, 'name'):
-            name=self.name
-            if name[-3:].upper()!='NDB': name+=' NDB'
-        else:
-            name=self.ident+' NDB'
-        if D(self, 'range'):
-            rng=float(self.range)/NM2m
-        elif self.type=='COMPASS_POINT':
-            rng=15
-        elif self.type=='MH':
-            rng=25
-        elif self.type=='HH':
-            rng=75
-        else:	   # 'H'
-            rng=50
-        output.nav.append(AptNav(2, Point(float(self.lat), float(self.lon)),
-                                 "%6d %-5d %3d %11.3f %-5s %s" % (
-            m2f*float(self.alt), float(self.frequency), rng,
-            0, self.ident, name)))
-        
 
 class Marker:
     def __init__(self, attrs):
@@ -988,8 +1036,8 @@ class Marker:
             if name[-3:].upper()!=mtype: name+=(' '+mtype)
         else:
             name=self.ident+' '+mtype
-        output.nav.append(AptNav(code, Point(float(self.lat),float(self.lon)),
-                                 "%6d %05d %3d %11.3f %-5s %s" % (
+        output.nav.append(AptNav(code, "%10.6f %11.6f %6d %05d %3d %11.3f %-5s %s" % (
+            float(self.lat), float(self.lon),
             m2f*float(self.alt), 0, 0,
             float(self.heading), '---', name)))
 
@@ -1003,8 +1051,7 @@ class ModelData:
         # Just clean up MDL files in %TMP%
         if D(self, 'sourceFile'):
             tmp=join(gettempdir(), self.sourceFile)
-            if exists(tmp):
-                unlink(tmp)
+            if exists(tmp): unlink(tmp)
 
 
 class Parse:

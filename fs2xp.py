@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 #
-# Copyright (c) 2005 Jonathan Harris
+# Copyright (c) 2005,2006,2007 Jonathan Harris
 # 
 # Mail: <x-plane@marginal.org.uk>
 # Web:  http://marginal.org.uk/x-planescenery/
@@ -49,7 +49,7 @@ def log(msg):
     logfile.close()
 
 def usage():
-    exit('\nUsage:\t%s [options] "MSFS scenery location" "X-Plane scenery location"\noptions:\t-l "Additional MSFS library location"\n\t\t-s Spring|Summer|Autumn|Winter\n\t\t-x\n' % basename(argv[0]))
+    exit('\nUsage:\tfs2xp [options] "MSFS scenery location" "X-Plane scenery location"\noptions:\t-l "Additional MSFS library location"\n\t\t-s Spring|Summer|Autumn|Winter\n\t\t-x\n')
 
 
 # Path validation
@@ -98,7 +98,7 @@ if dumplib:
 else:
     fspath=abspath(args[0])
 xppath=abspath(args[1])
-logname=abspath(join(xppath, 'errors.txt'))
+logname=abspath(join(xppath, 'summary.txt'))
         
 
 # Main
@@ -119,12 +119,15 @@ except FS2XError, e:
 except:
     status(-1, 'Internal error')
     print_exc()
-    if not isdir(dirname(logname)):
-        mkdir(dirname(logname))
-    logfile=file(logname, 'at')
-    logfile.write('\nInternal error\n')
-    print_exc(None, logfile)
-    logfile.close()
-    status(-1, 'Displaying error log "%s"' % logname)
-    viewer(logname)
+    if not debug:
+        if not isdir(dirname(logname)):
+            mkdir(dirname(logname))
+        logfile=file(logname, 'at')
+        logfile.write('\nInternal error\n')
+        print_exc(None, logfile)
+        logfile.close()
+        status(-1, 'Displaying error log "%s"' % logname)
+        viewer(logname)
+    else:
+        print
     exit(1)

@@ -1,0 +1,2 @@
+#!/bin/sh
+exec -a fs2xp python -OO `dirname $0`/../lib/fs2xplane/fs2xp.py "$1" "$2" "$3"
