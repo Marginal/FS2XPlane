@@ -185,7 +185,7 @@ class SceneryObject:
                 parser.gencount += 1
                 name="%s-generic-%d.obj" % (asciify(parser.filename[:-4]),
                                             parser.gencount)
-                obj=makegenquad(name, none,
+                obj=makegenquad(name, None,
                                 scale*float(m.sizeX), scale*float(m.sizeZ),
                                 0, 0, heights, rtexs, roof)
                 output.objdat[name]=[obj]
@@ -761,38 +761,6 @@ class Airport:
         else:
             surfaceheading=0
         
-        # Aprons - come before taxiways so that taxiways overlay them
-        for a in self.aprons:
-            for apron in a.apron:
-                if (T(apron, 'drawSurface') or T(apron, 'drawDetail')) and not output.excluded(Point(float(apron.vertex[0].lat), float(apron.vertex[0].lon))):
-                    surface=surfaces[apron.surface]
-                    smoothing=0.25
-                    if self.runway:
-                        heading=float(self.runway[0].heading)%180
-                    else:
-                        heading=0
-                    aptdat.append(AptNav(110, "%02d %4.2f %6.2f Apron" % (
-                        surface, smoothing, surfaceheading)))
-
-                    l=[]
-                    for v in apron.vertex:
-                        if D(v, 'lat') and D(v, 'lon'):
-                            loc=Point(float(v.lat), float(v.lon))
-                        elif D(v, 'biasX') and D(v, 'biasZ'):
-                            loc=airloc.biased(float(v.biasX), float(v.biasZ))
-                        l.append(loc)
-                    # sort CCW
-                    area2=0
-                    count=len(l)
-                    for i in range(count):
-                        area2+=(l[i].lon * l[(i+1)%count].lat -
-                                l[(i+1)%count].lon * l[i].lat)
-                    if area2<0: l.reverse()
-                    for loc in l:
-                        aptdat.append(AptNav(111, "%10.6f %11.6f %d" % (
-                            loc.lat, loc.lon, 0)))
-                    aptdat[-1].code=113
-
         # Old taxiways
         if False:
             for t in self.taxiwaypath:
@@ -844,6 +812,38 @@ class Airport:
             alllinks.pop(i)
 
         taxilayout(allnodes, alllinks, surfaceheading, output, aptdat, ident)
+
+        # Aprons - come after taxiways so that taxiways overlay them
+        for a in self.aprons:
+            for apron in a.apron:
+                if (T(apron, 'drawSurface') or T(apron, 'drawDetail')) and not output.excluded(Point(float(apron.vertex[0].lat), float(apron.vertex[0].lon))):
+                    surface=surfaces[apron.surface]
+                    smoothing=0.25
+                    if self.runway:
+                        heading=float(self.runway[0].heading)%180
+                    else:
+                        heading=0
+                    aptdat.append(AptNav(110, "%02d %4.2f %6.2f Apron" % (
+                        surface, smoothing, surfaceheading)))
+
+                    l=[]
+                    for v in apron.vertex:
+                        if D(v, 'lat') and D(v, 'lon'):
+                            loc=Point(float(v.lat), float(v.lon))
+                        elif D(v, 'biasX') and D(v, 'biasZ'):
+                            loc=airloc.biased(float(v.biasX), float(v.biasZ))
+                        l.append(loc)
+                    # sort CCW
+                    area2=0
+                    count=len(l)
+                    for i in range(count):
+                        area2+=(l[i].lon * l[(i+1)%count].lat -
+                                l[(i+1)%count].lon * l[i].lat)
+                    if area2<0: l.reverse()
+                    for loc in l:
+                        aptdat.append(AptNav(111, "%10.6f %11.6f %d" % (
+                            loc.lat, loc.lon, 0)))
+                    aptdat[-1].code=113
 
         # ApronEdgeLights
         for a in self.apronedgelights:

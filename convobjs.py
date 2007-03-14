@@ -32,7 +32,7 @@ from os.path import join
 from convutil import Object, rgb2uv
 
 # X-Plane autonmatically generates versions of these from nav.dat data 
-ignorestock=['air_localizerantenna01', 'ndb','sco_gen_checkershed','sco_gen_ilstransmitter']
+ignorestock=['air_localizerantenna01', 'air_ndb_dmeantenna','air_ndb_dmeshack','air_ndb_dmetower','gen_dme','gen_ndb01','ndb','sco_gen_checkershed','sco_gen_ilstransmitter','sco_gen_radarshackb','sco_gen_vor03','sco_gen_vor03dme','sco_gen_vorsmall','sco_gen_vorsmall2','sco_gen_vorsmall2dme','sco_gen_vorsmalldme']
 
 def makeapronlight():
     vlight=[(0,1,0, 0.3125,0.3125,1)]
@@ -43,15 +43,15 @@ def makeapronlight():
     idx=[2,1,0,3,2,0]
     return Object("ApronLight.obj", "ApronEdgeLights",
                   'Resources/FS2X-ApronLight.png', None, None,
-                  vlight, [], vt, idx,
-                  [([(1,1,1),(0,0,0),(0,0,0)],0,6,False)], 2)
+                  vlight, [], [], vt, idx,
+                  [([(1,1,1),(0,0,0),(0,0,0),0],0,6,False)], 2)
     
 
 def maketaxilight():
     vlight=[(0,0.1,0, 0.75,0.75,0)]
     return Object("TaxiwayLight.obj",
                   "TaxiwayPath.centerLineLighted", None, None, None,
-                  vlight, [], [], [], [], 0)
+                  vlight, [], [], [], [], [], 0)
     
 
 def maketaxisign(label):
@@ -239,10 +239,10 @@ def maketaxisign(label):
         fname=fname.replace(c,'_')
     fname="TaxiwaySign-%s.obj" % fname
     return Object(fname, 'TaxiwaySign "%s"' % label,
-                  'Resources/FS2X-Taxi.png', None, None, [], [], vt, idx,
-                  [([(1,1,1),(0,0,0),(0,0,0)],
+                  'Resources/FS2X-Taxi.png', None, None, [], [], [], vt, idx,
+                  [([(1,1,1),(0,0,0),(0,0,0),0],
                     0,frameilen,False),
-                   ([(1,1,1),(0,0,0),(1,1,1)],
+                   ([(1,1,1),(0,0,0),(1,1,1),0],
                     frameilen,len(idx)-frameilen,False)], 0)
 
 
@@ -250,11 +250,11 @@ def makestock(output, uid, name):
     libobjs={}
     if name in libobjs:
         return Object(libobjs[name], "X-Plane library object", None,None,None,
-                      None, None, None, None, None, 0)
+                      None, None, None, None, None, None, 0)
     
     objname=name+'.obj'
     #defaultobj=Object(objname, "Placeholder for built-in object %s (%s)" %
-    #                  (uid, name), None, None, None, [], [], [], [], [], 0)
+    #                  (uid, name), None, None, None, [], [], [], [], [], [],0)
     if not objname in listdir('Resources'): return None
 
     tex=None
@@ -283,8 +283,8 @@ def makestock(output, uid, name):
                         int(tokens[10])])
     obj.close()
     return Object(objname, "(c) Jonathan Harris 2007. http://creativecommons.org/licenses/by-sa/2.5/",
-                  tex, None, None, [], [], vt, idx,
-                  [([(1,1,1),(0,0,0),(0,0,0)], 0, len(idx), False)], 0)
+                  tex, None, None, [], [], [], vt, idx,
+                  [([(1,1,1),(0,0,0),(0,0,0),0], 0, len(idx), False)], 0)
 
 
 def makegenquad(name, layer, x, z, incx, incz, heights, texs, roof):
@@ -410,8 +410,8 @@ def makegenquad(name, layer, x, z, incx, incz, heights, texs, roof):
         
     if layer>=32: layer=None
     return Object(name, "Generic building", 'Resources/FS2X-palette.png', None,
-                  layer, [], [], vt, idx,
-                  [([(1,1,1),(0,0,0),(0,0,0)], 0, len(idx), False)], 0)
+                  layer, [], [], [], vt, idx,
+                  [([(1,1,1),(0,0,0),(0,0,0),0], 0, len(idx), False)], 0)
 
 
 def makegenmulti(name, layer, sides, x, z, heights, texs):
@@ -481,8 +481,8 @@ def makegenmulti(name, layer, sides, x, z, heights, texs):
 
     if layer>=32: layer=None
     return Object(name, "Generic building", 'Resources/FS2X-palette.png', None,
-                  layer, [], [], vt, idx,
-                  [([(1,1,1),(0,0,0),(0,0,0)], 0, len(idx), False)], 0)
+                  layer, [], [], [], vt, idx,
+                  [([(1,1,1),(0,0,0),(0,0,0),0], 0, len(idx), False)], 0)
 
 
 

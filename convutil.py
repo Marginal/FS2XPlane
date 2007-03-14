@@ -59,6 +59,8 @@ twopi=pi+pi
 m2f=3.28084	# 1 metre [ft]
 NM2m=1852	# 1 international nautical mile [m]
 
+groundfudge=0.175	# arbitrary: 0.124 used in UNNT, 0.172 in KBOS
+
 complexities=3
 
 apronlightspacing=60.96	# [m] = 200ft
@@ -88,6 +90,25 @@ else:	       # ['cp1252', 'mac_roman', 'latin1', 'iso8859_1', 'iso8859_15']:
     # Western / Latin-1
     asciitbl='[|]-_E ,f_.||^%S<O Z  \'\'"".--- s>o zY !cLxY|S"ca<--r d+23\'uP. 10>___?AAAAAAACEEEEIIIIDNOOOOO*OUUUUYPsaaaaaaaceeeeiiiidnooooo/ouuuuypy'
 
+
+# smoke effects
+effects={'cntrl_bldstm':	('smoke_white', 2.5),	# avg of next 3
+         'fx_bldstm_sml':	('smoke_white', 1.5),
+         'fx_bldstm_med':	('smoke_white', 2.0),
+         'fx_bldstm_lrg':	('smoke_white', 3.5),
+         'cntrl_smokestack':	('smoke_black', 3.5),	# avg of next 2
+         'fx_smokestack':	('smoke_black', 3.5),
+         'fx_smokestack2':	('smoke_black', 3.5),
+         'fx_smkpuff_s':	('smoke_black', 2.0),
+         'fx_smkpuff_m':	('smoke_black', 3.0),
+         'fx_smoke_w':		('smoke_white', 1.5),
+         'fx_steam1':		('smoke_white', 3.0),
+         'fx_steam2':		('smoke_white', 3.0),}
+
+# 2.3 version of case-insensitive sort
+# 2.4-only version is faster: sort(cmp=lambda x,y: cmp(x.lower(), y.lower()))
+def sortfolded(seq):
+    seq.sort(lambda x,y: cmp(x.lower(), y.lower()))
 
 def complexity(fscmplx):
     mapping=[-1,0,0,1,2,2]
@@ -141,8 +162,23 @@ class Point:
     def __str__(self):
         return "%10.6f %11.6f" % (self.lat, self.lon)
 
-    def equals(self, other):
-        return round(self.lat,6)==round(other.lat,6) and round(self.lon,6)==round(other.lon,6)
+    def __add__(self, other):
+        return Point(self.lat+other.lat, self.lon+other.lon)
+
+    def __sub__(self, other):
+        return Point(self.lat-other.lat, self.lon-other.lon)
+
+    def __mul__(self, m):
+        #if not type(m) in int, float: return NotImplemented
+        return Point(self.lat*m, self.lon*m)
+
+    def equals(self, other, precision=6):
+        return round(self.lat,precision)==round(other.lat,precision) and round(self.lon,precision)==round(other.lon,precision)
+
+    def round(self, precision=6):
+        self.lat=round(self.lat,precision)
+        self.lon=round(self.lon,precision)
+        return self
 
     #def __cmp__(self, other):
     #    return self.lat==other.lat and self.lon==other.lon
@@ -278,7 +314,7 @@ class AptNav:
 
 class Object:
     def __init__(self, filename, comment, tex, lit, layer,
-                 vlight, vline, vt, idx, mattri, poly):
+                 vlight, vline, veffect, vt, idx, mattri, poly):
         self.filename=filename
         self.comment=comment
         self.tex=tex
@@ -291,6 +327,7 @@ class Object:
             self.surface=False
         self.vlight=vlight
         self.vline=vline
+        self.veffect=veffect
         self.vt=vt
         self.idx=idx
         self.mattri=mattri	# [((d,s,e), start, count, dblsided)]
@@ -305,6 +342,7 @@ class Object:
                 #self.surface==o.surface and	# redundant
                 self.vlight==o.vlight and
                 self.vline==o.vline and
+                self.veffect==o.veffect and
                 self.vt==o.vt and
                 self.idx==o.idx and
                 self.mattri==o.mattri and
@@ -400,13 +438,18 @@ class Object:
                 objfile.write("ATTR_poly_os\t%d\n\n" % self.poly)
             else:
                 objfile.write("ATTR_no_blend\n\n")
-            if self.surface:
-                objfile.write("ATTR_hard\tconcrete\n")
+            #if self.surface:
+            #    objfile.write("ATTR_hard\tconcrete\n")
 
+            if len(self.vlight)<=1 and len(self.veffect)<=1 and not self.vline and not self.vt:
+                # X-Plane 8.x optimises single lights away otherwise
+                objfile.write("ATTR_LOD\t0 10000\n")
+
+            for (x,y,z,effect,s) in self.veffect:
+                objfile.write("%s\t%8.3f %8.3f %8.3f\t%6.3f\n" % (effect, x, y, z, s))
+            if self.veffect: objfile.write("\n")                
+                
             if self.vlight:
-                if len(self.vlight)==1 and not self.vline and not self.vt:
-                    # X-Plane 8.30 optimises single lights away otherwise
-                    objfile.write("ATTR_LOD\t0 16000\n")
                 objfile.write("LIGHTS\t0 %d\n" % len(self.vlight))
             if self.vline:
                 # Infer number of line indices from first tri index
@@ -422,17 +465,25 @@ class Object:
             a=(1.0,1.0,1.0)
             s=(0.0,0.0,0.0)
             e=(0.0,0.0,0.0)
+            p=0.0
             d=False
             for (m, start, count, dbl) in self.mattri:
                 if dbl and not d:
-                    objfile.write("\nATTR_no_cull\n")
+                    objfile.write("ATTR_no_cull\n")
                 elif d and not dbl:
-                    objfile.write("\nATTR_cull\n")
+                    objfile.write("ATTR_cull\n")
                 d=dbl
                 if e!=m[2]:
                     e=(er,eg,eb)=m[2]
-                    objfile.write("\nATTR_emission_rgb\t%5.3f %5.3f %5.3f\n" %(
+                    objfile.write("ATTR_emission_rgb\t%5.3f %5.3f %5.3f\n" %(
                         er,eg,eb))
+                if s!=m[1]:
+                    s=(sr,sg,sb)=m[1]
+                    objfile.write("ATTR_specular_rgb\t%5.3f %5.3f %5.3f\n" %(
+                        sr,sg,sb))
+                if p!=m[3]:
+                    p=m[3]
+                    objfile.write("ATTR_shiny_rat\t%5.3f\n" % p)
                 objfile.write("TRIS\t%d %d\n" % (start, count))
     
             objfile.close()

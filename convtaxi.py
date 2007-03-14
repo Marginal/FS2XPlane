@@ -29,6 +29,15 @@ from math import sin, cos, pi, radians, degrees
 from os.path import join
 from sys import maxint
 
+from OpenGL.GL import GL_LINE_LOOP, GL_TRUE
+from OpenGL.GLU import *
+try:
+    # apparently older PyOpenGL version didn't define gluTessVertex
+    gluTessVertex
+except NameError:
+    from OpenGL import GLU
+    gluTessVertex = GLU._gluTessVertex
+
 from convutil import AptNav, Point
 
 twopi=pi+pi
@@ -179,11 +188,11 @@ def edgefeature(link1, end1, link2, end2):
     code=''
     if link1.type!='VEHICLE' and link2.type!='VEHICLE':
         if link1.lines[end1]=='SOLID' or link2.lines[end2]=='SOLID':
-            code='03'
+            code='53'
         elif link1.lines[end1]=='SOLID_DASHED' or link2.lines[end2]=='SOLID_DASHED':
-            code='05'	# ?
+            code='55'	# ?
         elif link1.lines[end1]=='DASHED' or link2.lines[end2]=='DASHED':
-            code='09'
+            code='59'
     else:	# vehicle
         if link1.lines[end1]=='SOLID' or link2.lines[end2]=='SOLID':
             code='20'
@@ -194,43 +203,30 @@ def edgefeature(link1, end1, link2, end2):
     return code
 
 
-def follow(subgraph, ccw, out, output, ident):
-    dump=(output.debug and ident=="NZCH")
-    if dump:
-        nodesfile=open(join(output.xppath, ident+"_nodes.txt"), "at")
-        interfile=open(join(output.xppath, ident+"_inter.txt"), "at")
-        pointfile=open(join(output.xppath, ident+"_point.txt"), "at")
-        bezptfile=open(join(output.xppath, ident+"_bezpt.txt"), "at")
+def follow(subgraph, ccw, allpoints, dump):
 
-    # Find nodes & links
-    # start with westmost (this is more nodes than a convex hull)
-    west=subgraph[0].nodes[0]	# a random node
+    if dump: print "ccw=", ccw, "count=",len(subgraph)
+
+    # Find nodes & links (this is more nodes than a convex hull)
+    # start with westmost
+    start=subgraph[0].nodes[0]	# a random node
     for link in subgraph:
         for n in [link.nodes[0],link.nodes[1]]:
-            if n.loc.lon<west.loc.lon:
-                west=n
-    nodes=[west]
-        
-    # Is this a stub node or in a loop?
-    loop=0
-    for link in nodes[0].links:
-        if link in subgraph:
-            loop+=1
-    if dump: print ident, "ccw=", ccw, "count=",len(subgraph), "loop=", loop
+            if n.loc.lon<start.loc.lon: start=n
+    nodes=[start]
     
-    # Stop when we get back to first node the loop'th time
+    # Stop when we get back to first node
     n=nodes[0]
-    if ccw:
-        lastheading=270	# heading to last node
-    else:
-        lastheading=90
-        loop=1
-    if dump: print n.loc, "node", lastheading
+    lastheading=270	# heading to last node
+    #if dump: print n.loc, "node", lastheading
     while True:
         # Ack - O(n3) algorithm?!
         bestnode=None
         bestlink=None
-        bestheading=lastheading-360
+        if not ccw and len(nodes)==1:
+            bestheading=lastheading+360
+        else:
+            bestheading=lastheading-360
         #if not n.links: break	# node has no links - ignore
         for link in n.links:
             # find rightmost link
@@ -243,8 +239,13 @@ def follow(subgraph, ccw, out, output, ident):
                     o=link.nodes[1-end]
                     h=n.loc.headingto(o.loc)
                     if h>=lastheading: h=h-360
-                    if dump: print o.loc, h
-                    if h>bestheading:
+                    #if dump: print o.loc, h
+                    if not ccw and len(nodes)==1:
+                        if h<bestheading:
+                            bestnode=o
+                            bestlink=link
+                            bestheading=h
+                    elif h>bestheading:
                         bestnode=o
                         bestlink=link
                         bestheading=h
@@ -252,18 +253,20 @@ def follow(subgraph, ccw, out, output, ident):
         if not bestnode:
             # On a spur - backtrack
             bestnode=nodes[nodes.index(n)-1]
-        if bestnode==nodes[0]:
-            if dump: print bestnode.loc, "(back)", loop
-            loop-=1
-            if not loop: break		# back at start
+        if len(nodes)>1 and n==nodes[0] and bestnode==nodes[1]:
+            # back at start (and not heading in different direction)
+            nodes.pop()
+            #if dump: print "(stop)"
+            break
         nodes.append(bestnode)
         lastheading=bestnode.loc.headingto(n.loc)
-        if dump: print bestnode.loc, "node", lastheading
+        #if dump: print bestnode.loc, "node", lastheading
         n=bestnode
 
     #if len(nodes)==1: continue	# node has no links - ignore
 
-    points=[]
+    allpoints.append([])
+    points=allpoints[-1]
     lastnode=nodes[-1]
     for nodeno in range(len(nodes)):
         n=nodes[nodeno]
@@ -282,11 +285,14 @@ def follow(subgraph, ccw, out, output, ident):
                     if h>lastheading: h=h-twopi
                     elinks.append((o,h,link))
                     break
-        elinks.sort(lambda (o1,h1,l1),(o2,h2,l2): cmp(h2,h1)) # largest
+        if not ccw and nodeno==0:
+            elinks.sort(lambda (o1,h1,l1),(o2,h2,l2): cmp(h1,h2))
+        else:
+            elinks.sort(lambda (o1,h1,l1),(o2,h2,l2): cmp(h2,h1)) # largest first
         if dump:
             print n.loc, "node, lastheading=", degrees(lastheading)
             for (n1,h1,link1) in elinks: print n1.loc, degrees(h1)
-        if dump: nodesfile.write("%s\t%s\n" % (round(n.loc.lon,6), round(n.loc.lat,6)))
+        if dump: dump.write("%.6f\t%.6f\n" % (n.loc.lon, n.loc.lat))
 
         # Accumulate points. Can't work out bezier points 'til have spacing.
         for i in range(len(elinks)):
@@ -312,6 +318,9 @@ def follow(subgraph, ccw, out, output, ident):
             code1=edgefeature(link1, end1, link2, end2)
             code2=edgefeature(link2, end2, link2, end2)
 
+            straight=(h1-pi-h2)%twopi
+            straight=straight<0.1 or straight>twopi-0.1	# arbitrary ~5degrees
+            
             if n1==n2:
                 # Stub
                 w=link1.width/2
@@ -326,93 +335,111 @@ def follow(subgraph, ccw, out, output, ident):
             elif not i or n2==nodes[(nodeno+1)%len(nodes)]:
                 # prev or next nodes
                 
-                if abs(h1-pi-h2)<0.1:	# arbitrary ~5degrees
+                if straight and link1 in subgraph and link2 in subgraph:	# arbitrary ~5degrees
                     w=(link1.width+link2.width)/4
-                    h=(h1%twopi + (h2-pi)%twopi)/2
-                    intersect=n.loc.biased(-cos(h)*w, sin(h)*w)
-                    if dump: print intersect, "straight", degrees(h1), degrees(h2)
+                    # not quite average but close enough
+                    intersect=n.loc.biased(-w*(cos(h1)+cos(h2-pi))/2,
+                                            w*(sin(h1)+sin(h2-pi))/2)
+                    if dump: print intersect, "straight", degrees(h1), degrees(h2), degrees((h1%twopi + (h2-pi)%twopi)/2)
+                    points.append((intersect, False, code2))
+                elif straight and link2.type=='RUNWAY':
+                    # start of straight blank
+                    intersect=n.loc.biased(-link2.width*cos(h2-pi)/2,
+                                            link2.width*sin(h2-pi)/2)
+                    if dump: print intersect, "straight startblank", degrees(h1), degrees(h2), degrees((h1%twopi + (h2-pi)%twopi)/2)
+                    points.append((intersect, False, ''))
+                elif straight and link1.type=='RUNWAY':
+                    # end of straight blank
+                    intersect=n.loc.biased(-link1.width*cos(h1)/2,
+                                            link1.width*sin(h1)/2)
+                    if dump: print intersect, "straight endblank", degrees(h1), degrees(h2), degrees((h1%twopi + (h2-pi)%twopi)/2)
                     points.append((intersect, False, code2))
                 else:
                     ratio=0.5/sin((h1-pi)%twopi-h2)
                     intersect=n.loc.biased(-sin(h1)*link2.width*ratio - sin(h2)*link1.width*ratio,
                                            -cos(h1)*link2.width*ratio - cos(h2)*link1.width*ratio)
-                    if dump: print intersect, "intersect", degrees(h1), degrees(h2), i
+                    if dump: print intersect, "intersect", degrees(h1), degrees(h2), i,
                     if i and n2==nodes[(nodeno+1)%len(nodes)]:	# end of blank
                         if link1.type=='RUNWAY':
-                            # special handling to prevent overlaps
-                            l1=max(0, min(link1.width*2/3, n.loc.distanceto(n1.loc)-link2.width)-link2.width/2)
+                            # special handling for runway ends
+                            l1=max(0.0, min(link1.width, n.loc.distanceto(n1.loc)-link2.width/2))
+                        elif not link1.draw:
+                            # just draw straight line across exits to apron
+                            l1=0.0
+                            code1=''
                         else:
                             l1=link1.width
-                        l1=intersect.biased(sin(h1)*l1, cos(h1)*l1)
+                        if l1:
+                            l1=intersect.biased(sin(h1)*l1, cos(h1)*l1)
+                            if dump: print "endblank",
+                        #else:	# reduce to point
+                        #    l1=0.0
                     else:
                         l1=link1.width
                         
                     if not i and n2!=nodes[(nodeno+1)%len(nodes)]:	# start of blank
                         if link2.type=='RUNWAY':
-                            # special handling to prevent overlaps
-                            l2=max(0, min(link2.width*2/3, n.loc.distanceto(n2.loc)-link1.width)-link1.width/2)
+                            # special handling for runway ends
+                            l2=max(0.0, min(link2.width, n.loc.distanceto(n2.loc)-link1.width/2))
+                        elif not link2.draw:
+                            # just draw straight line across exits to apron
+                            l2=0.0
+                            code1=''	# previous link
                         else:
                             l2=link2.width
-                        l2=intersect.biased(sin(h2)*l2, cos(h2)*l2)
+                        if l2:
+                            l2=intersect.biased(sin(h2)*l2, cos(h2)*l2)
+                            if dump: print "startblank",
+                        else:	# reduce to point
+                            #l2=0.0
+                            code2=''
                     else:
                         l2=link2.width
-                        
+
+                    if dump: print
                     points.append((intersect, (l1, l2), (code1,code2)))
 
-    # Output points and bezier control points
-    for i in range(len(points)):
-        (loc, bez, code)=points[i]
-        if dump: interfile.write("%s\t%s\n" % (round(loc.lon,6), round(loc.lat,6)))
-        if not bez:
-            out.append(AptNav(111, "%10.6f %11.6f %s" % (loc.lat, loc.lon, code)))
-            if dump: pointfile.write("%s\t%s\n" % (round(loc.lon,6), round(loc.lat,6)))
-        else:
-            (l1,l2)=bez
-            (code1,code2)=code
-            if type(l1)==float:
-                (oloc, obez, ocode)=points[(i-1)%len(points)]
-                if l1>=loc.distanceto(oloc)/2 and obez:
-                    p1=None	# Skip duplicate truncated section
-                else:
-                    l1=min(l1,loc.distanceto(oloc)/2)
-                    h1=radians(loc.headingto(oloc))
-                    p1=loc.biased(sin(h1)*l1, cos(h1)*l1)
-            else:
-                p1=l1	# end of blank section
-                out.append(AptNav(111, "%10.6f %11.6f %s" % (loc.lat, loc.lon, "")))
-                if dump: pointfile.write("%s\t%s\n" % (round(loc.lon,6), round(loc.lat,6)))
-                if not p1.equals(loc):
-                    out.append(AptNav(111, "%10.6f %11.6f %s" % (p1.lat, p1.lon, "")))
-                    if dump: pointfile.write("%s\t%s\n" % (round(p1.lon,6), round(p1.lat,6)))
-                    
-            if p1:
-                out.append(AptNav(112, "%10.6f %11.6f %10.6f %11.6f %s" % (
-                    p1.lat, p1.lon, p1.lat+(loc.lat-p1.lat)*2/3, p1.lon+(loc.lon-p1.lon)*2/3, code1)))
-                if dump:
-                    pointfile.write("%s\t%s\n" % (round(p1.lon,6), round(p1.lat,6)))
-                    bezptfile.write("%s\t%s\n" % (round(p1.lon+(loc.lon-p1.lon)*2/3,6), round(p1.lat+(loc.lat-p1.lat)*2/3,6)))
-                    
-            if type(l2)==float:
-                (oloc, obez, ocode)=points[(i+1)%len(points)]
-                l2=min(l2,loc.distanceto(oloc)/2)
-                h2=radians(loc.headingto(oloc))
-                p2=loc.biased(sin(h2)*l2, cos(h2)*l2)
-            else:
-                p2=l2	# start of blank section
-            out.append(AptNav(112, "%10.6f %11.6f %10.6f %11.6f %s" % (
-                p2.lat, p2.lon, p2.lat-(loc.lat-p2.lat)*2/3, p2.lon-(loc.lon-p2.lon)*2/3, code2)))
-            if dump:
-                pointfile.write("%s\t%s\n" % (round(p2.lon,6), round(p2.lat,6)))
-                bezptfile.write("%s\t%s\n" % (round(p2.lon-(loc.lon-p2.lon)*2/3,6), round(p2.lat-(loc.lat-p2.lat)*2/3,6)))
-            if type(l2)!=float:	# add start of blank section
-                out.append(AptNav(111, "%10.6f %11.6f %s" % (p2.lat, p2.lon, "")))
-                if dump: pointfile.write("%s\t%s\n" % (round(p2.lon,6), round(p2.lat,6)))
-                if not p2.equals(loc):
-                    out.append(AptNav(111, "%10.6f %11.6f %s" % (loc.lat, loc.lon, "")))
-                    if dump: pointfile.write("%s\t%s\n" % (round(loc.lon,6), round(loc.lat,6)))
-                    
-    out[-1].code+=2		# Terminate last
+# --------------------------------------------------------------------------
+
+def tessbegin(datatype, data):
+    if datatype!=GL_LINE_LOOP: raise GLUerror	# can't happen
+    (out, dump)=data
+    if dump: print "Begin"
     
+def tessvertex(vertex, data):
+    (out, dump)=data
+    (pt, bez, blank, code)=vertex
+    if dump: print "Vertex", pt, bez, blank, code
+    if not pt: return	# dummy bezier vertex for outscribing obtuse curves
+    if blank==True:	# end of blank
+        out.append(AptNav(111, "%10.6f %11.6f" % (pt.lat, pt.lon)))
+    if bez:
+        out.append(AptNav(112, "%10.6f %11.6f %10.6f %11.6f %s" % (
+            pt.lat, pt.lon, bez.lat, bez.lon, code)))
+    else:
+        out.append(AptNav(111, "%10.6f %11.6f %s" % (pt.lat, pt.lon, code)))
+    if blank==False:	# start of blank
+        out.append(AptNav(111, "%10.6f %11.6f" % (pt.lat, pt.lon)))
+
+def tesscombine(coords, vertex, weight, data):
+    (out, dump)=data
+    if dump:
+        print "Combine", Point(coords[2], coords[0])
+        for i in range(len(weight)):
+            if not weight[i]: break
+            (pt, bez, blank, code)=vertex[i]
+            print pt, bez, blank, code, weight[i]
+        #if blank!=None:
+        #    # hack. Collapse blank sections to a point
+        #    vertex[i]=(pt, None, None, code)
+    (pt, bez, blank, code)=vertex[0]	# arbitrary - use first code
+    return (Point(coords[2], coords[0]), None, None, code)
+
+def tessend(data):
+    (out, dump)=data
+    if dump: print "End"
+    out[-1].code+=2		# Terminate last
+
 
 # --------------------------------------------------------------------------
 
@@ -420,10 +447,27 @@ def taxilayout(allnodes, alllinks, surfaceheading, output, aptdat=None, ident="u
 
     # Edges ----------------------------------------------------------------
 
+    dump=(output.debug and ident=="HECA" and open(join(output.xppath, ident+"_nodes.txt"), "at"))
+    if dump:
+        print ident
+        interfile=open(join(output.xppath, ident+"_inter.txt"), "at")
+
+    # Output points and bezier control points
+    tessObj = gluNewTess()
+    gluTessNormal(tessObj, 0, -1, 0)
+    gluTessProperty(tessObj,GLU_TESS_WINDING_RULE,GLU_TESS_WINDING_NONZERO)
+    gluTessProperty(tessObj,GLU_TESS_BOUNDARY_ONLY,GL_TRUE)
+    gluTessCallback(tessObj,GLU_TESS_BEGIN_DATA,   tessbegin)
+    gluTessCallback(tessObj,GLU_TESS_VERTEX_DATA,  tessvertex)
+    gluTessCallback(tessObj,GLU_TESS_END_DATA,     tessend)
+    gluTessCallback(tessObj,GLU_TESS_COMBINE_DATA, tesscombine)
+
     # Candidates
     links=[l for l in alllinks if l.width>1 and (l.draw or l.lights[0] or l.lights[1] or l.lines[0]!='NONE' or l.lines[1]!='NONE') and (not aptdat or (not output.excluded(l.nodes[0].loc) and not output.excluded(l.nodes[1].loc)))]
 
     while links:
+        basepoints=[]
+
         # Find an independent subgraph by looking for connected links
         subgraph=[links[0]]	# start with random node
         surface=links[0].surface
@@ -432,11 +476,8 @@ def taxilayout(allnodes, alllinks, surfaceheading, output, aptdat=None, ident="u
         #if len(subgraph)<=1 and len(subgraph[0].links==0):
         #    continue	# orphan node - don't generate apt.dat entry
 
-        out=[AptNav(110, "%02d %4.2f %6.2f Taxiways" % (
-            surface, 0.25, surfaceheading))]
-
         # Exterior
-        follow(subgraph, True, out, output, ident)
+        follow(subgraph, True, basepoints, dump)
 
         # Interior(s)
         lastlen=maxint
@@ -444,13 +485,86 @@ def taxilayout(allnodes, alllinks, surfaceheading, output, aptdat=None, ident="u
             interior=[link for link in subgraph if link.done<2]
             if not interior: break
             if len(interior)==lastlen: break	# prevent infloop on error
-            follow(interior, False, out, output, ident)
+            follow(interior, False, basepoints, dump)
             lastlen=len(interior)
 
+        out=[AptNav(110, "%02d %4.2f %6.2f Taxiways" % (
+            surface, 0.25, surfaceheading))]
+        if dump: print "BeginPolygon"
+        gluTessBeginPolygon(tessObj, (out, dump))
+        for points in basepoints:
+            gluTessBeginContour(tessObj)
+            for i in range(len(points)):
+                (loc, bez, code)=points[i]
+                loc.round()
+                if dump: interfile.write("%.6f\t%.6f\n" % (loc.lon,loc.lat))
+                if not bez:
+                    gluTessVertex(tessObj, [loc.lon, 0, loc.lat], (loc, None, None, code))
+                    
+                else:	# pair of beziers. loc is intersection point
+                    (l1,l2)=bez		# desired distances to control points
+                    h1=None
+                    (code1,code2)=code
+                    if type(l1)==float:
+                        (oloc, obez, ocode)=points[(i-1)%len(points)]
+                        if not l1:	# reduces to a point
+                            gluTessVertex(tessObj, [loc.lon, 0, loc.lat], (loc, None, None, code1))
+                        elif l1<loc.distanceto(oloc)/2 or not obez:
+                            # Skip duplicate truncated section
+                            l1=min(l1,loc.distanceto(oloc)/2)
+                            h1=radians(loc.headingto(oloc))
+                            p1=loc.biased(sin(h1)*l1, cos(h1)*l1).round()
+                            gluTessVertex(tessObj, [p1.lon, 0, p1.lat], (p1, p1+(loc-p1)*(2.0/3), None, code1))
+                    else:		# absolute location of control point
+                        p1=l1.round()	# end of blank section
+                        if not p1.equals(loc) and type(l2)==float and l2:
+                            h1e=radians(loc.headingto(p1))
+                            (oloc, obez, ocode)=points[(i+1)%len(points)]
+                            h2=radians(loc.headingto(oloc))
+                            if dump: print "endblank", degrees((h1e-h2)%twopi)
+                            if (h1e-h2)%twopi<=pi/2:
+                                # fill fillet
+                                if dump: print loc, "filler", degrees((h1e-h2)%twopi)
+                                gluTessVertex(tessObj, [loc.lon, 0, loc.lat], (loc, None, None, ''))                                
+                        gluTessVertex(tessObj, [p1.lon, 0, p1.lat], (p1, p1+(loc-p1)*(2.0/3), True, code1))
+
+                    if type(l2)==float:
+                        if not l2:	# reduces to a point
+                            gluTessVertex(tessObj, [loc.lon, 0, loc.lat], (loc, None, None, code2))
+                        else:
+                            (oloc, obez, ocode)=points[(i+1)%len(points)]
+                            l2=min(l2,loc.distanceto(oloc)/2)
+                            h2=radians(loc.headingto(oloc))
+                            p2=loc.biased(sin(h2)*l2, cos(h2)*l2).round()
+                            if h1!=None and (h1-h2)%twopi>pi:
+                                # generate dummy vertices to outscribe curve
+                                b1=(p1+(loc-p1)*(2.0/3)).round()
+                                b2=(p2+(loc-p2)*(2.0/3)).round()
+                                if dump: print loc, "obtuse", b1, b2
+                                gluTessVertex(tessObj, [b1.lon, 0, b1.lat], (None, None, None, code1))
+                                gluTessVertex(tessObj, [b2.lon, 0, b2.lat], (None, None, None, code2))
+                            gluTessVertex(tessObj, [p2.lon, 0, p2.lat], (p2, p2-(loc-p2)*(2.0/3), None, code2))
+                    else:		# absolute location of control point
+                        p2=l2.round()	# start of blank section
+                        gluTessVertex(tessObj, [p2.lon, 0, p2.lat], (p2, p2-(loc-p2)*(2.0/3), False, ''))
+                        if h1!=None and not p2.equals(loc):
+                            h2=radians(loc.headingto(p2))
+                            if dump: print "startblank", degrees((h1-h2)%twopi)
+                            if (h1-h2)%twopi<=pi/2:
+                                # fill fillet
+                                if dump: print loc, "filler", degrees((h1-h2)%twopi)
+                                gluTessVertex(tessObj, [loc.lon, 0, loc.lat], (loc, None, None, ''))
+            gluTessEndContour(tessObj)
+
+        gluTessEndPolygon(tessObj)
+        if dump: print "EndPolygon\n"
         if aptdat:
             aptdat.extend(out)
         else:
             output.misc.append((110, subgraph[0].nodes[0].loc, out))
+
+    gluDeleteTess(tessObj)
+
 
     # Centre lines ---------------------------------------------------------
 

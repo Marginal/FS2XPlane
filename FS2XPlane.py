@@ -33,20 +33,34 @@ from os.path import abspath, basename, curdir, dirname, expanduser, exists, isdi
 from sys import argv, exit, platform
 from traceback import print_exc
 
-from convutil import asciify
+from convutil import asciify, sortfolded
 
 if platform.lower().startswith('linux') and not getenv("DISPLAY"):
     print "Can't run: DISPLAY is not set"
     exit(1)
     
-try:
+if platform=='win32':
     import wx
-except:
-    import Tkinter
-    import tkMessageBox
-    Tkinter.Tk().withdraw()	# make and suppress top-level window
-    tkMessageBox._show("wxPython is not installed.", "This application requires wxPython 2.5.3 (py%s build) or later." % version[:3], icon="question", type="ok")
-    exit(1)
+else:
+    try:
+        import wx
+    except:
+        import Tkinter
+        import tkMessageBox
+        Tkinter.Tk().withdraw()	# make and suppress top-level window
+        if platform=='darwin':
+            tkMessageBox._show("Error", "wxPython is not installed.\nThis application requires\nwxPython 2.5.3 (py%s) or later." % version[:3], icon="question", type="ok")
+        else:	# linux
+            tkMessageBox._show("Error", "wxPython is not installed.\nThis application requires\npython wxgtk2.5.3 or later.", icon="error", type="ok")
+        exit(1)
+    try:
+        import OpenGL
+    except:
+        import Tkinter
+        import tkMessageBox
+        Tkinter.Tk().withdraw()	# make and suppress top-level window
+        tkMessageBox._show("Error", "PyOpenGL is not installed.\nThis application requires\npyopengl2 or later.", icon="error", type="ok")
+        exit(1)
 
 from convmain import Output
 from convutil import FS2XError, viewer, helper
@@ -178,7 +192,7 @@ else:
     v=join(fsroot, "Addon Scenery")
     if isdir(v):
         dirs=listdir(v)
-        dirs.sort()
+        sortfolded(dirs)
         fspath=v+'/'+dirs[0]
         lbpath=v
     else:

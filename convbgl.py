@@ -34,7 +34,7 @@ from struct import unpack
 from sys import maxint
 import types
 
-from convutil import cirp, m2f, NM2m, complexity, asciify, unicodeify, normalize, rgb2uv, cross, dot, AptNav, Object, Polygon, Point, Matrix, apronlightspacing, taxilightspacing, FS2XError, unique
+from convutil import cirp, m2f, NM2m, complexity, asciify, unicodeify, normalize, rgb2uv, cross, dot, AptNav, Object, Polygon, Point, Matrix, apronlightspacing, taxilightspacing, FS2XError, unique, groundfudge, effects
 from convobjs import maketaxilight, makegenquad, makegenmulti
 from convtaxi import taxilayout, Node, Link
 
@@ -286,7 +286,7 @@ class ProcScen:
         self.basescale=scale
         self.stack=[]	# (return address, layer, pop matrix?)
         self.tex=[]
-        self.mat=[[(0.5,0.5,0.5),(0,0,0),(0,0,0)]]	# [[a,s,e]]
+        self.mat=[[(0.5,0.5,0.5),(0,0,0),(0,0,0),0]]	# [[a,s,e,p]]
         self.vtx=[]
         self.idx=[]	# Indices into vtx
         self.m=None	# Index into mat
@@ -303,12 +303,14 @@ class ProcScen:
         self.objdat={}	# (mat, vtx[], idx[]) by (loc, layer, alt, altmsl, matrix, scale, tex, lit)
         self.linedat={}	# (vtx[], idx[], (r,g,b)) by (loc, layer, alt, altmsl, matrix, scale, None, None)
         self.lightdat={}# ((x,y,z), (r,g,b)) by (loc, layer, alt, altmsl, matrix, scale, None, None)
+        self.effectdat={}# ((x,y,z), (effect, s)) by (loc, layer, alt, altmsl, matrix, scale, None, None)
         self.polydat=[]	# ((points, layer, heading, scale, tex, lit))
 
         self.neednight=False
         self.dayobjdat={}        
         self.daylinedat={}        
         self.daylightdat={}        
+        self.dayeffectdat={}
         self.daypolydat=[]
 
         self.vars={
@@ -488,6 +490,7 @@ class ProcScen:
             self.dayobjdat=self.objdat
             self.daylinedat=self.linedat
             self.daylightdat=self.lightdat
+            self.dayeffectdat=self.effectdat
             self.daypolydat=self.polydat
             self.objdat={}
             self.linedat={}
@@ -502,7 +505,7 @@ class ProcScen:
             self.scale=self.basescale
             self.stack=[]	# (return address, layer, pop matrix?)
             self.tex=[]
-            self.mat=[[(0.5,0.5,0.5),(0,0,0),(0,0,0)]]	# [[a,s,e]]
+            self.mat=[[(0.5,0.5,0.5),(0,0,0),(0,0,0),0]]	# [[a,s,e,p]]
             self.vtx=[]
             self.idx=[]	# Indices into vtx
             self.m=None	# Index into mat
@@ -541,6 +544,7 @@ class ProcScen:
             mat=self.mat[self.m]
             if not mat:
                 self.pnt=(cx,cy,cz)
+                if self.debug: self.debug.write("Transparent\n")
                 return	# transparent
         if self.pnt:
             (sx,sy,sz)=self.pnt
@@ -584,7 +588,7 @@ class ProcScen:
         key=self.makekey(True)
         if not key in self.objdat:
             self.objdat[key]=[]
-        self.objdat[key].append(([(1,1,1), (0,0,0), (0,0,0)], vtx, idx, True))
+        self.objdat[key].append(([(1,1,1),(0,0,0),(0,0,0),0], vtx, idx, True))
         self.checkmsl()
         
         
@@ -600,7 +604,7 @@ class ProcScen:
     def SColor(self):	# 14:Scolor, 50:GColor, 51:NewLColor, 52:NewSColor
         (c,)=unpack('H', self.bgl.read(2))
         self.m=0
-        self.mat=[[self.unicol(c), (0,0,0), (0,0,0)]]
+        self.mat=[[self.unicol(c), (0,0,0), (0,0,0), 0]]
         
     def TextureEnable(self):		# 17
         (c,)=unpack('<H', self.bgl.read(2))
@@ -693,7 +697,7 @@ class ProcScen:
         key=self.makekey(True)
         if not key in self.objdat:
             self.objdat[key]=[]
-        self.objdat[key].append(([(1,1,1),(0,0,0),(0,0,0)], vtx, idx, False))
+        self.objdat[key].append(([(1,1,1),(0,0,0),(0,0,0),0], vtx, idx, False))
         self.checkmsl()
         
     def IfIn3(self):		# 21
@@ -797,11 +801,13 @@ class ProcScen:
                 mat=self.mat[0]
             else:
                 mat=self.mat[self.m]
-                if not mat: return	# transparent
+                if not mat:
+                    if self.debug: self.debug.write("Transparent\n")
+                    return	# transparent
         else:
             tex=self.tex[self.t]
             if self.haze: self.output.haze[tex]=self.haze
-            mat=[(1,1,1), (0,0,0), (0,0,0)]
+            mat=[(1,1,1),(0,0,0),(0,0,0),0]
         key=self.makekey(tex)
         if not key in self.objdat:
             self.objdat[key]=[]
@@ -812,7 +818,7 @@ class ProcScen:
         (r,a,g,b)=unpack('4B', self.bgl.read(4))
         self.m=0
         if a==0xf0:	# unicol
-            self.mat=[[self.unicol(0xf000+r), (0,0,0), (0,0,0)]]
+            self.mat=[[self.unicol(0xf000+r), (0,0,0), (0,0,0), 0]]
         #elif (a>=0xb3 and a<=0xb8) or (a>=0xe3 and a<=0xe8):
         #    # E0 = transparent ... EF=opaque. Same for B?
         #    self.mat=[[(r/255.0,g/255.0,b/255.0,0.25), (0,0,0,0), (0,0,0,0)]]
@@ -820,7 +826,7 @@ class ProcScen:
             # Treat semi-transparent as fully transparent
             self.mat=[None]
         else:
-            self.mat=[[(r/255.0,g/255.0,b/255.0), (0,0,0), (0,0,0)]]
+            self.mat=[[(r/255.0,g/255.0,b/255.0), (0,0,0), (0,0,0), 0]]
         
     def Scale(self):		# 2f
         self.bgl.read(8)	# jump,range (LOD) (may be 0),size,reserved
@@ -876,7 +882,9 @@ class ProcScen:
             mat=self.mat[0]
         else:
             mat=self.mat[self.m]
-            if not mat: return	# transparent
+            if not mat:
+                if self.debug: self.debug.write("Transparent\n")
+                return	# transparent
         key=self.makekey(False)
         if not key in self.lightdat:
             self.lightdat[key]=[]
@@ -890,7 +898,9 @@ class ProcScen:
             mat=self.mat[0]
         else:
             mat=self.mat[self.m]
-            if not mat: return	# transparent
+            if not mat:
+                if self.debug: self.debug.write("Transparent\n")
+                return	# transparent
         key=self.makekey(False)
         if not key in self.lightdat:
             self.lightdat[key]=[]
@@ -1036,7 +1046,7 @@ class ProcScen:
                             heights, texs, roof)
         self.output.objdat[name]=[obj]
         if self.matrix[-1]:
-            heading=self.matrix[-1].heading()	# XXX not really
+            heading=self.matrix[-1].heading()	# not really
             # handle translation
             loc=self.loc.biased(self.matrix[-1].m[3][0]*self.scale,
                                 -self.matrix[-1].m[3][2]*self.scale)
@@ -1054,7 +1064,7 @@ class ProcScen:
         if sfc!=0: return
         # Smooth surface
         if self.matrix[-1]:
-            heading=self.matrix[-1].heading()	# XXX not really
+            heading=self.matrix[-1].heading()	# not really
         else:
             heading=0
         length=m2f*x*self.scale
@@ -1085,7 +1095,7 @@ class ProcScen:
             self.output.log('Unsupported request for object %s in %s' % (name, self.comment))
             return
         if self.matrix[-1]:
-            heading=self.matrix[-1].heading()	# XXX not really
+            heading=self.matrix[-1].heading()	# not really
             # handle translation
             loc=self.loc.biased(self.matrix[-1].m[3][0]*self.scale,
                                 -self.matrix[-1].m[3][2]*self.scale)
@@ -1154,7 +1164,9 @@ class ProcScen:
             mat=self.mat[0]
         else:
             mat=self.mat[self.m]
-            if not mat: return	# transparent
+            if not mat:
+                if self.debug: self.debug.write("Transparent\n")
+                return	# transparent
         key=self.makekey(False)
         if not key in self.lightdat:
             self.lightdat[key]=[]
@@ -1286,13 +1298,33 @@ class ProcScen:
             incx=incz=0
             heights=[self.scale*size_bot_y,self.scale*size_win_y,self.scale*size_top_y,self.scale*size_roof_y]
             texs=[bottom_texture, window_texture, top_texture, roof_texture]
+        elif typ==0x209:
+            # windsock
+            self.bgl.seek(size-8,1)
+            (lit,)=unpack('<H', self.bgl.read(2))
+            if lit: lit=1
+            self.output.misc.append((19, self.loc, [AptNav(19, '%10.6f %11.6f %d Windsock' %(self.loc.lat, self.loc.lon, lit))]))
+            return
+        elif typ==0x26c:
+            # effect
+            end=self.bgl.tell()+size-6
+            name=self.bgl.read(0x5a).strip('\0').lower()
+            if not name in effects:
+                self.output.log('Unsupported effect "%s" at (%10.6f, %11.6f) in %s' % (name, self.loc.lat, self.loc.lon, self.comment))
+            else:
+                key=self.makekey(False)
+                if not key in self.effectdat: self.effectdat[key]=[]
+                self.effectdat[key].append(((0,0,0), effects[name]))
+                self.checkmsl()
+            self.bgl.seek(end)
+            return
         else:
             self.output.log('Unsupported effect at (%10.6f, %11.6f) in %s' % (self.loc.lat, self.loc.lon, self.comment))
             self.bgl.seek(size-6,1)
             return
 
         if self.matrix[-1]:
-            heading=self.matrix[-1].heading()	# XXX not really
+            heading=self.matrix[-1].heading()	# not really
             # handle translation
             loc=self.loc.biased(self.matrix[-1].m[3][0]*self.scale,
                                 -self.matrix[-1].m[3][2]*self.scale)
@@ -1547,12 +1579,14 @@ class ProcScen:
             (ar,ag,ab,aa)=unpack('<4f', self.bgl.read(16))
             # average of diffuse & ambient
             #m=[((dr+ar)/2, (dg+ag)/2, (db+ab)/2)]
-            m=[(dr, dg, db)]		# just use diffuse - discard ambient
+            m=[(1,1,1)]			# ignore diffuse and ambient
             for j in range(2):		# specular and emissive
                 (r,g,b,a)=unpack('<4f', self.bgl.read(16))
                 m.append((r,g,b))
-            self.bgl.read(4)		# power
-            if da<0.5:
+            (p,)=unpack('<f', self.bgl.read(4))	# specular power
+            if m[1]==(0.0,0.0,0.0): p=0.0	# sometimes bogus power value
+            m.append(p)
+            if da<0.2:	# eg KBOS taxilines.bgl uses 0.2
                 self.mat.append(None)	# transparent
             else:
                 self.mat.append(m)
@@ -1596,7 +1630,9 @@ class ProcScen:
             mat=self.mat[0]
         else:
             mat=self.mat[self.m]
-            if not mat: return	# transparent
+            if not mat:
+                if self.debug: self.debug.write("Transparent\n")
+                return	# transparent
         key=self.makekey(True)
         if not key in self.objdat:
             self.objdat[key]=[]
@@ -1619,7 +1655,9 @@ class ProcScen:
             mat=self.mat[0]
         else:
             mat=self.mat[self.m]
-            if not mat: return	# transparent
+            if not mat:
+                if self.debug: self.debug.write("Transparent\n")
+                return	# transparent
         key=self.makekey(False)
         if not key in self.linedat:
             self.linedat[key]=[]
@@ -1670,7 +1708,7 @@ class ProcScen:
         pass
 
     def NOPh(self):
-        # 30:Brightness, 3f:ShadowCall, 81:AntiAlias, 93: ???
+        # 30:Brightness, 3f:ShadowCall, 81:AntiAlias, 93: Specular?
         # ac:ZBias - XXX should generate poly_os n ?
         self.bgl.read(2)
         pass
@@ -1712,19 +1750,19 @@ class ProcScen:
     def makepoly(self, haveuv, vtx, idx=None):
         if self.t==-1: return False	# Only care about textured polygons
         if not self.loc: return False	# Not for library objects
-        if self.debug: self.debug.write("Poly: %s %s " % (basename(self.tex[self.t]), self.alt))
+        if self.debug: self.debug.write("Poly: %s %s %s " % (basename(self.tex[self.t]), self.alt, self.layer))
         
         # Find unique points
         if idx:
-            # Altitude test - Arbitrary. 0.124 used in UNNT
+            # Altitude test
             yval=vtx[idx[0]][1]
-            if not self.altmsl and yval*self.scale+self.alt>=0.125:
+            if not self.altmsl and yval*self.scale+self.alt>groundfudge:
                 if self.debug: self.debug.write("Above ground %s\n" % (yval*self.scale+self.alt))
                 return False
             # Arrange points in order. Assumes all points are on the edge
 
             # Remove duplicates - O(n2) - eg EGPF Terraindetail.bmp
-            #dump=(basename(self.tex[self.t])=='Terraindetail.bmp')
+            dump=self.debug and 'taxilineEg' in self.tex[self.t]
             if len(idx)<1000:	# arbitrary, gets too slow
                 idx=list(idx)
                 for i in range(len(idx)):
@@ -1739,7 +1777,7 @@ class ProcScen:
             for i in range(0,len(idx),3):
                 for j in range(3):
                     e=idx[i+j]
-                    if vtx[e][1]!=yval:
+                    if abs(vtx[e][1]-yval)>groundfudge:
                         if self.debug: self.debug.write("Not coplanar\n")
                         return False
                     if not e in edges: edges[e]=[]
@@ -1781,16 +1819,16 @@ class ProcScen:
         elif not vtx:
             return False	# Eh?
         else:
-            # Altitude test - Arbitrary. 0.124 used in UNNT
+            # Altitude test
             yval=vtx[0][1]
-            if not self.altmsl and yval*self.scale+self.alt>=0.125:
+            if not self.altmsl and yval*self.scale+self.alt>groundfudge:
                 if self.debug: self.debug.write("Above ground %s\n" % (yval*self.scale+self.alt))
                 return False
             # Order must be CCW
             count=len(vtx)
             area2=0
             for i in range(count):
-                if vtx[i][1]!=yval:
+                if abs(vtx[i][1]-yval)>groundfudge:
                     if self.debug: self.debug.write("Not coplanar\n")
                     return False
                 area2+=(vtx[i][0]*vtx[(i+1)%count][2] - vtx[(i+1)%count][0]*vtx[i][2])
@@ -1972,6 +2010,8 @@ class ProcScen:
                 else:
                     self.linedat[lkey]=self.daylinedat[lkey]
 
+            self.effectdat=self.dayeffectdat	# just use daylight
+            
             nightpolydat=self.polydat
             self.polydat=[]
             i=0
@@ -2073,7 +2113,7 @@ class ProcScen:
             self.objdat.update(self.dayobjdat)	# Day-only objects
             self.objdat.update(nightobjdat)	# Night-only objects
         
-        if not self.lightdat and not self.linedat and not self.objdat and not self.polydat and not self.links:
+        if not self.lightdat and not self.linedat and not self.effectdat and not self.objdat and not self.polydat and not self.links:
             return	# Only contained non-scenery stuff
         elif self.libname:
             bname=self.libname
@@ -2131,14 +2171,14 @@ class ProcScen:
             self.output.polyplc.append((fname, heading, points))
 
 
-        objdat={}	# [(tex, lit, vlight, vline, vt, idx, mattri)] by (loc, layer, altmsl, hdg)
+        objdat={}	# [(tex, lit, vlight, vline, veffect, vt, idx, mattri)] by (loc, layer, altmsl, hdg)
 
         # Sort throught lights, lines and objects.
         # Lights & lines first so are combined with untextured objects.
         # Keys must be unique to avoid duplicates.
         # Matrix is applied here to allow for detection of data in a bgl
         # that is duplicated apart from by heading
-        for lkey in unique(self.lightdat.keys()+self.linedat.keys()+self.objdat.keys()):
+        for lkey in unique(self.lightdat.keys()+self.linedat.keys()+self.effectdat.keys()+self.objdat.keys()):
             (loc, layer, alt, altmsl, matrix, scale, tex, lit)=lkey
             if layer>=32: layer=None
             newmatrix=matrix
@@ -2166,13 +2206,14 @@ class ProcScen:
             # Consolidate with other data with same tex and placement
             if okey in objdat:
                 for i in range(len(objdat[okey])):
-                    (otex,olit, vlight, vline, vt, idx, mattri)=objdat[okey][i]
+                    (otex,olit, vlight, vline, veffect, vt, idx, mattri)=objdat[okey][i]
                     if tex==otex and lit==olit:
                         objdat[okey].pop(i)
                         break
                 else:
                     vlight=[]
                     vline=[]
+                    veffect=[]
                     vt=[]
                     idx=[]
                     mattri=[]
@@ -2180,6 +2221,7 @@ class ProcScen:
                 objdat[okey]=[]
                 vlight=[]
                 vline=[]
+                veffect=[]
                 vt=[]
                 idx=[]
                 mattri=[]
@@ -2200,6 +2242,12 @@ class ProcScen:
                         vline.append([x*scale,alt+y*scale,-z*scale, r,g,b])
                     for j in i:
                         idx.append(vbase+j)
+
+            if lkey in self.effectdat:
+                for ((x,y,z),(effect,s)) in self.effectdat[lkey]:
+                    if newmatrix:
+                        (x,y,z)=newmatrix.transform(x,y,z)
+                    veffect.append([x*scale,alt+y*scale,-z*scale, effect, s])
 
             if lkey in self.objdat:
                 # Sort to minimise attribute changes
@@ -2237,10 +2285,10 @@ class ProcScen:
                             continue
                     mattri.append((m, firsttri, len(idx)-firsttri, dbl))
 
-            if not vlight and not vline and not vt:
+            if not vlight and not vline and not veffect and not vt:
                 continue	# Only contained non-scenery stuff
 
-            objdat[okey].append((tex, lit, vlight, vline, vt, idx, mattri))
+            objdat[okey].append((tex, lit, vlight, vline, veffect, vt, idx, mattri))
 
         # XXX combine lights/lines with any tex?
 
@@ -2249,19 +2297,19 @@ class ProcScen:
             (lat, lon, layer, altmsl, heading)=okey
             if not altmsl: continue
             miny=maxint
-            for (tex, lit, vlight, vline, vt, idx, mattri) in objdat[okey]:
-                for v in vlight + vline + vt:
+            for (tex, lit, vlight, vline, veffect, vt, idx, mattri) in objdat[okey]:
+                for v in vlight + vline + veffect + vt:
                     miny=min(miny,v[1])
             if not miny: continue	# already at ground level
-            for (tex, lit, vlight, vline, vt, idx, mattri) in objdat[okey]:
-                for v in vlight + vline + vt:
+            for (tex, lit, vlight, vline, veffect, vt, idx, mattri) in objdat[okey]:
+                for v in vlight + vline + veffect + vt:
                     v[1]=v[1]-miny
 
         objs=[]
         for okey in objdat:
             (lat, lon, layer, altmsl, heading)=okey
             loc=Point(lat, lon)
-            for (tex, lit, vlight, vline, vt, idx, mattri) in objdat[okey]:
+            for (tex, lit, vlight, vline, veffect, vt, idx, mattri) in objdat[okey]:
                 texname=tex
                 litname=lit
                 if tex or lit:
@@ -2291,17 +2339,15 @@ class ProcScen:
                         maxy=max(maxy,y)
                         minz=min(minz,z)
                         maxz=max(maxz,z)
-                        if y>=0.125:	# Arbitrary. 0.124 used in UNNT
-                            decal=False
-                    if decal:
-                        if (maxx-minx)>NM2m/4 or (maxz-minz)>NM2m/4:    # arbitrary
-                            poly=1	# probably orthophoto
-                        else:
-                            poly=2	# probably detail
+                        if y>groundfudge: decal=False
+                    if decal: poly=5
+                        #if (maxx-minx)>NM2m/4 or (maxz-minz)>NM2m/4:    # arbitrary
+                        #    poly=1	# probably orthophoto
+                        #else:
+                        #    poly=2	# probably detail
                     
                 # Finally build the object
-                obj=Object(fname+'.obj', self.comment, texname, litname, layer, vlight, vline, vt,
-                           idx, mattri, poly)
+                obj=Object(fname+'.obj', self.comment, texname, litname, layer, vlight, vline, veffect, vt, idx, mattri, poly)
                 if self.libname:
                     objs.append(obj)
                 else:

@@ -35,7 +35,7 @@ from struct import pack, unpack
 from sys import exit, platform, maxint
 from tempfile import gettempdir
 
-from convutil import banner, helper, complexities, AptNav, Object, Polygon, Point, FS2XError
+from convutil import banner, helper, complexities, AptNav, Object, Polygon, Point, FS2XError, sortfolded
 from convobjs import makestock, ignorestock
 from convbgl import ProcEx
 import convbgl
@@ -104,14 +104,14 @@ class Output:
                 raise FS2XError('"%s" does not exist' % path)
             if path and not isdir(path):
                 raise FS2XError('"%s" is not a folder' % path)
+        if not self.dumplib and (basename(dirname(xppath)).lower()!='custom scenery' or not isdir(dirname(xppath))):
+            raise FS2XError('"%s" is not a sub-folder of "Custom Scenery"' % (
+                xppath))
         for path, dirs, files in walk(xppath):
             for f in dirs+files:
                 if f!='summary.txt' and not f.startswith('.'):
                     raise FS2XError('"%s" already exists and is not empty' % (
                         xppath))
-        if not self.dumplib and (basename(dirname(xppath)).lower()!='custom scenery' or not isdir(dirname(xppath))):
-            raise FS2XError('"%s" is not a sub-folder of "Custom Scenery"' % (
-                xppath))
 
         for exe in [self.bglexe, self.xmlexe, self.pngexe, self.dsfexe]:
             if exe and not exists(exe):
@@ -718,14 +718,14 @@ class Output:
             if poly.layer and poly.layer>4: fslayers[poly.layer]=None
         keys=fslayers.keys()
         keys.sort()
-        if self.visrunways:
+        if True:	# was self.visrunways, but need lights:
             layermap=["taxiways +1", "taxiways +2", "taxiways +3", "taxiways +4", "taxiways +5", "runways -5", "runways -4", "runways -3", "runways -2", "runways -1"]
         else:
             layermap=["airports +1", "airports +2", "airports +3", "airports +4", "airports +5", "roads -5", "roads -4", "roads -3", "roads -2", "roads -1"]
         for i in range(len(keys)):
             if keys[i]>=24:
                 fslayers[keys[i]]="objects -1"
-            elif i>len(layermap):
+            elif i>=len(layermap):
                 fslayers[keys[i]]=layermap[-1]
             else:
                 fslayers[keys[i]]=layermap[i]
@@ -737,7 +737,7 @@ class Output:
 
         # write out objects
         keys=objdef.keys()
-        keys.sort()
+        sortfolded(keys)
         n = len(keys)+len(self.polydat)
         i = 0
         for name in keys:
@@ -752,7 +752,7 @@ class Output:
                 self.log('Object %s not found' % name)
             i+=1
         keys=self.polydat.keys()
-        keys.sort()
+        sortfolded(keys)
         for name in keys:
             self.status(i*100.0/n, name)
             self.polydat[name].export(self, fslayers)
