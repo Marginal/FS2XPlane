@@ -1452,7 +1452,7 @@ class ProcScen:
         # OK now sort throught the objects.
         # Matrix is brought out here to allow for detection of data in a bgl
         # that is duplicated apart from translation and/or rotation by heading
-        for lkey in sorted(self.objdat):
+        for lkey in self.objdat:
             (loc,matrix,scale,tex)=lkey
             newmatrix=matrix
             newloc=loc
@@ -1494,7 +1494,8 @@ class ProcScen:
                 (vlight, vline, vt, idx, mattri)=objdat[okey]
 
             # Sort to minimise attribute changes
-            for (m, alt, vtx, i, dbl) in sorted(self.objdat[lkey]):
+            self.objdat[lkey].sort()
+            for (m, alt, vtx, i, dbl) in self.objdat[lkey]:
 
                 # replace materials with palette texture
                 if not tex:

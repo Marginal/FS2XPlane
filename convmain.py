@@ -438,7 +438,7 @@ class Output:
             raise FS2XError('No data found!')
 
         # Check that apt entries contain runways - X-Plane crashes on stubs
-        for k in sorted(self.apt):
+        for k in self.apt:
             v=self.apt[k]
             for l in v:
                 if l.code==10 and (l.text[0].isdigit() or l.text[0]=='H'):
@@ -484,7 +484,9 @@ class Output:
             filename=join(path, 'apt.dat')
             f=file(filename, 'wt')
             f.write("I\n810\t# %s\n" % banner)
-            for k in sorted(self.apt):
+            keys=self.apt.keys()
+            keys.sort()
+            for k in keys:
                 v=self.apt[k]
                 v.sort()
                 helibase=True	# Should do the same for seaplane bases
@@ -527,13 +529,14 @@ class Output:
                 objdef[name].append(scale)
                 
         # write out objects
-        n = len(objdef)
+        keys=objdef.keys()
+        keys.sort()
+        n = len(keys)
         i = 0
-        for name in sorted(objdef):
+        for name in keys:
             if name in self.objdat:
                 self.status(i*100.0/n, name)
                 for scale in objdef[name]:
-                    count=1
                     for obj in self.objdat[name]:
                         obj.export(scale, self)
             else:
