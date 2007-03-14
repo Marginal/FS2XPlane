@@ -34,7 +34,7 @@ from struct import unpack
 from sys import maxint
 import types
 
-from convutil import cirp, m2f, NM2m, complexity, asciify, unicodeify, normalize, rgb2uv, cross, dot, AptNav, Object, Polygon, Point, Matrix, apronlightspacing, taxilightspacing, FS2XError, unique, groundfudge, effects
+from convutil import cirp, m2f, NM2m, complexity, asciify, unicodeify, normalize, rgb2uv, cross, dot, AptNav, Object, Polygon, Point, Matrix, FS2XError, unique, palettetex, groundfudge, planarfudge, effects
 from convobjs import maketaxilight, makegenquad, makegenmulti
 from convtaxi import taxilayout, Node, Link
 
@@ -47,7 +47,7 @@ class TaxiwayPoint:
 
 # Subset of XML TaxiwayPath
 class TaxiwayPath:
-    # width<0 -> no lights. -1<=width<=1 -> no draw & no edge
+    # width<0 -> no lights. -1<=width<=1 -> centreline only
     def __init__(self, type, width, centerline, start, end):
         self.type=type	# TAXI or VEHICLE
         if width>0:
@@ -55,7 +55,18 @@ class TaxiwayPath:
         else:
             self.width=-width
         self.surface='ASPHALT'
-        if self.width>1:
+        if -1<=self.width<=1:
+            # Centreline only
+            self.width=2	# reasonable number for curves
+            self.centerline='TRUE'
+            if width>0:
+                self.centerLineLighted='TRUE'
+            else:
+                self.centerLineLighted='FALSE'
+            self.rightEdge=self.leftEdge='NONE'
+            self.rightEdgeLighted=self.leftEdgeLighted='NONE'
+            self.drawSurface=self.drawDetail='FALSE'
+        else:
             self.drawSurface=self.drawDetail='TRUE'
             if type=='VEHICLE':
                 self.centerLine=centerline
@@ -67,19 +78,14 @@ class TaxiwayPath:
                 self.rightEdgeLighted=self.leftEdgeLighted='FALSE'
             else:
                 self.centerline=self.centerLineLighted='FALSE'
-                self.rightEdge=self.leftEdge='NONE'
+                self.rightEdge=self.leftEdge='SOLID'
                 if width>0:
                     self.rightEdgeLighted=self.leftEdgeLighted='TRUE'
                 else:
                     self.rightEdgeLighted=self.leftEdgeLighted='FALSE'
-        else:
-            self.drawSurface=self.drawDetail='FALSE'
-            self.centerline=self.centerLineLighted='FALSE'
-            self.rightEdge=self.leftEdge='NONE'
-            self.rightEdgeLighted=self.leftEdgeLighted='FALSE'
         self.start=start
         self.end=end
-        self.name=0
+        self.name=0	# no name
 
 # Subset of XML TaxiwayName
 class TaxiwayName:
@@ -287,18 +293,19 @@ class ProcScen:
         self.basescale=scale
         self.stack=[]	# (return address, layer, pop matrix?)
         self.tex=[]
-        self.mat=[[(0.5,0.5,0.5),(0,0,0),(0,0,0),0]]	# [[a,s,e,p]]
+        self.mat=[[(1.0,1.0,1.0),(0,0,0),(0,0,0),0.5]]	# [[a,s,e,p]]
         self.vtx=[]
         self.idx=[]	# Indices into vtx
-        self.m=None	# Index into mat
-        self.t=-1	# Index into tex
+        self.m=0	# Index into mat
+        self.t=None	# Index into tex
         self.billboard=None	# Emulating billboarding in a libary defn
 
         self.nodes=[]
         self.links=[]
         self.linktype=None	# Last road/river/taxiway (type, width, centerline)
         self.pnt=None	# Last line location (x,y,z)
-        self.haze=0	# Whether palette-based transaprency. 0=none
+        self.haze=0	# Whether palette-based transparency. 0=none
+        self.zbias=0	# Polygon offsetting
         self.concave=False
         
         self.objdat={}	# (mat, vtx[], idx[]) by (loc, layer, alt, altmsl, matrix, scale, tex, lit)
@@ -343,6 +350,9 @@ class ProcScen:
             0xc74: 0,	# ground wind direction [units?]
             0xc76: 0,	# ground wind turbulence [units?]
             }
+        if self.debug:
+            self.vars[0x318]=5
+            self.vars[0x31a]=4
         self.setseason()
 
         cmds={0x02:self.NOP,
@@ -423,7 +433,7 @@ class ProcScen:
               0x89:self.NOPi,
               0x8a:self.Call32,
               0x8b:self.AddCat32,
-              0x8f:self.Haze,
+              0x8f:self.NOPi,
               0x93:self.NOPh,
               0x95:self.CrashIndirect,
               0x96:self.CrashStart,
@@ -435,7 +445,7 @@ class ProcScen:
               0xaa:self.NewRunway,
               0xad:self.Animate,
               0xae:self.TransformEnd,
-              0xac:self.NOPh,
+              0xac:self.ZBias,
               0xaf:self.TransformMatrix,
               0xb1:self.Tag,
               0xb2:self.Light,
@@ -488,7 +498,8 @@ class ProcScen:
 
 
     def donight(self):
-        if self.neednight and self.vars[0x28c]!=4:
+        if self.neednight and self.vars[0x28c]==1:
+            if self.debug: self.debug.write("Night\n")
             self.vars[0x28c]=4
             self.dayloc=self.loc
             self.dayobjdat=self.objdat
@@ -509,47 +520,73 @@ class ProcScen:
             self.scale=self.basescale
             self.stack=[]	# (return address, layer, pop matrix?)
             self.tex=[]
-            self.mat=[[(0.5,0.5,0.5),(0,0,0),(0,0,0),0]]	# [[a,s,e,p]]
+            self.mat=[[(1.0,1.0,1.0),(0,0,0),(0,0,0),0.5]]	# [[a,s,e,p]]
             self.vtx=[]
             self.idx=[]	# Indices into vtx
-            self.m=None	# Index into mat
-            self.t=-1	# Index into tex
+            self.m=0	# Index into mat
+            self.t=None	# Index into tex
+            self.nodes=[]
+            self.links=[]
+            self.linktype=None	# Last road/river/taxiway (type, width, centerline)
+            self.pnt=None	# Last line location (x,y,z)
+            self.haze=0		# Whether palette-based transparency. 0=none
+            self.zbias=0	# Polygon offsetting
+            self.concave=False
             return True
         return False
 
     def makekey(self, dotex):
-        if (not dotex) or self.t==-1:
-            tex=lit=None
-        elif self.vars[0x28c]==4:
-            tex=None
-            lit=self.tex[self.t]
-            # Look for _lm version, eg LIEE cittadella universitaria-dm_liee_44
-            (src,ext)=splitext(basename(lit))
-            litlit=findtex(src+'_lm', dirname(lit), True)
-            if litlit: lit=litlit
-            if self.haze: self.output.haze[lit]=self.haze
+        # 3 cases:
+        # 1. just looking for a colour for lights or lines - dotex=False
+        # 2. looking for a colour for texture for FaceT - dotex=True
+        # 3. looking for a texture - dotex=True
+
+        mat=self.mat[self.m]
+        tex=lit=None
+
+        if not dotex:
+            if not mat:
+                # must have a colour for lights and lines
+                mat=[(1.0,1.0,1.0),(0,0,0),(0,0,0),0.5]
+        elif not mat:
+            if self.debug: self.debug.write("Transparent\n")
+        elif self.t==None:
+            tex=palettetex
         else:
-            tex=self.tex[self.t]
-            if self.haze: self.output.haze[tex]=self.haze
-            (src,ext)=splitext(basename(tex))
-            lit=findtex(src+'_lm', dirname(tex), True)
-            if lit and self.haze: self.output.haze[lit]=self.haze
-        return (self.loc,self.layer,self.alt,self.altmsl,self.matrix[-1],self.scale,tex,lit)
+            # we don't use ambient colour
+            mat[0]=(1.0,1.0,1.0)
+            if self.vars[0x28c]!=1:
+                tex=None
+                lit=self.tex[self.t]
+                # Look for _lm version, eg LIEE cittadella universitaria-dm_liee_44
+                (src,ext)=splitext(basename(lit))
+                litlit=findtex(src+'_lm', dirname(lit), True)
+                if litlit: lit=litlit
+                if self.haze: self.output.haze[lit]=self.haze
+            else:
+                tex=self.tex[self.t]
+                if self.haze: self.output.haze[tex]=self.haze
+                (src,ext)=splitext(basename(tex))
+                lit=findtex(src+'_lm', dirname(tex), True)
+                if lit and self.haze: self.output.haze[lit]=self.haze
+        layer=self.layer
+        if layer>=40:	# ground element
+            layer=None
+        elif layer>=24:
+            layer=24
+        if not layer and self.zbias:
+            layer=24
+        return ((self.loc,layer,self.alt,self.altmsl,self.matrix[-1],self.scale,tex,lit), mat)
 
     def SPnt(self):		# 06
         self.pnt=unpack('<hhh', self.bgl.read(6))
 
     def CPnt(self):		# 07
         (cx,cy,cz)=unpack('<hhh', self.bgl.read(6))
-        key=self.makekey(False)
-        if self.m==None:
-            mat=self.mat[0]
-        else:
-            mat=self.mat[self.m]
-            if not mat:
-                self.pnt=(cx,cy,cz)
-                if self.debug: self.debug.write("Transparent\n")
-                return	# transparent
+        (key,mat)=self.makekey(False)
+        if not mat:
+            self.pnt=(cx,cy,cz)
+            return	# transparent
         if self.pnt:
             (sx,sy,sz)=self.pnt
         else:	# continuation
@@ -589,10 +626,11 @@ class ProcScen:
             idx=[]
             for i in range(1,len(vtx)-1):
                 idx.extend([0,i,i+1])
-        key=self.makekey(True)
+        (key,mat)=self.makekey(True)
+        if not mat: return
         if not key in self.objdat:
             self.objdat[key]=[]
-        self.objdat[key].append(([(1,1,1),(0,0,0),(0,0,0),0], vtx, idx, True))
+        self.objdat[key].append((mat, vtx, idx, True))
         self.checkmsl()
         
         
@@ -608,12 +646,12 @@ class ProcScen:
     def SColor(self):	# 14:Scolor, 50:GColor, 51:NewLColor, 52:NewSColor
         (c,)=unpack('H', self.bgl.read(2))
         self.m=0
-        self.mat=[[self.unicol(c), (0,0,0), (0,0,0), 0]]
+        self.mat=[[self.unicol(c), (0,0,0), (0,0,0), 0.5]]
         
     def TextureEnable(self):		# 17
         (c,)=unpack('<H', self.bgl.read(2))
         if not c:
-            self.t=-1
+            self.t=None
         else:
             self.t=0
 
@@ -661,8 +699,7 @@ class ProcScen:
                 self.bgl.seek(off-22,1)
                 break
 
-    def Haze(self):		# 1e:Haze, 8f:Alpha
-        # XXX Alpha (8f) Also has meaning for non-textured polygons
+    def Haze(self):		# 1e:Haze
         (self.haze,)=unpack('<H', self.bgl.read(2))
         
     def TaxiMarkings(self):	# 1f
@@ -698,10 +735,11 @@ class ProcScen:
         (x,y,z)=cross((x1-x0,y1-y0,z1-z0), (x2-x0,y2-y0,z2-z0))
         if dot((x,y,z), (nx,ny,nz))>0:
             idx.reverse()
-        key=self.makekey(True)
+        (key,mat)=self.makekey(True)
+        if not mat: return
         if not key in self.objdat:
             self.objdat[key]=[]
-        self.objdat[key].append(([(1,1,1),(0,0,0),(0,0,0),0], vtx, idx, False))
+        self.objdat[key].append((mat, vtx, idx, False))
         self.checkmsl()
         
     def IfIn3(self):		# 21
@@ -743,6 +781,7 @@ class ProcScen:
             self.complexity=complexity(vmin)
             if vmax==4: vmax=5	# bug in eg EGNT
         val=self.getvar(var)
+        if self.debug: self.debug.write("%x: %d<=%d<=%d\n" % (var, vmin, val, vmax))
         if val<vmin or val>vmax:
             self.bgl.seek(off-10,1)
 
@@ -783,8 +822,8 @@ class ProcScen:
             (x,y,z,c,c,c,c,c)=self.vtx[idx]
             vtx.append((x,y,z, nx,ny,nz, x*self.scale/256, z*self.scale/256))
         if count<3: return	# wtf?
-        if self.m==None and self.makepoly(False, vtx):
-            # If color defined then use it in preference to bitmap
+        if self.makepoly(False, vtx):
+            # self.m==None and If color defined then use it in preference to bitmap
             return
         if self.concave:
             (vtx,idx)=subdivide(vtx)
@@ -801,20 +840,18 @@ class ProcScen:
         if dot((x,y,z), (nx,ny,nz))>0:
             idx.reverse()
         # If color defined then use it in preference to bitmap
-        if self.m!=None or self.t==-1:
-            tex=None
-            if self.m==None:
-                mat=self.mat[0]
-            else:
-                mat=self.mat[self.m]
-                if not mat:
-                    if self.debug: self.debug.write("Transparent\n")
-                    return	# transparent
-        else:
-            tex=self.tex[self.t]
-            if self.haze: self.output.haze[tex]=self.haze
-            mat=[(1,1,1),(0,0,0),(0,0,0),0]
-        key=self.makekey(tex)
+        #if self.m==None or self.t==None:
+        #    tex=None
+        #    if self.m==None:
+        #        mat=self.mat[0]
+        #    else:
+        #        mat=self.mat[self.m]
+        #        if not mat:
+        #            if self.debug: self.debug.write("Transparent\n")
+        #            return	# transparent
+        #else:
+        (key,mat)=self.makekey(True)
+        if not mat: return
         if not key in self.objdat:
             self.objdat[key]=[]
         self.objdat[key].append((mat, vtx, idx, False))
@@ -824,15 +861,15 @@ class ProcScen:
         (r,a,g,b)=unpack('4B', self.bgl.read(4))
         self.m=0
         if a==0xf0:	# unicol
-            self.mat=[[self.unicol(0xf000+r), (0,0,0), (0,0,0), 0]]
+            self.mat=[[self.unicol(0xf000+r), (0,0,0), (0,0,0), 0.5]]
         #elif (a>=0xb3 and a<=0xb8) or (a>=0xe3 and a<=0xe8):
         #    # E0 = transparent ... EF=opaque. Same for B?
         #    self.mat=[[(r/255.0,g/255.0,b/255.0,0.25), (0,0,0,0), (0,0,0,0)]]
-        elif (a>=0xb0 and a<=0xb7) or (a>=0xe0 and a<=0xe7):
-            # Treat semi-transparent as fully transparent
+        elif (a>=0xb0 and a<=0xb4) or (a>=0xe0 and a<=0xe4):
+            # Treat semi-transparent as fully transparent (ESSA-1 uses E5)
             self.mat=[None]
         else:
-            self.mat=[[(r/255.0,g/255.0,b/255.0), (0,0,0), (0,0,0), 0]]
+            self.mat=[[(r/255.0,g/255.0,b/255.0), (0,0,0), (0,0,0), 0.5]]
         
     def Scale(self):		# 2f
         self.bgl.read(8)	# jump,range (LOD) (may be 0),size,reserved
@@ -889,14 +926,8 @@ class ProcScen:
             dz=(ez-sz)/(count-1.0)
         else:
             dx=dy=dz=0
-        if self.m==None:
-            mat=self.mat[0]
-        else:
-            mat=self.mat[self.m]
-            if not mat:
-                if self.debug: self.debug.write("Transparent\n")
-                return	# transparent
-        key=self.makekey(False)
+        (key,mat)=self.makekey(False)
+        if not mat or mat[0]==(0,0,0): return	# eg SAEZ.bgl
         if not key in self.lightdat:
             self.lightdat[key]=[]
         for i in range(count):
@@ -905,14 +936,8 @@ class ProcScen:
         
     def Point(self):		# 37
         (x,y,z)=unpack('<3h', self.bgl.read(6))
-        if self.m==None:
-            mat=self.mat[0]
-        else:
-            mat=self.mat[self.m]
-            if not mat:
-                if self.debug: self.debug.write("Transparent\n")
-                return	# transparent
-        key=self.makekey(False)
+        (key,mat)=self.makekey(False)
+        if not mat or mat[0]==(0,0,0): return
         if not key in self.lightdat:
             self.lightdat[key]=[]
         self.lightdat[key].append(((x,y,z), mat[0]))
@@ -974,6 +999,94 @@ class ProcScen:
             self.debug.write("!Bogus Location %s\n" % Point(lat,lon))
         self.checkmsl()
 
+    def TextureRunway(self):	# 42: PolygonRunway, 44:TextureRunway
+        # ignored - info should now be in FS2004-style BGL
+        #self.old=True
+        #self.bgl.seek(62,1)	# SDK lies
+        
+        # runways should now be in FS2004-style BGL. But this command is
+        # sometimes used to put back lights on an excluded runway
+        (lat,lon,alt)=self.LLA()
+        cloc=Point(lat,lon)
+        if not (lat>=-90 and lat<=90 and lon>=-180 and lon<=180):
+            if self.debug: self.debug.write("!Bogus Runway location %s\n"%cloc)
+            raise struct.error
+        (heading, length, width, markers, identifiers, surface_lights, specials, surface_type, threshold_flags, base_threshold, base_blast_pad, recip_threshold, recip_blast_pad)=unpack('<HHHBBBBBBHHHH', self.bgl.read(20))
+        heading=heading*(360.0/65536)
+        length=length/m2f	# includes displaced threshold
+        width=width/m2f
+        displaced=[base_threshold/m2f, recip_threshold/m2f]
+        overrun=[base_blast_pad/m2f, recip_blast_pad/m2f]
+        if surface_type==255:	# Transparent
+            surface=15
+        elif surface_type>8:
+            surface=1
+        else:
+            surface=[4,2,1,3,5,5,1,2,14][surface_type]
+        if markers&0x80 and surface<=2:
+            shoulder=surface
+        else:
+            shoulder=0
+        smoothing=0.25
+        if surface_lights&3:
+            edgelights=2	# LOW and HIGH not supported in 8.50
+        else:
+            edgelights=0
+        if surface_lights&0xC:
+            centrelights=1
+        else:
+            centrelights=0
+        distance=0
+        loc=[cloc.biased(-sin(radians(heading))*length/2,
+                         -cos(radians(heading))*length/2),
+             cloc.biased( sin(radians(heading))*length/2,
+                          cos(radians(heading))*length/2)]
+        number=["%02d" % (identifiers&63), "%02d" % (((identifiers&63)+18)%36)]
+        if number[0]=='00': number[0]='36'
+        if number[1]=='00': number[1]='36'
+        number[0]=number[0]+[' ','L','R','C'][identifiers/64]
+        number[1]=number[1]+[' ','R','L','C'][identifiers/64]
+        angle=[3,3]
+        if markers&0x44:	# precision or touchdown
+            markings=[3,3]
+        elif markers&2:		# threshold
+            markings=[2,2]
+        elif markers&0x30:	# ident or dashes
+            markings=[1,1]
+        else:
+            markings=[0,0]
+        if specials&0x08: markings[1]=0		# single end - no markings
+        #if specials&0x10: markings[0]=7	# not supported in 8.50
+        if specials&0x10: markings[0]=0		# base  closed - no markings
+        #if specials&0x20: markings[1]=7	# not supported in 8.50
+        if specials&0x2000: markings[1]=0	# recip closed - no markings
+        lights=[0,0]
+        tdzl=[0,0]
+        reil=[0,0]
+        for end in [0,1]:
+            (flags, system, strobes, vasi_system, vasi_angle, vasi_x, vasi_z, vasi_spacing)=unpack('<BBBBHHHH', self.bgl.read(12))
+            # ignore vasi - hope it's specified in XML
+            if flags&5:
+                reil[end]=1
+            if flags&40:
+                tdzl[end]=1
+            if system>10:
+                lights[end]=0
+            else:
+                lights[end]=[0,11,9,8,6,5,1,1,12,3,4][system]
+            # UK-style markings if Calvert approach lights
+            if lights[end] in [3,4] and markings[end] in [2,3]:
+                markings[end]=markings[end]+2
+
+        # Recalculate centre ignoring displaced thresholds
+        clen=(displaced[0]+length-displaced[1])/2
+        cloc=loc[0].biased(sin(radians(heading))*clen,
+                           cos(radians(heading))*clen)
+        txt="%5.2f %02d %02d %4.2f %d %d %d" % (width, surface, shoulder, smoothing, centrelights, edgelights, distance)
+        for end in [0,1]:
+            txt=txt+(" %-3s %10.6f %11.6f %5.1f %5.1f %02d %02d %d %d" % (number[end], loc[end].lat, loc[end].lon, displaced[end], overrun[end], markings[end], lights[end], tdzl[end], reil[end]))
+        self.output.misc.append((100, cloc, [AptNav(100, txt)]))
+
     def Texture2(self):		# 43
         (size,)=unpack('<H', self.bgl.read(2))
         self.bgl.read(8)	# 00, flags0, unicol
@@ -995,11 +1108,6 @@ class ProcScen:
         if self.debug: self.debug.write("%s\n" % basename(self.tex[0]))
         self.t=0
         
-    def TextureRunway(self):	# 42: PolygonRunway, 44:TextureRunway
-        # ignored - info should now be in FS2004-style BGL
-        self.old=True
-        self.bgl.seek(62,1)	# SDK lies
-
     def PointVICall(self):	# 46
         (off,x,y,z,p,vp,b,vb,h,vh)=unpack('<4h6H', self.bgl.read(20))
         if not off: raise struct.error	# infloop
@@ -1054,9 +1162,9 @@ class ProcScen:
         name="%s-generic-%d.obj" % (asciify(self.srcfile[:-4]),
                                     self.output.gencount)
         if typ==3:
-            obj=makegenmulti(name,self.layer, 8, size_x, size_z, heights, texs)
+            obj=makegenmulti(name,8,size_x, size_z, heights, texs)
         else:
-            obj=makegenquad(name,self.layer, size_x, size_z, incx, incz,
+            obj=makegenquad(name,size_x, size_z, incx, incz,
                             heights, texs, roof)
         self.output.objdat[name]=[obj]
         if self.matrix[-1]:
@@ -1078,7 +1186,9 @@ class ProcScen:
 
     def MoveL2G(self):		# 4d:MoveL2G, 4e:MoveG2L
         (to, fr)=unpack('<2H', self.bgl.read(4))
-        self.vars[to]=self.getvar(fr)
+        val=self.getvar(fr)
+        self.vars[to]=val
+        if self.debug: self.debug.write("%x<-%x = %d\n" % (to, fr, val))
         
     def SurfaceType(self):	# 55
         (sfc, x, z, alt)=unpack('<Hhhh', self.bgl.read(8))
@@ -1135,15 +1245,19 @@ class ProcScen:
 
     def RoadStart(self):	# 69
         (width,x,y,z)=unpack('<hhhh', self.bgl.read(8))
-        self.linktype=('VEHICLE', width*self.scale, 'FALSE')
-        if not (-1<=width*self.scale<=1):
+        width=width*self.scale*2
+        if width>=10 or width<=10:	# arbitrary
+            self.linktype=('VEHICLE', width, 'TRUE')
+        else:
+            self.linktype=('VEHICLE', width, 'FALSE')
+        if not (-1<width<=1):
             self.nodes.append(TaxiwayPoint(self.loc.biased(x*self.scale, z*self.scale)))
 
     def RoadCont(self):		# 6a:RoadCont, 6f:TaxiwayCont
         (x,y,z)=unpack('<hhh', self.bgl.read(6))
         (type, width, centerline)=self.linktype
         if type and not (-1<=width<=1):
-            self.nodes.append(TaxiwayPoint(Point(self.nodes[-1].lat,self.nodes[-1].lon).biased(x*self.scale, z*self.scale)))
+            self.nodes.append(TaxiwayPoint(self.loc.biased(x*self.scale, z*self.scale)))
             self.links.append(TaxiwayPath(type, width, centerline,
                                           len(self.nodes)-2,len(self.nodes)-1))
 
@@ -1157,7 +1271,7 @@ class ProcScen:
 
     def TaxiwayStart(self):	# 6e
         (width,x,y,z)=unpack('<hhhh', self.bgl.read(8))
-        self.linktype=('TAXI', width*self.scale, 'FALSE')
+        self.linktype=('TAXI', width*self.scale*2, 'FALSE')
         self.nodes.append(TaxiwayPoint(self.loc.biased(x*self.scale, z*self.scale)))
 
     def AddCat(self):		# 74
@@ -1186,14 +1300,8 @@ class ProcScen:
     def ResPnt(self):		# 80
         (idx,)=unpack('<H', self.bgl.read(2))
         (x,y,z,c,c,c,c,c)=self.vtx[idx]
-        if self.m==None:
-            mat=self.mat[0]
-        else:
-            mat=self.mat[self.m]
-            if not mat:
-                if self.debug: self.debug.write("Transparent\n")
-                return	# transparent
-        key=self.makekey(False)
+        (key,mat)=self.makekey(False)
+        if not mat or mat[0]==(0,0,0): return
         if not key in self.lightdat:
             self.lightdat[key]=[]
         self.lightdat[key].append(((x,y,z), mat[0]))
@@ -1338,7 +1446,8 @@ class ProcScen:
             if not name in effects:
                 self.output.log('Unsupported effect "%s" at (%10.6f, %11.6f) in %s' % (name, self.loc.lat, self.loc.lon, self.comment))
             else:
-                key=self.makekey(False)
+                (key,mat)=self.makekey(False)
+                if not mat: return
                 if not key in self.effectdat: self.effectdat[key]=[]
                 self.effectdat[key].append(((0,0,0), effects[name]))
                 self.checkmsl()
@@ -1361,9 +1470,9 @@ class ProcScen:
         name="%s-generic-%d.obj" % (asciify(self.srcfile[:-4]),
                                     self.output.gencount)
         if typ in [10,11]:
-            obj=makegenmulti(name,self.layer, sides, size_x, size_z, heights, texs)
+            obj=makegenmulti(name,sides, size_x, size_z, heights, texs)
         else:
-            obj=makegenquad(name,self.layer, size_x, size_z, incx,incz,heights,texs,roof)
+            obj=makegenquad(name,size_x, size_z, incx,incz,heights,texs,roof)
         self.output.objdat[name]=[obj]
         self.output.objplc.append((loc, heading, self.complexity, name, 1))
         if self.altmsl:
@@ -1394,11 +1503,13 @@ class ProcScen:
         self.bgl.seek(off-22,1)
 
     def TextureRoadStart(self):	# a8
-        # width is in [m], ie not scaled
         (style,width,x,y,z)=unpack('<Hhhhh', self.bgl.read(10))
-        if style<2 and width>=10:	# arbitrary
+        width=width*self.scale*2	# width is in [m]?, ie not scaled?
+        if style<=1 and -1<=width<=-1:		# arbitrary - centreline only
+            self.linktype=('TAXI', width, 'TRUE')
+        elif style<=1 and (width>=10 or width<=10):	# arbitrary
             self.linktype=('VEHICLE', width, 'TRUE')
-        elif style<2:
+        elif style<=1:
             self.linktype=('VEHICLE', width, 'FALSE')
         elif style==2:
             self.linktype=('VEHICLE', width, 'TRUE')
@@ -1417,8 +1528,10 @@ class ProcScen:
         (size,op)=unpack('<HB', self.bgl.read(3))
         endop=self.bgl.tell()+size-5
         (lat,lon,alt)=self.LLA()
-        if not (lat>=-90 and lat<=90 and lon>=-180 and lon<=180): return
         cloc=Point(lat,lon)
+        if not (lat>=-90 and lat<=90 and lon>=-180 and lon<=180):
+            if self.debug: self.debug.write("!Bogus Runway location %s\n"%cloc)
+            raise struct.error
         (heading, length, width, markers, surface_type, surface_lights, identifiers)=unpack('<HHHHBBB', self.bgl.read(11))
         heading=heading*(360.0/65536)
         length=length/m2f	# includes displaced threshold
@@ -1440,13 +1553,13 @@ class ProcScen:
             shoulder=0
         smoothing=0.25
         if surface_lights&3:
-            centrelights=1
-        else:
-            centrelights=0
-        if surface_lights&0xC:
             edgelights=2	# LOW and HIGH not supported in 8.50
         else:
             edgelights=0
+        if surface_lights&0xC:
+            centrelights=1
+        else:
+            centrelights=0
         distance=0
         loc=[cloc.biased(-sin(radians(heading))*length/2,
                          -cos(radians(heading))*length/2),
@@ -1494,7 +1607,7 @@ class ProcScen:
             elif op==6 or op==7:
                 (flags,system,strobes,vasi_system,vasi_angle,vasi_x,vasi_z,vasi_spacing)=unpack('<BBBBHHHH', self.bgl.read(12))
                 # ignore vasi - hope it's specified in XML
-                if flags&4:
+                if flags&5:
                     reil[op-6]=1
                 if flags&40:
                     tdzl[op-6]=1
@@ -1518,6 +1631,9 @@ class ProcScen:
         for end in [0,1]:
             txt=txt+(" %-3s %10.6f %11.6f %5.1f %5.1f %02d %02d %d %d" % (number[end], loc[end].lat, loc[end].lon, displaced[end], overrun[end], markings[end], lights[end], tdzl[end], reil[end]))
         self.output.misc.append((100, cloc, [AptNav(100, txt)]))
+
+    def ZBias(self):	# ac
+        (self.zbias,)=unpack('<H', self.bgl.read(2))
 
     # opcodes ad to bd new in FS2002
 
@@ -1570,7 +1686,8 @@ class ProcScen:
             intens=intens/(40.0*255.0)
         else:
             intens=1/255.0
-        key=self.makekey(False)
+        (key,mat)=self.makekey(False)
+        if not mat or mat[0]==(0,0,0): return
         if not key in self.lightdat:
             self.lightdat[key]=[]
         self.lightdat[key].append(((x,y,z), (r*intens,g*intens,b*intens)))
@@ -1598,7 +1715,7 @@ class ProcScen:
 
     def MaterialList(self):	# b6
         self.mat=[]
-        self.m=None
+        self.m=0
         (count,)=unpack('<H', self.bgl.read(2))
         self.bgl.read(4)
         for i in range(count):
@@ -1620,7 +1737,7 @@ class ProcScen:
 
     def TextureList(self):	# b7
         self.tex=[]
-        self.t=-1
+        self.t=0	# undefined - assume first
         (count,)=unpack('<H', self.bgl.read(2))
         self.bgl.read(4)
         for i in range(count):
@@ -1634,11 +1751,13 @@ class ProcScen:
             if self.debug:
                 self.debug.write("Bad material %d/%d\n"%(self.m,len(self.mat)))
             self.m=0
-        if self.t>=len(self.tex):
+        if self.t<0:
+            self.t=None
+        elif self.t>=len(self.tex):
             if self.debug:
                 self.debug.write("Bad texture %d/%d\n" %(self.t,len(self.tex)))
-            self.t=-1
-        if self.debug and self.t>=0:
+            self.t=None
+        if self.debug and self.t!=None:
             self.debug.write("%s\n" % basename(self.tex[self.t]))
         
     def DrawTriList(self):	# b9
@@ -1653,14 +1772,8 @@ class ProcScen:
         last=max(idx)
         for i in range(len(idx)):
             idx[i]=idx[i]-first
-        if self.m==None:
-            mat=self.mat[0]
-        else:
-            mat=self.mat[self.m]
-            if not mat:
-                if self.debug: self.debug.write("Transparent\n")
-                return	# transparent
-        key=self.makekey(True)
+        (key,mat)=self.makekey(True)
+        if not mat: return
         if not key in self.objdat:
             self.objdat[key]=[]
         self.objdat[key].append((mat, self.vtx[first:last+1], idx, False))
@@ -1678,14 +1791,8 @@ class ProcScen:
             last=max(last,a,b)
         for i in range(len(idx)):
             idx[i]=idx[i]-first
-        if self.m==None:
-            mat=self.mat[0]
-        else:
-            mat=self.mat[self.m]
-            if not mat:
-                if self.debug: self.debug.write("Transparent\n")
-                return	# transparent
-        key=self.makekey(False)
+        (key,mat)=self.makekey(True)
+        if not mat: return
         if not key in self.linedat:
             self.linedat[key]=[]
         self.linedat[key].append((self.vtx[base+first:base+last+1],
@@ -1736,14 +1843,11 @@ class ProcScen:
 
     def NOPh(self):
         # 30:Brightness, 3f:ShadowCall, 81:AntiAlias, 93: Specular?
-        # ac:ZBias - XXX should generate poly_os n ?
         self.bgl.read(2)
-        pass
 
     def NOPi(self):
-        # 89:VarBase32, 9f:Override, b4: TextureSize, bc:BGLVersion
+        # 89:VarBase32, 8f:Alpha, 9f:Override, b4: TextureSize, bc:BGLVersion
         self.bgl.read(4)
-        pass
 
 
     # Helpers
@@ -1775,9 +1879,10 @@ class ProcScen:
 
     # Try to make a draped polygon
     def makepoly(self, haveuv, vtx, idx=None):
-        if self.t==-1: return False	# Only care about textured polygons
+        if self.t==None: return False	# Only care about textured polygons
+        if not self.mat[self.m]: return False	# Not transparent
         if not self.loc: return False	# Not for library objects
-        if self.debug: self.debug.write("Poly: %s %s %s " % (basename(self.tex[self.t]), self.alt, self.layer))
+        if self.debug: self.debug.write("Poly: %s %s %s %d " % (basename(self.tex[self.t]), self.alt, self.layer, self.zbias))
         
         # Find unique points
         if idx:
@@ -1804,7 +1909,7 @@ class ProcScen:
             for i in range(0,len(idx),3):
                 for j in range(3):
                     e=idx[i+j]
-                    if abs(vtx[e][1]-yval)>groundfudge:
+                    if abs(vtx[e][1]-yval)>planarfudge:
                         if self.debug: self.debug.write("Not coplanar\n")
                         return False
                     if not e in edges: edges[e]=[]
@@ -1844,6 +1949,7 @@ class ProcScen:
                 thisheading=(bestheading-180)%360-360
             vtx=[vtx[i] for i in myidx]
         elif not vtx:
+            if self.debug: self.debug.write("No vertices!\n")
             return False	# Eh?
         else:
             # Altitude test
@@ -1895,8 +2001,11 @@ class ProcScen:
                 haveuv=False
             loc=self.loc.biased(x,z)
             points[0].append((loc,max(0,min(1,tu-minu)),max(0,min(1,tv-minv))))
-    
-        if not ((maxx-minx)>NM2m/16 or (maxz-minz)>NM2m/16):    # arbitrary
+
+        # 8.60 has a bug with polygons at different layers sharing textures,
+        # so minimise use of polygons by making this an object if it's small
+        # enough to be unlikely to cause Z-buffer issues.
+        if (maxx-minx)<NM2m/8 and (maxz-minz)<NM2m/8:    # arbitrary
             if self.debug: self.debug.write("Too small %s %s\n" % (maxx-minx, maxz-minz))
             return False	# probably detail
 
@@ -1997,7 +2106,7 @@ class ProcScen:
         else:
             heading=0
         # handle day&night properly (eg spotlights)
-        if self.vars[0x28c]==4:
+        if self.vars[0x28c]!=1:
             tex=None
             lit=self.tex[self.t]
             # Look for _lm version, eg LIEE cittadella universitaria-dm_liee_44
@@ -2011,8 +2120,15 @@ class ProcScen:
             (src,ext)=splitext(basename(tex))
             lit=findtex(src+'_lm', dirname(tex), True)
             if lit and self.haze: self.output.haze[lit]=self.haze
+        layer=self.layer
+        if layer>=40:	# ground element
+            layer=None
+        elif layer>=24:
+            layer=24
+        if not layer and self.zbias:
+            layer=24
         for p in points:
-            self.polydat.append((p, self.layer, heading, int(self.scale*256), tex, lit))
+            self.polydat.append((p, layer, heading, int(self.scale*256), tex, lit))
         if self.debug: self.debug.write("OK %s %s\n" % (maxx-minx, maxz-minz))
         return True
 
@@ -2104,7 +2220,7 @@ class ProcScen:
 
                 # check for same vertices but moved textures. 2 cases:
                 # same day&night tex (eg SAEZ EZEMAINX) - just do day
-                # diff day&night tex - do both (assume tex changes are boring) 
+                # diff day&night tex - do both (ignore any uv changes)
                 for nkey in nightobjdat.keys():
                     (nloc,nlayer,nalt,naltmsl,nmatrix,nscale,ntex,nlit)=nkey
                     #if dump: print nkey
@@ -2175,7 +2291,8 @@ class ProcScen:
                 (fname,ext)=splitext(basename(tex))
             else:
                 (fname,ext)=splitext(basename(lit))
-                if fname[-3:].lower()=='_lm': fname=fname[:-3]
+                # base and lit textures may not have same case
+                if fname[-3:].lower()=='_lm': fname=fname[:-3]+"_LIT"
             if not ext.lower() in ['.dds', '.bmp', '.png']:
                 fname+=ext	# For *.xAF etc
             # Spaces not allowed in textures. Avoid Mac/PC interop problems
@@ -2192,14 +2309,19 @@ class ProcScen:
                     if not fname in self.output.polydat:
                         break	# no match - new object
                     if poly==self.output.polydat[fname]:
+                        # 8.60 has a bug with polygons at different layers
+                        # sharing textures, so use lowest layer
+                        if self.debug and poly.layer!=self.output.polydat[fname].layer: self.debug.write("!Flattened polygon %s layers %s and %s\n" % (fname, poly.layer, self.output.polydat[fname].layer))
+                        self.output.polydat[fname].layer=min(poly.layer,self.output.polydat[fname].layer)
                         break	# matched - re-use this object
                     i+=1
+                if self.debug and lit and not tex: self.debug.write("Night-only polygon %s\n" % fname)
                     
             self.output.polydat[fname]=poly
             self.output.polyplc.append((fname, heading, points))
 
 
-        objdat={}	# [(tex, lit, vlight, vline, veffect, vt, idx, mattri)] by (loc, layer, altmsl, hdg)
+        objdat={}	# [(tex, lit, vlight, vline, veffect, vt, idx, mattri)] by (lat, lon, layer, altmsl, hdg)
 
         # Sort throught lights, lines and objects.
         # Lights & lines first so are combined with untextured objects.
@@ -2208,7 +2330,10 @@ class ProcScen:
         # that is duplicated apart from by heading
         for lkey in unique(self.lightdat.keys()+self.linedat.keys()+self.effectdat.keys()+self.objdat.keys()):
             (loc, layer, alt, altmsl, matrix, scale, tex, lit)=lkey
-            if layer>=32: layer=None
+            if layer>=40:
+                layer=None
+            elif layer>=24:
+                layer=24
             newmatrix=matrix
             heading=0
             
@@ -2221,24 +2346,25 @@ class ProcScen:
                 scale2=scale/2.0
                 newmatrix=Matrix().offset(round(x+scale2-(x+scale2)%scale,3), round(y+scale2-(y+scale2)%scale,3), round(z+scale2-(z+scale2)%scale,3))	# round to nearest unit to encourage a match
                 if self.debug:
-                    if tex:
-                        self.debug.write("New heading %6.2f, offset (%7.3f,%7.3f,%7.3f), for %s\n" % (heading, newmatrix.m[3][0], newmatrix.m[3][1], newmatrix.m[3][2], basename(tex)))
-                    else:
-                        self.debug.write("New heading %6.2f, offset (%7.3f,%7.3f,%7.3f), for None\n" % (heading, newmatrix.m[3][0], newmatrix.m[3][1], newmatrix.m[3][2]))
-
+                    if tex: thing=basename(tex)
+                    elif lit: thing=basename(lit)
+                    else: thing=None
+                    self.debug.write("New heading %6.2f, offset (%7.3f,%7.3f,%7.3f) for %s\n" % (heading, newmatrix.m[3][0], newmatrix.m[3][1], newmatrix.m[3][2], thing))
             if loc:
                 okey=(loc.lat, loc.lon, layer, altmsl, heading)
             else:
                 okey=(None, None, layer, altmsl, None)
 
-            # Consolidate with other data with same tex and placement
+            # Find existing data at this location with same tex to consolidate
             if okey in objdat:
                 for i in range(len(objdat[okey])):
                     (otex,olit, vlight, vline, veffect, vt, idx, mattri)=objdat[okey][i]
-                    if tex==otex and lit==olit:
+                    if not vt or (tex==otex and lit==olit):
+                        # if no vertices in existing data then tex irrelevant
                         objdat[okey].pop(i)
                         break
                 else:
+                    # new data at existing location
                     vlight=[]
                     vline=[]
                     veffect=[]
@@ -2246,6 +2372,7 @@ class ProcScen:
                     idx=[]
                     mattri=[]
             else:
+                # new data at new location
                 objdat[okey]=[]
                 vlight=[]
                 vline=[]
@@ -2283,7 +2410,7 @@ class ProcScen:
                 for (m, vtx, i, dbl) in self.objdat[lkey]:
 
                     # replace materials with palette texture
-                    if not tex and not lit:
+                    if tex==palettetex:
                         (pu,pv)=rgb2uv(m[0])
                     
                     vbase=len(vt)
@@ -2295,7 +2422,7 @@ class ProcScen:
                             (x,y,z)=newmatrix.transform(x,y,z)
                             (nx,ny,nz)=newmatrix.rotate(nx,ny,nz)
                         # replace materials with palette texture
-                        if not tex and not lit:
+                        if tex==palettetex:
                             tu=pu
                             tv=pv
                         vt.append([x*scale,alt+y*scale,-z*scale, nx,ny,-nz, tu,tv])
@@ -2318,8 +2445,6 @@ class ProcScen:
 
             objdat[okey].append((tex, lit, vlight, vline, veffect, vt, idx, mattri))
 
-        # XXX combine lights/lines with any tex?
-
         # If altmsl adjust to ground level of all objects with same placement
         for okey in objdat:
             (lat, lon, layer, altmsl, heading)=okey
@@ -2338,22 +2463,20 @@ class ProcScen:
             (lat, lon, layer, altmsl, heading)=okey
             loc=Point(lat, lon)
             for (tex, lit, vlight, vline, veffect, vt, idx, mattri) in objdat[okey]:
-                texname=tex
-                litname=lit
-                if tex or lit:
+                if tex==palettetex or (not tex and not lit):
+                    fname=asciify(bname)
+                else:
                     if tex:
                         (fname,ext)=splitext(basename(tex))
                     else:
                         (fname,ext)=splitext(basename(lit))
-                        if fname[-3:].lower()=='_lm': fname=fname[:-3]
+                        # base and lit textures may not have same case
+                        if fname[-3:].lower()=='_lm': fname=fname[:-3]+"_LIT"
                     if not ext.lower() in ['.dds', '.bmp', '.png']:
                         fname+=ext	# For *.xAF etc
                     # Spaces not allowed in textures. Avoid Mac/PC interop problems
                     fname="%s-%s" % (asciify(bname),
                                      asciify(fname).replace(' ','_'))
-                else:
-                    fname=asciify(bname)
-                    if vt: texname='Resources/FS2X-palette.png'
     
                 # Check whether this object is a 'decal' and apply poly_os
                 poly=0
@@ -2374,7 +2497,7 @@ class ProcScen:
                         #    poly=2	# probably detail
                     
                 # Finally build the object
-                obj=Object(fname+'.obj', self.comment, texname, litname, layer, vlight, vline, veffect, vt, idx, mattri, poly)
+                obj=Object(fname+'.obj', self.comment, tex, lit, layer, vlight, vline, veffect, vt, idx, mattri, poly)
                 if self.libname:
                     objs.append(obj)
                 else:
@@ -2388,6 +2511,13 @@ class ProcScen:
                                 fname="%s-%d" % (iname, i)
                                 obj.filename=fname+'.obj'
                             if not fname in self.output.objdat:
+                                if self.debug:
+                                    if not tex and not lit:
+                                        self.debug.write("Textureless object %s\n" % fname)
+                                    elif not tex and lit:
+                                        self.debug.write("Night-only object %s\n" % fname)
+                                    if maxy>250:	# arbitrary
+                                        self.debug.write("!Ludicrous size for object %s\n" % fname)
                                 break	# no match - new object
                             if obj==self.output.objdat[fname][0]:
                                 break	# matched - re-use this object
@@ -2396,8 +2526,6 @@ class ProcScen:
                     self.output.objdat[fname]=[obj]
                     self.output.objplc.append((loc, heading,
                                                self.complexity, fname, 1))
-                    if self.debug and maxy>250:	# arbitrary
-                        self.debug.write("!Ludicrous size for object %s\n" % fname)
 
         # Add objs to library with one name
         if self.libname and objs:
@@ -2620,7 +2748,7 @@ def ProcTerrain(bgl, srcfile, output, debug):
     LONRES=480.0/32768
     
     (size,ver)=unpack('<2I', bgl.read(8))
-    if size!=0x64 or ver!=0x202: raise struct.error
+    if size!=0x64: raise struct.error
     (reserved1,)=unpack('<I', bgl.read(4))	# No idea how to decode this
     bgl.seek(11*4,1)
     (lwm,vtp)=unpack('<2I', bgl.read(8))

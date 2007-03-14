@@ -59,7 +59,10 @@ twopi=pi+pi
 m2f=3.28084	# 1 metre [ft]
 NM2m=1852	# 1 international nautical mile [m]
 
-groundfudge=0.175	# arbitrary: 0.124 used in UNNT, 0.172 in KBOS
+groundfudge=2.2	# arbitrary: 0.124 used in UNNT, 0.172 in KBOS, 2.19 in LIRP
+planarfudge=0.1	# arbitrary
+
+palettetex='Resources/FS2X-palette.png'
 
 complexities=3
 
@@ -400,7 +403,7 @@ class Object:
                 raise IOError	# case mixup
             objfile.write("I\n800\t# %sOBJ\n" % banner)
             objfile.write("\n# %s\n\n" % comment)
-            if tex:
+            if tex and self.vt:
                 objfile.write("TEXTURE\t\t%s\n" % (basename(tex)))
                 if lit:
                     objfile.write("TEXTURE_LIT\t%s\n" % (
@@ -439,14 +442,14 @@ class Object:
                 objfile.write("ATTR_layer_group\t%s\n" % fslayers[self.layer])
             if self.poly:
                 objfile.write("ATTR_poly_os\t%d\n\n" % self.poly)
-            else:
+            elif self.vt:
                 objfile.write("ATTR_no_blend\n\n")
             #if self.surface:
             #    objfile.write("ATTR_hard\tconcrete\n")
 
             if len(self.vlight)<=1 and len(self.veffect)<=1 and not self.vline and not self.vt:
                 # X-Plane 8.x optimises single lights away otherwise
-                objfile.write("ATTR_LOD\t0 10000\n")
+                objfile.write("ATTR_LOD\t0 1000\n")
 
             for (x,y,z,effect,s) in self.veffect:
                 objfile.write("%s\t%8.3f %8.3f %8.3f\t%6.3f\n" % (effect, x, y, z, s))
@@ -468,7 +471,7 @@ class Object:
             a=(1.0,1.0,1.0)
             s=(0.0,0.0,0.0)
             e=(0.0,0.0,0.0)
-            p=0.0
+            p=0.5
             d=False
             for (m, start, count, dbl) in self.mattri:
                 if dbl and not d:
@@ -508,10 +511,10 @@ class Polygon:
         return (self.filename==o.filename and
                 self.tex==o.tex and
                 self.lit==o.lit and
-                self.nowrap==o.nowrap and
-                #self.scale==o.scale and	# scale is boring
-                #self.surface==o.surface and	# redundant
-                self.layer==o.layer)
+                self.nowrap==o.nowrap) #and
+                #self.layer==o.layer)	 	# 8.60 layer bug
+                #self.scale==o.scale		# scale is boring
+                #self.surface==o.surface	# redundant
 
     def export(self, output, fslayers):
         if self.tex and not exists(self.tex):
@@ -634,12 +637,15 @@ def maketex(src, dst, output, palno):
                 src=tmp
             f.close()
 
-        if palno:
-            x=helper('%s -xbrqp%d -o "%s" "%s"' % (
-                output.pngexe, palno-1, dst, src))
+        if platform=='win32':
+            quote='"'
         else:
-            x=helper('%s -xbrq -o "%s" "%s"' % (
-                output.pngexe, dst, src))
+            quote="'"
+
+        if palno:
+            x=helper(output.pngexe, '-xbrqp%d' % (palno-1), '-o', dst, src)
+        else:
+            x=helper(output.pngexe, '-xbrq', '-o', dst, src)
         if tmp: unlink(tmp)
         if not exists(dst):
             output.dufftex[src]=True
@@ -674,11 +680,16 @@ def rgb2uv(rgb):
 
 
 # Run helper app and return stderr
-def helper(cmds):
-    if platform=='win32' and type(cmds)==types.UnicodeType:
+def helper(*cmds):
+    if platform=='win32':
+        quote='"'
+    else:
+        quote="'"
+    cmdstr=cmds[0]+" " + " ".join([quote+cmd+quote for cmd in cmds[1:]])
+    if platform=='win32' and type(cmdstr)==types.UnicodeType:
         # commands must be MBCS encoded
-        cmds=cmds.encode("mbcs")
-    (i,o,e)=popen3(cmds)
+        cmdstr=cmdstr.encode("mbcs")
+    (i,o,e)=popen3(cmdstr)
     i.close()
     o.read()
     txt=e.read()

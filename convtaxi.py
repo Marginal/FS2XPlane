@@ -209,6 +209,11 @@ def edgefeature(link1, side1, link2=None, side2=None):
             code='21'	# Use chequerboard
         elif link1.lines[side1]=='DASHED' or link2.lines[side2]=='DASHED':
             code='21'	# Displayed as chequerboard in MSFS
+    if link1.lights[side1] or link2.lights[side2]:
+        if code:
+            code=code+' 102'
+        else:
+            code='102'
     return code
 
 
@@ -460,11 +465,11 @@ def tessvertex(vertex, data):
 
 def tesscombine(coords, vertex, weight, data):
     (points, debez, dump)=data
-    #if dump: print "Combine", Point(coords[2], coords[0])
+    if dump: print "Combine", Point(coords[2], coords[0])
     for i in range(len(weight)):
         if weight[i]:
             (pt, bez, blank, dummy, code)=vertex[i]
-            #if dump:  print pt, bez, blank, dummy, code, round(weight[i],3)
+            if dump:  print pt, bez, blank, dummy, code, round(weight[i],3)
             if weight[i]>0.1:	# arbitrary. Probably still OK if far away
                 # Can no longer guarantee sanity of the bezier curve
                 debez.append(pt)
@@ -479,7 +484,7 @@ def taxilayout(allnodes, alllinks, surfaceheading, output, aptdat=None, ident="u
 
     # Edges ----------------------------------------------------------------
 
-    dump=(output.debug and ident=="ESSA" and open(join(output.xppath, ident+"_nodes.txt"), "at"))
+    dump=(output.debug and ident=="KBJC" and open(join(output.xppath, ident+"_nodes.txt"), "at"))
     if dump:
         print ident
         interfile=open(join(output.xppath, ident+"_inter.txt"), "at")
@@ -511,8 +516,12 @@ def taxilayout(allnodes, alllinks, surfaceheading, output, aptdat=None, ident="u
             if len(elinks)==1:
                 # Stub
                 w=link1.width/2
-                loc1=n.loc.biased((cos(h1)-sin(h1))*w, (-sin(h1)-cos(h1))*w).round()
-                loc2=n.loc.biased((-cos(h1)-sin(h1))*w, (sin(h1)-cos(h1))*w).round()
+                if link1.type=='RUNWAY':
+                    loc1=n.loc.biased(cos(h1)*w, -sin(h1)*w).round()
+                    loc2=n.loc.biased(-cos(h1)*w, sin(h1)*w).round()
+                else:
+                    loc1=n.loc.biased((cos(h1)-sin(h1))*w, (-sin(h1)-cos(h1))*w).round()
+                    loc2=n.loc.biased((-cos(h1)-sin(h1))*w, (sin(h1)-cos(h1))*w).round()
                 link1.intersect[end1]=[(loc1,None), (loc2,None)]
                 if dump:
                     #print loc1, "stub", i
@@ -562,8 +571,8 @@ def taxilayout(allnodes, alllinks, surfaceheading, output, aptdat=None, ident="u
                     print loc2, "degenerate2"
             elif bez1 and bez2:
                 if d<2.04*link.width:	# small fudge factor for safety
-                    if bez1: bez1=(loc1+(loc2-loc1)*0.5).round()
-                    if bez2: bez2=(loc1+(loc2-loc1)*0.5).round()
+                    if bez1: bez1=(loc1+(loc2-loc1)*0.48).round()
+                    if bez2: bez2=(loc1+(loc2-loc1)*0.52).round()
                     if dump:
                         print loc1, bez1, "merge1"
                         print loc2, bez2, "merge2"
@@ -627,6 +636,12 @@ def taxilayout(allnodes, alllinks, surfaceheading, output, aptdat=None, ident="u
         # Find an independent subgraph by looking for connected links
         subgraph=[links[0]]	# start with random link
         surface=links[0].surface
+        if links[0].type=='TAXI':
+            name="Taxiway"
+        elif links[0].type=='VEHICLE':
+            name="Road"
+        else:
+            name="Path"
         links.pop(0)
         subgraph[0].findlinked(links, subgraph)
         #if len(subgraph)<=1 and len(subgraph[0].links==0):
@@ -723,8 +738,8 @@ def taxilayout(allnodes, alllinks, surfaceheading, output, aptdat=None, ident="u
         # Finally output the polygons
         out=[]
         for tw in outpoints:
-            out.append(AptNav(110, "%02d %4.2f %6.2f Taxiways" % (
-                surface, 0.25, surfaceheading)))
+            out.append(AptNav(110, "%02d %4.2f %6.2f %s" % (
+                surface, 0.25, surfaceheading, name)))
             for points in tw:
                 n=len(points)
                 if points[0][3] and points[n-1][3]:	# dummy - see below

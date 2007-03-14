@@ -23,5 +23,7 @@ fi
 unset DISPLAY
 export WINESERVER="${WINELOADER}server"
 "$WINELOADER" ./MacOS/win32/fake2004.exe
-mkdir -p ~/.wine/dosdevices/c:/Program\ Files/Microsoft\ Games
-ln -s ~/FS2004  ~/.wine/dosdevices/c:/Program\ Files/Microsoft\ Games/Flight\ Simulator\ 9
+if [ ! -e ~/.wine/dosdevices/c:/Program\ Files/Microsoft\ Games ]; then
+    mkdir -p ~/.wine/dosdevices/c:/Program\ Files/Microsoft\ Games
+    ln -s ~/FS2004  ~/.wine/dosdevices/c:/Program\ Files/Microsoft\ Games/Flight\ Simulator\ 9;
+fi

@@ -29,7 +29,7 @@ from math import sin, cos, atan, pi
 from os import listdir
 from os.path import join
 
-from convutil import Object, rgb2uv
+from convutil import Object, rgb2uv, palettetex
 
 # X-Plane autonmatically generates versions of these from nav.dat data 
 ignorestock=['air_localizerantenna01', 'air_ndb_dmeantenna','air_ndb_dmeshack','air_ndb_dmetower','gen_dme','gen_ndb01','gen_tacan','ndb','sco_gen_checkershed','sco_gen_ilstransmitter','sco_gen_radarshackb','sco_gen_radarshackbaseb','sco_gen_radarshackdish','sco_gen_vor03','sco_gen_vor03dme','sco_gen_vorsmall','sco_gen_vorsmall2','sco_gen_vorsmall2dme','sco_gen_vorsmalldme']
@@ -67,7 +67,7 @@ def makeapronlight():
     return Object("ApronLight.obj", "ApronEdgeLights",
                   'Resources/FS2X-ApronLight.png', None, None,
                   vlight, [], [], vt, idx,
-                  [([(1,1,1),(0,0,0),(0,0,0),0],0,6,False)], 2)
+                  [([(1,1,1),(0,0,0),(0,0,0),0.5],0,6,False)], 2)
     
 
 def maketaxilight():
@@ -263,9 +263,9 @@ def maketaxisign(label):
     fname="TaxiwaySign-%s.obj" % fname
     return Object(fname, 'TaxiwaySign "%s"' % label,
                   'Resources/FS2X-Taxi.png', None, None, [], [], [], vt, idx,
-                  [([(1,1,1),(0,0,0),(0,0,0),0],
+                  [([(1,1,1),(0,0,0),(0,0,0),0.5],
                     0,frameilen,False),
-                   ([(1,1,1),(0,0,0),(1,1,1),0],
+                   ([(1,1,1),(0,0,0),(1,1,1),0.5],
                     frameilen,len(idx)-frameilen,False)], 0)
 
 
@@ -306,10 +306,10 @@ def makestock(output, uid, name):
     obj.close()
     return Object(objname, "(c) Jonathan Harris 2007. http://creativecommons.org/licenses/by-sa/2.5/",
                   tex, None, None, [], [], [], vt, idx,
-                  [([(1,1,1),(0,0,0),(0,0,0),0], 0, len(idx), False)], 0)
+                  [([(1,1,1),(0,0,0),(0,0,0),0.5], 0, len(idx), False)], 0)
 
 
-def makegenquad(name, layer, x, z, incx, incz, heights, texs, roof):
+def makegenquad(name, x, z, incx, incz, heights, texs, roof):
     # roof types: 0=flat, 1=pointy, 2=gabled, 3=slanty
     cumheight=0
     vt=[]
@@ -430,13 +430,12 @@ def makegenquad(name, layer, x, z, incx, incz, heights, texs, roof):
                    (-x0, topheight, -z0, 0,0,-1, u,v)])
         idx.extend([base+2,base+1,base, base,base+3,base+2])
         
-    if layer>=32: layer=None
-    return Object(name, "Generic building", 'Resources/FS2X-palette.png', None,
-                  layer, [], [], [], vt, idx,
-                  [([(1,1,1),(0,0,0),(0,0,0),0], 0, len(idx), False)], 0)
+    return Object(name, "Generic building", palettetex, None,
+                  None, [], [], [], vt, idx,
+                  [([(1,1,1),(0,0,0),(0,0,0),0.5], 0, len(idx), False)], 0)
 
 
-def makegenmulti(name, layer, sides, x, z, heights, texs):
+def makegenmulti(name, sides, x, z, heights, texs):
     # building fits inside an oval inscribed in a x*z box
     slice=2*pi/sides
     halfslice=pi/sides
@@ -501,10 +500,9 @@ def makegenmulti(name, layer, sides, x, z, heights, texs):
                         base+(corner*2+1)%sides2,
                         base+(corner*2+2)%sides2])
 
-    if layer>=32: layer=None
-    return Object(name, "Generic building", 'Resources/FS2X-palette.png', None,
-                  layer, [], [], [], vt, idx,
-                  [([(1,1,1),(0,0,0),(0,0,0),0], 0, len(idx), False)], 0)
+    return Object(name, "Generic building", palettetex, None,
+                  None, [], [], [], vt, idx,
+                  [([(1,1,1),(0,0,0),(0,0,0),0.5], 0, len(idx), False)], 0)
 
 
 

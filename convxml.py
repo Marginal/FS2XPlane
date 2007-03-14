@@ -134,7 +134,7 @@ class SceneryObject:
                 parser.gencount += 1
                 name="%s-generic-%d.obj" % (asciify(parser.filename[:-4]),
                                             parser.gencount)
-                obj=makegenmulti(name, None, int(m.buildingSides),
+                obj=makegenmulti(name, int(m.buildingSides),
                                  scale*float(m.sizeX), scale*float(m.sizeZ),
                                  [scale*float(m.sizeBottomY),
                                   scale*float(m.sizeWindowY),
@@ -150,7 +150,7 @@ class SceneryObject:
                 parser.gencount += 1
                 name="%s-generic-%d.obj" % (asciify(parser.filename[:-4]),
                                             parser.gencount)
-                obj=makegenquad(name, None,
+                obj=makegenquad(name,
                                 scale*float(m.sizeX), scale*float(m.sizeZ),
                                 atan((float(m.sizeX)-float(m.sizeTopX))/h2),
                                 atan((float(m.sizeZ)-float(m.sizeTopZ))/h2),
@@ -185,7 +185,7 @@ class SceneryObject:
                 parser.gencount += 1
                 name="%s-generic-%d.obj" % (asciify(parser.filename[:-4]),
                                             parser.gencount)
-                obj=makegenquad(name, None,
+                obj=makegenquad(name,
                                 scale*float(m.sizeX), scale*float(m.sizeZ),
                                 0, 0, heights, rtexs, roof)
                 output.objdat[name]=[obj]

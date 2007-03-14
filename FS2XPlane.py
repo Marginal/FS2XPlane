@@ -264,19 +264,19 @@ class MainWindow(wx.Frame):
         grid1 = wx.FlexGridSizer(2, 3, 7, 7)
         grid1.AddGrowableCol(1,proportion=1)
         grid1.SetFlexibleDirection(wx.HORIZONTAL)
-        grid1.Add(wx.StaticText(panel1, -1, "MSFS scenery location:"), 0,
+        grid1.Add(wx.StaticText(panel1, -1, "MSFS scenery location: "), 0,
                   wx.ALIGN_CENTER_VERTICAL)
         grid1.Add(self.fspath,     1,
                   wx.ALIGN_CENTER_VERTICAL|wx.ALL|wx.EXPAND, pad)
         grid1.Add(self.fsbrowse,   0,
                   wx.ALIGN_CENTER_VERTICAL|wx.ALL, pad)
-        grid1.Add(wx.StaticText(panel1, -1, "Additional MSFS libraries:"), 0,
+        grid1.Add(wx.StaticText(panel1, -1, "Additional MSFS libraries: "), 0,
                   wx.ALIGN_CENTER_VERTICAL)
         grid1.Add(self.lbpath,     1,
                   wx.ALIGN_CENTER_VERTICAL|wx.ALL|wx.EXPAND, pad)
         grid1.Add(self.lbbrowse,   0,
                   wx.ALIGN_CENTER_VERTICAL|wx.ALL, pad)
-        grid1.Add(wx.StaticText(panel1, -1, "X-Plane scenery location:"), 0,
+        grid1.Add(wx.StaticText(panel1, -1, "X-Plane scenery location: "), 0,
                   wx.ALIGN_CENTER_VERTICAL)
         grid1.Add(self.xppath,     1,
                   wx.ALIGN_CENTER_VERTICAL|wx.ALL|wx.EXPAND, pad)
@@ -292,7 +292,7 @@ class MainWindow(wx.Frame):
         self.season = wx.RadioBox(panel2,-1, "Season:",
                                   choices=["Spring", "Summer",
                                            "Autumn", "Winter"])
-        self.dumplib= wx.CheckBox(panel2,-1, "Extract all library objects")
+        self.dumplib= wx.CheckBox(panel2,-1, "Just extract library objects")
         # use panel and sizer so tab order works normally
         box2 = wx.BoxSizer(wx.HORIZONTAL)
         box2.Add(self.season, 1)
@@ -303,33 +303,38 @@ class MainWindow(wx.Frame):
 
         
         # 3rd panel - adjust order of buttons per Windows or Mac conventions
-        if platform=='win32':
-            button31=wx.Button(panel3, wx.ID_HELP)
-            button32=wx.Button(panel3, wx.ID_OK, "Convert")
-            button33=wx.Button(panel3, wx.ID_EXIT)
-            box3 = wx.BoxSizer(wx.HORIZONTAL)
-            box3.Add(button31, 0, wx.ALL, pad)
-            box3.Add([0,0], 1)	# push following buttons to right
-            box3.Add(button32, 0, wx.ALL, pad)
-            box3.Add([6,0], 0)	# cosmetic
-            box3.Add(button33, 0, wx.ALL, pad)
-        else:
-            button33=wx.Button(panel3, wx.ID_EXIT)
-            button32=wx.Button(panel3, wx.ID_OK, "Convert")
-            button31=wx.Button(panel3, wx.ID_HELP)
+        if platform=='darwin':
+            button31=wx.Button(panel3, wx.ID_EXIT)
+            button32=wx.Button(panel3, wx.ID_APPLY, "Convert")
+            button33=wx.Button(panel3, wx.ID_HELP)
             box3 = wx.BoxSizer(wx.HORIZONTAL)
             box3.Add([24,0], 0)	# cosmetic - balance button31
             box3.Add([0,0], 1)	# push following buttons to right
-            box3.Add(button33, 0, wx.ALL, pad)
+            box3.Add(button31, 0, wx.ALIGN_CENTER_VERTICAL|wx.ALL, pad)
             box3.Add([6,0], 0)	# cosmetic
-            box3.Add(button32, 0, wx.ALL, pad)
+            box3.Add(button32, 0, wx.ALIGN_CENTER_VERTICAL|wx.ALL, pad)
             box3.Add([0,0], 1)	# push following buttons to right
-            box3.Add(button31, 0, wx.ALL, pad)
-        button32.SetDefault()
+            box3.Add(button33, 0, wx.ALIGN_CENTER_VERTICAL|wx.ALL, pad)
+            button32.SetDefault()
+        else:
+            button31=wx.Button(panel3, wx.ID_HELP)
+            if platform=='win32':
+                button32=wx.Button(panel3, wx.ID_EXIT)
+            else:
+                button32=wx.Button(panel3, wx.ID_CLOSE)
+            button33=wx.Button(panel3, wx.ID_APPLY, "Convert")
+            box3 = wx.BoxSizer(wx.HORIZONTAL)
+            box3.Add(button31, 0, wx.ALIGN_CENTER_VERTICAL|wx.ALL, pad)
+            box3.Add([0,0], 1)	# push following buttons to right
+            box3.Add(button32, 0, wx.ALIGN_CENTER_VERTICAL|wx.ALL, pad)
+            box3.Add([6,0], 0)	# cosmetic
+            box3.Add(button33, 0, wx.ALIGN_CENTER_VERTICAL|wx.ALL, pad)
+            button33.SetDefault()
         panel3.SetSizer(box3)
         
         wx.EVT_BUTTON(self, wx.ID_HELP, self.onHelp)
-        wx.EVT_BUTTON(self, wx.ID_OK, self.onConvert)
+        wx.EVT_BUTTON(self, wx.ID_APPLY, self.onConvert)
+        wx.EVT_BUTTON(self, wx.ID_CLOSE, self.onClose)
         wx.EVT_BUTTON(self, wx.ID_EXIT, self.onClose)
 
 

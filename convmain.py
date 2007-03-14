@@ -125,7 +125,7 @@ class Output:
                 if not exists(exe):
                     raise FS2XError("Can't find \"%s\"" % exe)
             # Let Wine initialise font cache etc on first run
-            #helper("wine --version")
+            #helper("wine", "--version")
 
         path=join('Resources', 'library objects.txt')
         try:
@@ -249,7 +249,7 @@ class Output:
                         if spare2:
                             bgl.close()
                             tmp=join(gettempdir(), filename)
-                            helper('%s "%s" "%s"' %(self.bglexe, bglname, tmp))
+                            helper(self.bglexe, bglname, tmp)
                             if not exists(tmp):
                                 # Check for uncompressed version
                                 tmp=join('Resources',basename(bglname).lower())
@@ -387,7 +387,7 @@ class Output:
                     if spare2:
                         bgl.close()
                         tmp=join(gettempdir(), filename)
-                        helper('%s "%s" "%s"' % (self.bglexe, bglname, tmp))
+                        helper(self.bglexe, bglname, tmp)
                         if not exists(tmp):
                             self.log("Can't parse compressed file %s" % (
                                 filename))
@@ -417,7 +417,7 @@ class Output:
         # Do airport facilities last so that exclusions have been set up
         for bglname in xmls:
             tmp=join(gettempdir(), basename(bglname[:-3])+'xml')
-            x=helper('%s -t "%s" "%s"' % (self.xmlexe, bglname, tmp))
+            x=helper(self.xmlexe, '-t', bglname, tmp)
             if not x and exists(tmp):
                 try:
                     xmlfile=file(tmp, 'rU')
@@ -727,10 +727,9 @@ class Output:
             if poly.layer and poly.layer>4: fslayers[poly.layer]=None
         keys=fslayers.keys()
         keys.sort()
-        if True:	# was self.visrunways, but need runway lights:
-            layermap=["taxiways +1", "taxiways +2", "taxiways +3", "taxiways +4", "taxiways +5", "runways -5", "runways -4", "runways -3", "runways -2", "runways -1"]
-        else:
-            layermap=["airports +1", "airports +2", "airports +3", "airports +4", "airports +5", "roads -5", "roads -4", "roads -3", "roads -2", "roads -1"]
+        # need runway lights so must be below taxiways
+        #layermap=["taxiways +1", "taxiways +2", "taxiways +3", "taxiways +4", "taxiways +5", "runways -5", "runways -4", "runways -3", "runways -2", "runways -1"]
+        layermap=["shoulders +1", "shoulders +2", "shoulders +3", "shoulders +4", "shoulders +5", "taxiways -5", "taxiways -4", "taxiways -3", "taxiways -2", "taxiways -1"]
         for i in range(len(keys)):
             if keys[i]>=24:
                 fslayers[keys[i]]="objects -1"
@@ -957,7 +956,7 @@ class Output:
 
             dst.close()
             dsfname=join(path, tilename+'.dsf')
-            x=helper('%s -text2dsf "%s" "%s"' %(self.dsfexe, dstname, dsfname))
+            x=helper(self.dsfexe, '-text2dsf', dstname, dsfname)
             if (x or not exists(dsfname)):
                 raise FS2XError("Can't write DSF %s.dsf (%s)" % (tilename, x))
             if not self.debug: unlink(dstname)
