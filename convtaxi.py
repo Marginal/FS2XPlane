@@ -569,8 +569,12 @@ def taxilayout(allnodes, alllinks, surfaceheading, output, aptdat=None, ident="u
                 if dump:
                     print loc1, "degenerate1"
                     print loc2, "degenerate2"
-            elif bez1 and bez2:
+            elif True: #XXX bez1 and bez2:
+                # eg KBJC
                 if d<2.04*link.width:	# small fudge factor for safety
+                    # Would like to use a single point, but then
+                    # tessellator will merge in some circumstances (eg
+                    # adjacent taxiways off runway) and we lose the code.
                     if bez1: bez1=(loc1+(loc2-loc1)*0.48).round()
                     if bez2: bez2=(loc1+(loc2-loc1)*0.52).round()
                     if dump:
