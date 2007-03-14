@@ -1,43 +1,36 @@
 # Import BGL
 
-from math import acos, cos, fmod, sin
-from os.path import basename, dirname, exists, join, normpath, pardir
+from math import acos, cos, fmod, pow, sin
+from os.path import basename, dirname, exists, join, normpath, pardir, splitext
 import struct
 from struct import unpack
+from sys import maxint
 
-from convutil import cirp, d2r, r2d, m2f, NM2m, complexity, Object, Point
+from convutil import cirp, d2r, r2d, m2f, NM2m, complexity, Object, Point, Matrix
 
 # Read BGL header
 class Parse:
-    def __init__(self, bgl, name, srcfile, output):
-        pre2002=False
-        errors=False
-        matrices=[]
-        if 0:	#tr:	# TRAN data from MDL file
-            for i in range(len(tr)/16):
-                matrices.append(Matrix([[tr[i   ],tr[i+ 1],tr[i+ 2],tr[i+ 3]],
-                                        [tr[i+ 4],tr[i+ 5],tr[i+ 6],tr[i+ 7]],
-                                        [tr[i+ 8],tr[i+ 9],tr[i+10],tr[i+11]],
-                                        [tr[i+12],tr[i+13],tr[i+14],tr[i+15]]]))
+    def __init__(self, bgl, name, srcfile, output, scen, tran):
+        if output.debug:
+            debug=file('debug.txt','at')
+            debug.write('%s\n' % srcfile)
+        else:
+            debug=None
         for section in [42,54,58,62,102,114]:
             bgl.seek(section)
             (secbase,)=unpack('<I',bgl.read(4))
             if (secbase):
-                #print "Section %2d %x" % (section, secbase)
                 bgl.seek(secbase)
                 if section==42:
                     output.log('Skipping traffic data in file %s' % name)
-                    pass
                 elif section==54:
                     output.log('Skipping terrain data in file %s' % name)
-                    pass
                 elif section==58:
                     # OBJECT data
                     areano=0
                     while 1:
                         # LatBand
                         posl=bgl.tell()
-                        #print "LatBand %x" % posl
                         (c,)=unpack('<B', bgl.read(1))
                         if c==0:
                             break
@@ -47,7 +40,7 @@ class Parse:
                             # Header
                             areano+=1                        
                             posa=bgl.tell()
-                            #print "Area %x" % posa
+                            if debug: debug.write("Area %x\n"%posa)
                             (c,)=unpack('<B', bgl.read(1))
                             bgl.read(9)
                             if c==0:
@@ -59,16 +52,25 @@ class Parse:
                             elif c in [4,7,10]:
                                 (l,)=unpack('<B',bgl.read(1))
                             else:
-                                #print hex(c)
+                                if debug: debug.write("Unknown area type %x\n" % c)
                                 raise struct.error	# wtf?
                             try:
-                                pre2002=(ProcScen(bgl, posa+l, None,
-                                                  name, srcfile, output,
-                                                  matrices).old or
-                                         pre2002)
+                                p=ProcScen(bgl, posa+l, None,
+                                           name, srcfile, output, scen, tran,
+                                           debug)
+                                if p.old:
+                                    output.log("Skipping pre-FS2002 scenery in area #%d in %s" % (areano, name))
+                                    if debug: debug.write("Pre-FS2002 scenery\n")
+                                if p.rrt:
+                                    output.log("Skipping old-style runways, taxiways and/or roads in area #%d in %s" % (areano, name))
+                                    if debug: debug.write("Old-style rtr\n")
+                                if p.anim:
+                                    output.log("Skipping animation in area #%d in %s" % (areano, name))
+                                    if debug: debug.write("Animation\n")
                             except struct.error:
                                 output.log("Can't parse area #%d in %s" % (
                                     areano, name))
+                                if debug: debug.write("Can't parse area %x in %s\n" % (posa, name))
                             bgl.seek(posa+l)
                         bgl.seek(posl+7)
                 elif section==62:
@@ -77,7 +79,6 @@ class Parse:
                     while 1:
                         objno+=1
                         pos=bgl.tell()
-                        #print "Obj %x" % pos
                         (off,)=unpack('<I', bgl.read(4))
                         if off==0:
                             break
@@ -86,142 +87,145 @@ class Parse:
                         bgl.read(1)
                         (hdsize,l)=unpack('<2I', bgl.read(8))
                         bgl.seek(hdsize-25, 1)
-                        #print "%08x%08x%08x%08x Off %x, enda=%x" % (
-                        #    a,b,c,d, bgl.tell(), secbase+off+hdsize+l)
+                        if debug: debug.write("%08x%08x%08x%08x Pos=%x Off=%x enda=%x\n" % (a,b,c,d, pos, bgl.tell(), secbase+off+hdsize+l))
                         try:
-                            pre2002=(ProcScen(bgl, secbase+off+hdsize+l,
-                                              "%08x%08x%08x%08x"%(a,b,c,d),
-                                              name, srcfile, output,
-                                              matrices).old or
-                                     pre2002)
+                            p=ProcScen(bgl, secbase+off+hdsize+l,
+                                       "%08x%08x%08x%08x"%(a,b,c,d),
+                                       name, srcfile, output, scen, tran,
+                                       debug)
+                            if output.dumplib:
+                                output.objplc.append((None, None, 0, "%08x%08x%08x%08x" % (a,b,c,d), 1))
+                            if p.old:
+                                output.log("Skipping pre-FS2002 scenery in %s" % name)
+                                if debug: debug.write("Pre-FS2002 scenery\n")
+                            if p.rrt:
+                                output.log("Skipping old-style runways, taxiways and/or roads in %s" % name)
+                                if debug: debug.write("Old-style rtr\n")
+                            if p.anim:
+                                output.log("Skipping animation in %s" % name)
+                                if debug: debug.write("Animation\n")
                         except struct.error:
-                            output.log("Can't parse object %08x%08x%08x%08x in %s" % (a,b,c,d, name))
+                            output.log("Can't parse %s" % name)
+                            if debug: debug.write("Parse error")
                         bgl.seek(pos+20)
                 elif section==102:
                     output.log('Skipping misc data in file %s' % name)
-                    pass
                 elif section==114:
                     try:
                         ProcEx(bgl, output)
                     except struct.error:
-                        errors=True
-                else:
-                    errors=True
-        if errors:
-            output.log("Can't parse %s" % name)
-        elif pre2002:
-            output.log("Skipping pre-FS2002 scenery in %s" % name)
-                        
+                        output.log("Can't parse Exception section in file %s"%(
+                            name))
+        if debug: debug.close()
 
-class Matrix:
-    def __init__(self, v=None):
-        if v:
-            self.m=v
-        else:
-            self.m=[[1,0,0,0],
-                    [0,1,0,0],
-                    [0,0,1,0],
-                    [0,0,0,1]]
-
-    def transform(self, x, y, z):
-        m=self.m
-        return (m[0][0]*x + m[1][0]*y + m[2][0]*z + m[3][0],
-                m[0][1]*x + m[1][1]*y + m[2][1]*z + m[3][1],
-                m[0][2]*x + m[1][2]*y + m[2][2]*z + m[3][2])
-
-    def transformn(self, x, y, z):
-        m=self.m
-        return (m[0][0]*x + m[1][0]*y + m[2][0]*z,
-                m[0][1]*x + m[1][1]*y + m[2][1]*z,
-                m[0][2]*x + m[1][2]*y + m[2][2]*z)
-
-    def offset(self, x, y, z):
-        self.m[3]=[self.m[3][0]+x, self.m[3][1]+y, self.m[3][2]+z, 1]
-        
-    def headed(self, angle):
-        # about y axis
-        a=d2r*angle
-        t=Matrix([[cos(a), 0,-sin(a), 0],
-                  [     0, 1,      0, 0],
-                  [sin(a), 0, cos(a), 0],
-                  [     0, 0,      0, 1]])
-        self=t*self
-          
-    def pitched(self, angle):
-        # about x axis
-        a=d2r*angle
-        t=Matrix([[1,      0,      1, 0],
-                  [0, cos(a),-sin(a), 0],
-                  [0, sin(a), cos(a), 0],
-                  [0,      0,      0, 1]])
-        self=t*self
-
-    def banked(self, angle):
-        # about x axis
-        a=d2r*angle
-        t=Matrix([[cos(a),-sin(a), 0, 0],
-                  [sin(a), cos(a), 0, 0],
-                  [0,      0,      1, 0],
-                  [0,      0,      0, 1]])
-        self=t*self
-
-    def __mul__(self, other):
-        # self*other
-        a=self.m
-        b=other.m
-        m=[[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0]]
-        for i in range(4):
-            for j in range(4):
-                x=0
-                for k in range(4):
-                    x=x+a[i][k]*b[k][j]
-                m[i][j]=x
-        return m
 
 # handle section 9 and 10 scenery. libname!=None if this is a library
 class ProcScen:
-    def __init__(self, bgl, enda, libname, comment, srcfile, output, matrices):
+    def __init__(self, bgl, enda, libname, comment, srcfile, output,
+                 scen, tran, debug):
 
         self.old=False	# Old style scenery found and skipped
+        self.rrt=False	# Old style runway/taxiway/roads found and skipped
+        self.anim=False	# Animations found and skipped
+        self.debug=debug
 
         self.bgl=bgl
         self.libname=libname
         self.comment=comment
         self.output=output
-        self.matrices=matrices	# From TRAN section of MDL file
         self.texdir=normpath(join(join(dirname(srcfile), pardir), 'Texture'))
+
+        pos=bgl.tell()
+        if tran: self.tran=pos+tran		# Location of TRAN table
+        if scen:
+            # Decode SCEN table
+            bgl.seek(pos+scen)
+            (count,)=unpack('<H', bgl.read(2))
+            scen=pos+scen+2
+            self.scen=[None for i in range(count)]
+            for i in range(count):
+                bgl.seek(scen+i*12)
+                (out,child,peer,size,offset)=unpack('<hhhhi', bgl.read(12))
+                # Child and Peer are offsets; convert to scene nos
+                if child!=-1:
+                    bgl.seek(scen+child*12)
+                    (child,)=unpack('<h',bgl.read(2))
+                if peer!=-1:
+                    bgl.seek(scen+peer*12)
+                    (peer,)=unpack('<h',bgl.read(2))
+                # Convert offsets to file positions
+                self.scen[out]=(child, peer, size, scen+i*12+offset, -1)
+            # Invert Child/Peer pointers to get parents
+            for i in range(count):
+                (child, peer, size, posa, parent)=self.scen[i]
+                if child!=-1:	# child's parent is me
+                    (xchild, xpeer, xsize, xposa, xparent)=self.scen[child]
+                    self.scen[child]=(xchild, xpeer, xsize, xposa, i)
+                if peer!=-1:	# peer's parent is my parent
+                    (xchild, xpeer, xsize, xposa, xparent)=self.scen[peer]
+                    self.scen[peer]=(xchild, xpeer, xsize, xposa, parent)
+            if self.debug:
+                # Dump SCEN table
+                self.debug.write("SCEN: %-2d        ANIC\n" % count)
+                maxt=-1
+                for i in range(count):
+                    (child,peer,size,posa,parent)=self.scen[i]
+                    bgl.seek(posa)
+                    (cmd,src,dst)=unpack('<3H', bgl.read(6))
+                    c="%2d: %2d %2d %2d -> %2x " %(i, child, peer, parent, cmd)
+                    if cmd==0xc6 and size==6:
+                        c+="%2d %2d\n" % (src, dst)
+                        maxt=max(maxt,src)
+                    else:
+                        c+="size=%d\n" % size
+                    self.debug.write(c)
+                # Dump TRAN table
+                count=maxt+1
+                self.debug.write("TRAN: %d\n" % count)
+                bgl.seek(self.tran)
+                for i in range(count):
+                    m=[]
+                    for j in range(4):
+                        (a,b,c,d)=unpack('<4f', bgl.read(16))
+                        m.append([a,b,c,d])
+                    self.debug.write("%s = %d\n" % (Matrix(m), i))
+            bgl.seek(pos)
         
         # State
         self.complexity=1
         self.loc=None
         self.alt=0
         self.altmsl=0
-        self.matrix=None
+        self.matrix=[None]
         self.scale=1.0
-        self.stack=[]	# (return address, matrix)
+        self.stack=[]	# (return address, pop matrix?)
         self.tex=[]
         self.mat=[]	# [[(ar,ag,ab),(sr,sg,sb),(er,eg,eb)]]
         self.vtx=[]
+        self.idx=[]	# Indices into vtx
         self.m=None	# Index into mat
         self.t=None	# Index into tex
         self.billboard=None	# Emulating billboarding in a libary defn
+        self.roadloc=None	# Last road location
+        self.haze=0	# Whether palette-based transaprency
+        self.concave=False
 
-        self.objdat={}	# (mat, scale, alt, matrix, vtx[], idx[]) by (loc, tex)
-        self.linedat={}	# (scale, alt, matrix, vtx[], idx[], (r,g,b)) by loc
-        self.lightdat={}# (scale, alt, matrix, (x,y,z), (r,g,b)) by loc
+        self.objdat={}	# (mat, alt, vtx[], idx[]) by (loc, matrix, scale, tex)
+        self.linedat={}	# (alt, vtx[], idx[], (r,g,b)) by (loc, matrix, scale)
+        self.lightdat={}# (alt, (x,y,z), (r,g,b)) by (loc, matrix, scale)
 
         self.vars={
             # Vars not listed are assumed to be 0
             0: 0,	# dummy
             0x282: 1,	# beacon: rotating bitmap shifted 1 bit/3 sec
-            0x28c: 2,	# tod: 2|4 indicates night?
+            0x28c: 4,	# tod: 2|4 indicates night?
             0x30A: 6,	# beacon_2: 16-bit bitmap with 0x0506 add/3 sec
             0x30C: 8,	# beacon_3: 16-bit bitmap with 0x0708 add/3 sec 
             0x30E: 0xa,	# beacon_4: 16-bit bitmap with 0x090A add/3 sec 
             0x310: 0xc,	# beacon_5: 16-bit bitmap with 0x0B0C add/3 sec 
             0x33a: 0,	# rbias: eye to object distance in meters II.FF
             0x33b: 0,	# rbias_1: eye to object distance in meters IIII
-            0x346: 5,	# image_complex: density of the scenery 1-5
+            0x346: 5,	# image_complex: complexity of the scenery 1-5
             0x37e: 0,	# xv: rotated X-axis eye to object distance
             0x382: 0,	# yv: rotated Y-axis eye to object distance
             0x386: 0,	# zv: rotated Z-axis eye to object distance
@@ -232,9 +236,20 @@ class ProcScen:
             0xc74: 0,	# ground wind direction [units?]
             }
 
-        cmds={0x0d:self.Jump,
+        cmds={0x05:self.NOP,
+              0x06:self.SPnt,
+              0x07:self.CPnt,
+              0x08:self.Closure,
+              0x0d:self.Jump,
+              0x0f:self.StrRes,
+              0x10:self.StrRes,        
+              0x14:self.SColor,
+              0x17:self.TextureEnable,
+              0x18:self.Texture,
               0x1a:self.ResList,
-              0x1e:self.NOPh,
+              0x1b:self.Jump,
+              0x1e:self.Haze,
+              0x1f:self.TaxiMarkings,
               0x20:self.FaceTTMap,
               0x21:self.IfIn3,
               0x22:self.Return,
@@ -243,35 +258,59 @@ class ProcScen:
               0x25:self.SeparationPlane,
               0x26:self.SetWrd,
               0x29:self.GResList,
+              0x30:self.NOPh,
+              0x2a:self.FaceT,
               0x2b:self.Call32,
+              0x2d:self.SColor24,
+              0x2e:self.SColor24,
               0x2f:self.Scale,
               0x32:self.Call,
               0x33:self.Instance,
+              0x34:self.SuperScale,
               0x35:self.PntRow,
               0x37:self.Point,
-              0x38:self.NOP,
+              0x38:self.Concave,
               0x39:self.IfMsk,
+              0x3b:self.VInstance,
+              0x3c:self.Position,
+              0x3e:self.FaceT,
+              0x42:self.TextureRunway,
               0x43:self.Texture2,
+              0x44:self.TextureRunway,
+              0x4e:self.MoveG2L,
               0x46:self.PointVICall,
+              0x49:self.Building,
               0x3f:self.NOPh,
-              0x51:self.NewLColor,
-              0x52:self.NewLColor,
+              0x50:self.SColor,
+              0x51:self.SColor,
+              0x52:self.SColor,
               0x55:self.SurfaceType,
               0x5f:self.IfSizeV,
               0x63:self.LibraryCall,
+              0x69:self.RoadStart,
+              0x6a:self.RoadCont,
+              0x6e:self.TaxiwayStart,
+              0x6f:self.TaxiwayCont,
               0x76:self.NOP,
+              0x73:self.Jump,
               0x74:self.AddCat,
               0x77:self.ScaleAGL,
               0x7a:self.FaceTTMap,
+              0x7d:self.NOP,
+              0x80:self.ResPnt,
+              0x81:self.NOPh,
               0x83:self.ReScale,
               0x88:self.Jump32,
               0x89:self.NOPi,
               0x8a:self.Call32,
+              0x93:self.NOPh,
+              0x95:self.CrashIndirect,
               0x96:self.CrashStart,
               0x9e:self.Interpolate,
               0x9f:self.NOPi,
               0xa0:self.Object,
               0xa7:self.SpriteVICall,
+              0xa8:self.TextureRoadStart,
               0xaa:self.NewRunway,
               0xad:self.Animate,
               0xae:self.TransformEnd,
@@ -292,36 +331,105 @@ class ProcScen:
 
         while 1:
             pos=bgl.tell()
-            #print "%x:" % pos,
             if pos>=enda:
                 self.makeobjs()
                 if pos>enda:
+                    if self.debug: self.debug.write("Overrun at %x enda=%x in %s\n" % (pos, enda, self.comment))
                     raise struct.error
-                #print "enda"
                 return            
             (cmd,)=unpack('<H',bgl.read(2))
             if cmd==0 or (cmd==0x22 and not self.stack):
-                #print "cmd 00"
+                if self.debug:
+                    self.debug.write("%x: cmd %02x\n--------\n" % (pos, cmd))
+                    for i in range(1, len(self.matrix)):
+                        self.debug.write("Unbalanced matrix:\n%s\n" % (
+                            self.matrix[i]))
                 self.makeobjs()
                 return
             elif cmd in cmds:
-                #print "cmd %x" % cmd
+                if self.debug: self.debug.write("%x: cmd %02x\n" % (pos, cmd))
                 cmds[cmd]()
             else:
-                #print "%x: cmd %x" % (pos, cmd)
-                self.old=True
+                if self.debug: self.debug.write("Unknown cmd %x at %x in %s\n" % (cmd, pos, self.comment))
                 self.makeobjs()	# Try to go with what we've got so far
-                return
+                raise struct.error
 
 
-    def Jump(self):		# 0d
+    def SPnt(self):		# 06
+        # ignored
+        self.bgl.seek(6,1)
+
+    def CPnt(self):		# 07
+        # ignored
+        self.old=True
+        self.bgl.seek(6,1)
+
+    def Closure(self):		# 08
+        count=len(self.idx)
+        vtx=[]
+        for i in range(count):
+            (x,y,z,c,c,c,c,c)=self.vtx[self.idx[i]]
+            vtx.append((x,y,z, 0,1,0, x*self.scale/256, z*self.scale/256))
+        self.idx=[]
+        if self.concave:
+            (vtx,idx)=subdivide(vtx)
+            self.concave=False
+        else:
+            idx=[]
+            for i in range(1,len(vtx)-1):
+                idx.extend([0,i,i+1])
+        if self.t==None or self.t==-1:
+            tex=None
+        else:
+            tex=self.tex[self.t]
+            if self.haze: self.output.haze[tex]=self.haze
+        key=(self.loc,self.matrix[-1],self.scale,tex)
+        if not key in self.objdat:
+            self.objdat[key]=[]
+        self.objdat[key].append(([(1,1,1),(0,0,0),(0,0,0)],
+                                 self.alt, vtx, idx, True))
+        self.checkmsl()
+        
+        
+    def Jump(self):		# 0d, 1b: IfInBoxRawPlane, 73: IfInBoxP
         (off,)=unpack('<h', self.bgl.read(2))
         self.bgl.seek(off-4,1)
 
+    def StrRes(self):		# 0f:StrRes, 10:CntRes
+        (i,)=unpack('<H',self.bgl.read(2))
+        self.idx.append(i)
+        
+    def SColor(self):	# 14:Scolor, 2d: SColor24, 2e: LColor24, 50:GColor, 51:NewLColor, 52:NewSColor
+        (c,)=unpack('H', self.bgl.read(2))
+        self.m=0
+        self.mat=[[self.unicol(c),(0,0,0),(0,0,0)]]
+        
+    def TextureEnable(self):		# 17
+        (c,)=unpack('<H', self.bgl.read(2))
+        if not c:
+            self.t=-1
+        else:
+            self.t=0
+
+    def Texture(self):		# 18
+        (c,x,c,y)=unpack('<4h', self.bgl.read(8))
+        self.tex=[join(self.texdir,
+                       self.bgl.read(14).replace(' ','').rstrip('\0'))]
+        if self.debug: self.debug.write("%s\n" % basename(self.tex[0]))
+        self.t=0
+        #if x or y:
+        #    if self.debug: print "tex offsets", x, y, self.tex
+        #    raise struct.error
+        
+    def IfInBoxRawPlane(self):	# 1b
+        # Skip
+        (off,)=unpack('<h', self.bgl.read(2))
+        self.bgl.seek(off-4,1)
+        
     def ResList(self):		# 1a
         (index,count)=unpack('<2H', self.bgl.read(4))
         if len(self.vtx)<index:
-            self.vertex.extend([None for i in range(index-len(self,vtx))])
+            self.vtx.extend([None for i in range(index-len(self.vtx))])
         for i in range(index,index+count):
             (x,y,z)=unpack('<3h', self.bgl.read(6))
             v=(x,y,z, 0,0,0, 0,0)
@@ -330,9 +438,17 @@ class ProcScen:
             else:
                 self.vtx[i]=v
 
+    def Haze(self):		# 1e
+        (self.haze,)=unpack('<H', self.bgl.read(2))
+        
+    def TaxiMarkings(self):	# 1f
+        # ignored - info should now be in FS2004-style BGL
+        self.rrt=True
+        (size,)=unpack('<H', self.bgl.read(2))
+        self.bgl.seek(size-4,1)
+        
     def FaceTTMap(self):	# 20:FaceTTMap, 7a:GFaceTTMap
-        (count,nx,ny,nz)=unpack('<H3h', self.bgl.read(8))
-        if (count!=4): raise struct.error
+        (count,nx,ny,nz,)=unpack('<H3h', self.bgl.read(8))
         nx=nx/32767.0
         ny=ny/32767.0
         nz=nz/32767.0
@@ -342,16 +458,23 @@ class ProcScen:
             (idx,tu,tv)=unpack('<H2h', self.bgl.read(6))
             (x,y,z,c,c,c,c,c)=self.vtx[idx]
             vtx.append((x,y,z, nx,ny,nz, tu/256.0,tv/256.0))
-        if self.t==-1:
+        if self.concave:
+            (vtx,idx)=subdivide(vtx)
+            self.concave=False
+        else:
+            idx=[]
+            for i in range(1,len(vtx)-1):
+                idx.extend([0,i,i+1])
+        if self.t==None or self.t==-1:
             tex=None
         else:
             tex=self.tex[self.t]
-        key=(self.loc,tex)
+            if self.haze: self.output.haze[tex]=self.haze
+        key=(self.loc,self.matrix[-1],self.scale,tex)
         if not key in self.objdat:
-            self.objdat[key]=[]            
+            self.objdat[key]=[]
         self.objdat[key].append(([(1,1,1),(0,0,0),(0,0,0)],
-                                 self.scale, self.alt, self.matrix,
-                                 vtx, [0,1,2,2,3,0]))
+                                 self.alt, vtx, idx, True))
         self.checkmsl()
         
     def IfIn3(self):		# 21
@@ -369,16 +492,22 @@ class ProcScen:
                 break
 
     def Return(self):		# 22
-        (off,self.matrix)=self.stack.pop()
+        (off,pop)=self.stack.pop()
+        if pop:
+            self.matrix.pop()
         self.bgl.seek(off)
 
     def Call(self):		# 23:Call, 32:PerspectiveCall
         (off,)=unpack('<h', self.bgl.read(2))
-        self.stack.append((self.bgl.tell(),self.matrix))
+        self.stack.append((self.bgl.tell(),False))
         self.bgl.seek(off-4,1)
 
     def IfIn1(self):		# 24
         (off, var, vmin, vmax)=unpack('<4h', self.bgl.read(8))
+        if vmin>vmax:	# Sigh. Seen in TFFR
+            foo=vmax
+            vmax=vmin
+            vmin=foo
         if var==0x346: self.complexity=complexity(vmin)
         val=self.getvar(var)
         if val<vmin or val>vmax:
@@ -397,7 +526,7 @@ class ProcScen:
     def GResList(self):		# 29
         (index,count)=unpack('<2H', self.bgl.read(4))
         if len(self.vtx)<index:
-            self.vertex.extend([None for i in range(index-len(self,vtx))])
+            self.vtx.extend([None for i in range(index-len(self.vtx))])
         for i in range(index,index+count):
             (x,y,z,nx,ny,nz)=unpack('<6h', self.bgl.read(12))
             v=(x,y,z, nx/32767.0,ny/32767.0,nz/32767.0, 0,0)
@@ -406,6 +535,45 @@ class ProcScen:
             else:
                 self.vtx[i]=v
 
+    def FaceT(self):		# 2a:GFaceT, 3e:FaceT
+        (count,nx,ny,nz)=unpack('<H3h', self.bgl.read(8))
+        if count<=4: self.concave=False	# Don't bother
+        nx=nx/32767.0
+        ny=ny/32767.0
+        nz=nz/32767.0
+        self.bgl.read(4)
+        vtx=[]
+        for i in range(count):
+            (idx,)=unpack('<H', self.bgl.read(2))
+            (x,y,z,c,c,c,c,c)=self.vtx[idx]
+            vtx.append((x,y,z, nx,ny,nz, x*self.scale/256, z*self.scale/256))
+        if self.concave:
+            (vtx,idx)=subdivide(vtx)
+            self.concave=False
+        else:
+            idx=[]
+            for i in range(1,len(vtx)-1):
+                idx.extend([0,i,i+1])
+        if self.t==None or self.t==-1:
+            tex=None
+        else:
+            tex=self.tex[self.t]
+            if self.haze: self.output.haze[tex]=self.haze
+        key=(self.loc,self.matrix[-1],self.scale,tex)
+        if not key in self.objdat:
+            self.objdat[key]=[]
+        self.objdat[key].append(([(1,1,1),(0,0,0),(0,0,0)],
+                                 self.alt, vtx, idx, True))
+        self.checkmsl()
+        
+    def SColor24(self):		# 2d: SColor24, 2e: LColor24
+        (r,a,g,b)=unpack('4B', self.bgl.read(4))
+        self.m=0
+        if a==0xf0:	# Don't know what other codes mean
+            self.mat=[[self.unicol(0xf000+r),(0,0,0),(0,0,0)]]
+        else:
+            self.mat=[[(r/255.0,g/255.0,b/255.0),(0,0,0),(0,0,0)]]
+        
     def Scale(self):		# 2f
         self.bgl.read(8)	# jump,range (LOD) (may be 0),size,reserved
         (scale,)=unpack('<I', self.bgl.read(4))
@@ -415,17 +583,31 @@ class ProcScen:
         self.loc=Point(lat,lon)
 
     def Instance(self):		# 33
-        (off,p,b,h)=unpack('<4h', self.bgl.read(8))
-        self.stack.append((self.bgl.tell(),self.matrix))
+        (off,p,b,h)=unpack('<h3H', self.bgl.read(8))
+        self.stack.append((self.bgl.tell(),True))
         p=p*360/65536.0
         b=b*360/65536.0
         h=h*360/65536.0
-        self.matrix=Matrix()
-        self.matrix.headed(h)
-        self.matrix.pitched(p)
-        self.matrix.banked(b)
+        newmatrix=Matrix()
+        newmatrix=newmatrix.headed(h)
+        newmatrix=newmatrix.pitched(p)
+        newmatrix=newmatrix.banked(b)
+        if self.matrix[-1]:
+            newmatrix=self.matrix[-1]*newmatrix
+        self.matrix.append(newmatrix)
+        if self.debug:
+            self.debug.write("pbh %s %s %s\n" % (p,b,h))
+            self.debug.write("Now\n%s\n" % self.matrix[-1])
         self.bgl.seek(off-10,1)
 
+    def SuperScale(self):	# 34
+        self.bgl.read(6)	# jump,range (LOD) (may be 0),size
+        (scale,)=unpack('<H', self.bgl.read(2))
+        if scale>31:
+            self.scale=65536.0/self.getvar(scale)
+        else:
+            self.scale=1.0/pow(2,16-scale)
+        
     def PntRow(self):		# 35
         (sx,sy,sz,ex,ey,ez,count)=unpack('<6hH', self.bgl.read(14))
         if count>1:
@@ -434,22 +616,27 @@ class ProcScen:
             dz=(ez-sz)/(count-1.0)
         else:
             dx=dy=dz=0
-        if not self.loc in self.lightdat:
-            self.lightdat[self.loc]=[]
+        key=(self.loc,self.matrix[-1],self.scale)
+        if not key in self.lightdat:
+            self.lightdat[key]=[]
         for i in range(count):
-            self.lightdat[self.loc].append((self.scale, self.alt, self.matrix,
-                                            (sx+i*dx,sy+i*dy,sz+i*dz),
-                                            self.mat[self.m][0]))
+            self.lightdat[key].append((self.alt,
+                                       (sx+i*dx,sy+i*dy,sz+i*dz),
+                                       self.mat[self.m][0]))
         self.checkmsl()
         
     def Point(self):		# 37
         (x,y,z)=unpack('<3h', self.bgl.read(6))
-        if not self.loc in self.lightdat:
-            self.lightdat[self.loc]=[]
-        self.lightdat[self.loc].append((self.scale, self.alt, self.matrix,
-                                        (x,y,z), self.mat[self.m][0]))
+        key=(self.loc,self.matrix[-1],self.scale)
+        if not key in self.lightdat:
+            self.lightdat[key]=[]
+        self.lightdat[key].append((self.alt,
+                                   (x,y,z), self.mat[self.m][0]))
         self.checkmsl()
-        
+
+    def Concave(self):		# 38
+        self.concave=True
+
     def IfMsk(self):		# 39
         (off, var)=unpack('<2h', self.bgl.read(4))
         (mask,)=unpack('<H', self.bgl.read(2))
@@ -457,35 +644,84 @@ class ProcScen:
         if val&mask==0:
             self.bgl.seek(off-8,1)
 
+    def VInstance(self):	# 3b
+        (off,var)=unpack('<hH', self.bgl.read(4))
+        self.stack.append((self.bgl.tell(),True))
+        p=self.getvar(var)
+        p=self.getvar(var)*360/65536.0
+        b=self.getvar(var+2)*360/65536.0
+        h=self.getvar(var+4)*360/65536.0
+        newmatrix=Matrix()
+        newmatrix=newmatrix.headed(h)
+        newmatrix=newmatrix.pitched(p)
+        newmatrix=newmatrix.banked(b)
+        if self.matrix[-1]:
+            newmatrix=self.matrix[-1]*newmatrix
+        self.matrix.append(newmatrix)
+        self.bgl.seek(off-6,1)
+
+    def Position(self):		# 3c
+        self.bgl.read(8)	# jump,range (LOD) (may be 0),size,reserved
+        (lat,lon,alt)=self.LLA()
+        if self.loc:
+            (x,y,z)=Matrix().headed(self.loc.headingto(pt)).rotate(0,0,self.loc.distanceto(Point(lat,lon)))
+            if self.matrix[-1]:
+                self.matrix[-1]=self.matrix[-1].offset(x,alt,z)
+            else:
+                self.matrix[-1]=Matrix().offset(x,alt,z)
+        else:
+            self.loc=Point(lat,lon)
+            self.alt=alt
+        self.altmsl=False
+
     def Texture2(self):		# 43
         (size,)=unpack('<H', self.bgl.read(2))
         self.bgl.read(8)
         self.tex=[join(self.texdir, self.bgl.read(size-12).rstrip('\0'))]
+        if self.debug: self.debug.write("%s\n" % basename(self.tex[0]))
         self.t=0
         
+    def TextureRunway(self):	# 42: PolygonRunway, 44:TextureRunway
+        # ignored - info should now be in FS2004-style BGL
+        self.rrt=True
+        self.bgl.seek(62,1)	# SDK lies
+
     def PointVICall(self):	# 46
-        (off,x,y,z,p,vp,b,vb,h,vh)=unpack('<10h', self.bgl.read(20))
-        self.stack.append((self.bgl.tell(),self.matrix))
+        (off,x,y,z,p,vp,b,vb,h,vh)=unpack('<4h6H', self.bgl.read(20))
+        #if self.debug: self.debug.write("PointVICall %d %d %d %d %d %d %d %d %d\n" % (x,y,z,p,vp,b,vb,h,vh))
+        self.stack.append((self.bgl.tell(),True))
         p=p*360/65536.0
         b=b*360/65536.0
         h=h*360/65536.0
-        self.matrix=Matrix()
-        self.matrix.offset(x,y,z)
-        self.matrix.headed(h+self.getvar(vh))
-        self.matrix.pitched(p+self.getvar(vp))
-        self.matrix.banked(b+self.getvar(vb))
+        newmatrix=Matrix()
+        newmatrix=newmatrix.offset(x,y,z)
+        newmatrix=newmatrix.headed(h+self.getvar(vh))
+        newmatrix=newmatrix.pitched(p+self.getvar(vp))
+        newmatrix=newmatrix.banked(b+self.getvar(vb))
+        if self.matrix[-1]:
+            if self.debug:
+                self.debug.write("Old\n%s\n" % self.matrix[-1])
+                self.debug.write("New\n%s\n" % newmatrix)
+            newmatrix=self.matrix[-1]*newmatrix
+        self.matrix.append(newmatrix)
+        if self.debug:
+            self.debug.write("Now\n%s\n" % self.matrix[-1])
         if self.libname and h:
             self.billboard=(x,y,z)
             # XXX Implement me!
         self.bgl.seek(off-22,1)
 
-    def NewLColor(self):	# 51: NewLColor, 52: NewSColor
-        (c,)=unpack('H', self.bgl.read(2))
-        self.m=0
-        self.mat=[[self.unicol(c),(0,0,0),(0,0,0)]]
+    def Building(self):		# 49
+        # XXX Implement me!
+        self.output.log('Unsupported generic building at [%10.6f, %11.6f] in %s' % (self.loc.lat, self.loc.lon, self.comment))
+        self.bgl.seek(16,1)
+
+    def MoveG2L(self):		# 4e
+        (to, fr)=unpack('<2H', self.bgl.read(4))
+        self.vars[to]=self.getvar(fr)
         
     def SurfaceType(self):	# 55
-        #self.old=True
+        self.rrt=True
         (sfc, cnd, x, z, alt)=unpack('<BBhhh', self.bgl.read(8))
         # Don't do this - area tends to be way too big
         if 0:	#sfc==0:	# Hard
@@ -494,8 +730,8 @@ class ProcScen:
                 code=smap[cnd]
             else:
                 code=1	# Asphalt
-            if self.matrix:
-                heading=r2d*acos(self.matrix.m[0][0])	# XXX not really
+            if self.matrix[-1]:
+                heading=self.matrix.heading()	# XXX not really
             else:
                 heading=0
             length=m2f*x*self.scale
@@ -503,28 +739,58 @@ class ProcScen:
             self.output.misc.append((10, self.loc, 'xxx %6.2f %6d 0000.0000 0000.0000 %4d 111111 %02d 0 0 0.25 0 0000.0000' % (heading, length, width, code)))
 
     def IfSizeV(self):		# 5f
-        # Assume in range - infinite size
+        # Go for max detail and let X-Plane remove based on it's own heuristics
         (off, a, b)=unpack('<3h', self.bgl.read(6))
 
     def LibraryCall(self):	# 63
         (off,a,b,c,d)=unpack('<hIIII', self.bgl.read(18))
         name="%08x%08x%08x%08x" % (a,b,c,d)
-        if self.matrix:
-            heading=r2d*acos(self.matrix.m[0][0])	# XXX not really
-            loc=self.loc.biased(self.matrix.m[3][0], self.matrix.m[3][2])
+        if self.libname:
+            # recursive call in library
+            self.output.log('Unsupported request for object %s within object %s in %s' % (name, self.libname, self.comment))
+            return
+        if self.matrix[-1]:
+            if self.debug:
+                self.debug.write("LibraryCall\n%s\n" % self.matrix[-1])
+            heading=self.matrix[-1].heading()	# XXX not really
+            loc=self.loc.biased(self.matrix[-1].m[3][0]*self.scale,
+                                -self.matrix[-1].m[3][2]*self.scale)
         else:
             heading=0
             loc=self.loc
         # handle translation
         self.output.objplc.append((loc, heading, self.complexity,
                                    name, round(self.scale,2)))
-        if not self.checkmsl() and self.alt:
+        if self.altmsl:
+            self.output.log('Absolute altitude (%sm) for object %s at [%10.6f, %11.6f] in %s' % (round(self.altmsl,2), name, self.loc.lat, self.loc.lon, self.comment))
+            self.altmsl=False	# Don't report again for this object
+        elif self.alt:
             self.output.log('Non-zero altitude (%sm) for object %s at [%10.6f, %11.6f] in %s' % (round(self.alt,2), name, self.loc.lat, self.loc.lon, self.comment))
+
+    def RoadStart(self):	# 69
+        # ignored - info should now be in FS2004-style BGL
+        self.rrt=True
+        self.bgl.seek(8,1)
+
+    def RoadCont(self):		# 6a
+        # ignored - info should now be in FS2004-style BGL
+        self.rrt=True
+        self.bgl.seek(6,1)
+
+    def TaxiwayStart(self):	# 6e
+        # ignored - info should now be in FS2004-style BGL
+        self.rrt=True
+        self.bgl.seek(8,1)
+
+    def TaxiwayCont(self):	# 6f
+        # ignored - info should now be in FS2004-style BGL
+        self.rrt=True
+        self.bgl.seek(6,1)
 
     def AddCat(self):		# 74
         (off,cat)=unpack('<2h', self.bgl.read(4))
         # XXX turn cat into poly_os?
-        self.stack.append((self.bgl.tell(),self.matrix))
+        self.stack.append((self.bgl.tell(),False))
         self.bgl.seek(off-6,1)
 
     def ScaleAGL(self):		# 77
@@ -535,9 +801,19 @@ class ProcScen:
         self.altmsl=False
         self.loc=Point(lat,lon)
         
+    def ResPnt(self):		# 80
+        (idx,)=unpack('<H', self.bgl.read(2))
+        (x,y,z,c,c,c,c,c)=self.vtx[idx]
+        key=(self.loc,self.matrix[-1],self.scale)
+        if not key in self.lightdat:
+            self.lightdat[key]=[]
+        self.lightdat[key].append((self.alt,
+                                   (x,y,z), self.mat[self.m][0]))
+        self.checkmsl()
+        
     def Call32(self):		# 2b: AddObj32, 8a:Call32
         (off,)=unpack('<i', self.bgl.read(4))
-        self.stack.append((self.bgl.tell(),self.matrix))
+        self.stack.append((self.bgl.tell(),False))
         self.bgl.seek(off-6,1)
 
     def ReScale(self):		# 83
@@ -548,6 +824,10 @@ class ProcScen:
     def Jump32(self):		# 88
         (off,)=unpack('<i', self.bgl.read(4))
         self.bgl.seek(off-6,1)
+
+    def CrashIndirect(self):	# 95
+        # Skip crash code
+        self.bgl.read(8)
 
     def CrashStart(self):	# 96
         # Skip crash code
@@ -565,18 +845,26 @@ class ProcScen:
         self.bgl.seek(size-4,1)
 
     def SpriteVICall(self):	# a7
-        (off,x,y,z,p,b,h,vp,vb,vh)=unpack('<10h', self.bgl.read(20))
-        self.stack.append((self.bgl.tell(),self.matrix))
-        self.matrix=Matrix()
-        self.matrix.offset(x,y,z)
+        (off,x,y,z,p,b,h,vp,vb,vh)=unpack('<4h6H', self.bgl.read(20))
+        self.stack.append((self.bgl.tell(),self.matrix[-1]))
+        newmatrix=Matrix()
+        newmatrix=newmatrix.offset(x,y,z)
+        if self.matrix[-1]:
+            newmatrix=self.matrix[-1]*newmatrix
+        self.matrix.append(newmatrix)
         if self.libname and h:
             self.billboard=(x,y,z)
             # XXX Implement me!
         self.bgl.seek(off-22,1)
 
+    def TextureRoadStart(self):	# a8
+        # ignored - info should now be in FS2004-style BGL
+        self.rrt=True
+        self.bgl.seek(10,1)
+        
     def NewRunway(self):	# aa
         # ignored - info should now be in FS2004-style BGL
-        #self.old=True
+        self.rrt=True
         (size,)=unpack('<H', self.bgl.read(2))
         self.bgl.seek(size-4,1)
 
@@ -584,48 +872,61 @@ class ProcScen:
 
     def Animate(self):		# ad
         # Just make a static translation matrix
-        (c,c,c,c,tx,ty,tz)=unpack('<4i3f', self.bgl.read(28))
-        self.matrix=Matrix()
-        self.matrix.offset(tx,ty,tz)
+        self.anim=True
+        (c,c,c,c,x,y,z)=unpack('<4i3f', self.bgl.read(28))
+        newmatrix=Matrix()
+        newmatrix=newmatrix.offset(x,y,z)
+        if self.matrix[-1]:
+            newmatrix=self.matrix[-1]*newmatrix
+        self.matrix.append(newmatrix)
+        if self.debug: self.debug.write("Animate:\n%s\n" % self.matrix[-1])
 
     def TransformEnd(self):	# ae
-        self.matrix=None
+        self.matrix.pop()
         
     def TransformMatrix(self):	# af
-        (tx,ty,tz)=unpack('<3f', self.bgl.read(12))
+        (tx,tz,ty)=unpack('<3f', self.bgl.read(12))
         (q00,q01,q02, q10,q11,q12, q20,q21,q22)=unpack('<9f',self.bgl.read(36))
-        self.matrix=Matrix([[q00,q01,q02,0],
-                            [q10,q11,q12,0],
-                            [q20,q21,q22,0],
-                            [tx,ty,tz,1]])
+        newmatrix=Matrix([[q00,q01,q02,0],
+                          [q10,q11,q12,0],
+                          [q20,q21,q22,0],
+                          [tx,ty,tz,1]])
+        if self.matrix[-1]:
+            newmatrix=self.matrix[-1]*newmatrix
+        self.matrix.append(newmatrix)
+        if self.debug:
+            self.debug.write("TransformMatrix:\n%s\n" % self.matrix[-1])
 
     def Tag(self):	# b1
         self.bgl.read(20).rstrip('\0')	# what's this for?
         
     def Light(self):		# b2
-        (type,x,y,z,intens,i,i,b,g,r,a,i,i,i)=unpack('<HfffIffBBBBfff',
+        (type,x,z,y,intens,i,i,b,g,r,a,i,i,i)=unpack('<HfffIffBBBBfff',
                                                      self.bgl.read(42))
         # Typical intensities are 20 and 40 - so say 40=max
         if intens<40:
             intens=intens/(40.0*255.0)
         else:
             intens=1/255.0
-        if not self.loc in self.lightdat:
-            self.lightdat[self.loc]=[]
-        self.lightdat[self.loc].append((self.scale, self.alt, self.matrix,
-                                        (x,y,z),
-                                        (r*intens,g*intens,b*intens)))
+        key=(self.loc,self.matrix[-1],self.scale)
+        if not key in self.lightdat:
+            self.lightdat[key]=[]
+        self.lightdat[key].append((self.alt,
+                                   (x,y,z), (r*intens,g*intens,b*intens)))
         self.checkmsl()
         
     def VertexList(self):	# b5
-        if self.vtx: raise struct.error
+        if self.vtx:
+            self.vtx=[]
         (count,)=unpack('<H', self.bgl.read(2))
         self.bgl.read(4)
         for i in range(count):
             self.vtx.append(unpack('<8f', self.bgl.read(32)))
 
     def MaterialList(self):	# b6
-        if self.mat: raise struct.error
+        if self.mat:
+            self.mat=[]
+            self.m=None
         (count,)=unpack('<H', self.bgl.read(2))
         self.bgl.read(4)
         for i in range(count):
@@ -644,7 +945,9 @@ class ProcScen:
             self.mat.append(m)
 
     def TextureList(self):	# b7
-        if self.tex: raise struct.error
+        if self.tex:
+            self.tex=[]
+            self.t=None
         (count,)=unpack('<H', self.bgl.read(2))
         self.bgl.read(4)
         for i in range(count):
@@ -654,6 +957,16 @@ class ProcScen:
         
     def SetMaterial(self):	# b8
         (self.m,self.t)=unpack('<2h', self.bgl.read(4))
+        if self.m>len(self.mat):
+            if self.debug:
+                self.debug.write("Bad material %d/%d\n"%(self.m,len(self.mat)))
+            self.m=0
+        if self.t>len(self.tex):
+            if self.debug:
+                self.debug.write("Bad texture %d/%d\n" %(self.t,len(self.tex)))
+            self.t=-1
+        if self.debug and self.t>=0:
+            self.debug.write("%s\n" % basename(self.tex[self.t]))
         
     def DrawTriList(self):	# b9
         idx=[]
@@ -663,16 +976,16 @@ class ProcScen:
             (a,b,c)=unpack('<3H', self.bgl.read(6))
             idx.extend([a,b,c])
             last=max(last,a,b,c)
-        if self.t==-1:
+        if self.t==None or self.t==-1:
             tex=None
         else:
             tex=self.tex[self.t]
-        key=(self.loc,tex)
+            if self.haze: self.output.haze[tex]=self.haze
+        key=(self.loc,self.matrix[-1],self.scale,tex)
         if not key in self.objdat:
             self.objdat[key]=[]
-        self.objdat[key].append((self.mat[self.m],
-                                 self.scale, self.alt, self.matrix,
-                                 self.vtx[base:base+last+1], idx))
+        self.objdat[key].append((self.mat[self.m], self.alt,
+                                 self.vtx[base:base+last+1], idx, False))
         self.checkmsl()
 
     def DrawLineList(self):	# ba
@@ -683,23 +996,48 @@ class ProcScen:
             (a,b)=unpack('<2H', self.bgl.read(4))
             idx.extend([a,b])
             last=max(last,a,b)
-        if not self.loc in self.linedat:
-            self.linedat[self.loc]=[]
-        self.linedat[self.loc].append((self.scale, self.alt, self.matrix,
-                                       self.vtx[base:base+last+1], idx,
-                                       self.mat[self.m][0]))
+        key=(self.loc,self.matrix[-1],self.scale)
+        if not key in self.linedat:
+            self.linedat[key]=[]
+        self.linedat[key].append((self.alt,
+                                  self.vtx[base:base+last+1], idx,
+                                  self.mat[self.m][0]))
         self.checkmsl()
         
     # opcodes c0 and above new in FS2004
 
-    #def AnimateIndirect(self):	# c3
-    #only appears in ANIC section
-
     def SetMatrixIndirect(self):	# c4
         # n=index into SCEN section of MDL file
-        # Ignore!
-        (n,)=unpack('<H', self.bgl.read(2))
-        self.matrix=None
+        (scene,)=unpack('<H', self.bgl.read(2))
+        pos=self.bgl.tell()
+        self.matrix[-1]=Matrix()
+
+        while scene!=-1:
+            (child,peer,size,posa,parent)=self.scen[scene]
+            self.bgl.seek(posa)		# Into ANIC section
+            (cmd,src,dst)=unpack('<3H', self.bgl.read(6))
+            if cmd==0xc6 and size==6:
+                self.bgl.seek(self.tran+src*64)
+                m=[]
+                for j in range(4):
+                    (a,b,c,d)=unpack('<4f',self.bgl.read(16))
+                    m.append([a,b,c,d])
+                self.matrix[-1]=self.matrix[-1]*Matrix(m)
+                if self.debug:
+                    self.debug.write("Scene %d, %d %d:\n%s\n" % (
+                        scene, src,dst, Matrix(m)))
+            else:
+                if self.debug:
+                    self.debug.write("Unsupported ANIC cmd %x, size %d\n" % (
+                        cmd, size))
+                self.anim=True
+                break
+            scene=parent
+
+        if self.debug:
+            self.debug.write("TransformIndirect:\n%s\n" % self.matrix[-1])
+        self.bgl.seek(pos)
+
 
     #def PointVIIndirect(self):	# c5
     # Havn't seen one of these
@@ -713,24 +1051,16 @@ class ProcScen:
     #    self.matrix.headed(h+self.getvar(vh))
     #    self.matrix.pitched(p+self.getvar(vp))
     #    self.matrix.banked(b+self.getvar(vb))
-    #    if self.libname and h:
-    #        self.billboard=(x,y,z)
-    #        # XXX Implement me!
     #    self.bgl.seek(off-24,1)
-
-    def TransformIndirect(self):	# c6
-        # only appears in ANIC section
-        (n,o)=unpack('<2H', self.bgl.read(4))
-        self.matrix=self.matrices[n]
 
     # Ignored opcodes
     
     def NOP(self):
-        # 38:Concave, 76:Perspective, bd: EndVersion
+        # 08:Surface, 76:BGL, 7d:Perspective, bd:EndVersion
         pass
 
     def NOPh(self):
-        # 1e:Haze, 3f:ShadowCall
+        # 30:Brightness, 3f:ShadowCall, 81:AntiAlias, 93: ???
         # ac:ZBias - XXX should generate poly_os n ?
         self.bgl.read(2)
         pass
@@ -743,89 +1073,160 @@ class ProcScen:
 
     # helper to read lat, lon, alt
     def LLA(self):
-        (lo,hi)=unpack('<HI',self.bgl.read(6))
+        (lo,hi)=unpack('<Hi',self.bgl.read(6))
         if hi>=0:
             lat=hi+lo/65536.0
         else:
-            lat=-(~hi+(~lo+1))/65536.0
+            lat=-(~hi+(~lo+1)/65536.0)
         lat=lat*360/cirp
-        (lo,hi)=unpack('<HI',self.bgl.read(6))
+        (lo,hi)=unpack('<Hi',self.bgl.read(6))
         if hi>=0:
             lon=hi+lo/65536.0
         else:
-            lon=-(~hi+(~lo+1))/65536.0
+            lon=-(~hi+(~lo+1)/65536.0)
         lon=lon*360.0/0x100000000
         if lon>180: lon-=360
         
-        (lo,hi)=unpack('<HI',self.bgl.read(6))
+        (lo,hi)=unpack('<Hi',self.bgl.read(6))
         if hi>=0:
             alt=hi+lo/65536.0
         else:
-            alt=-(~hi+(~lo+1))/65536.0
+            alt=-(~hi+(~lo+1)/65536.0)
 
         return (lat,lon,alt)
 
 
     def makeobjs(self):
-        if self.libname:
+        if not self.lightdat and not self.linedat and not self.objdat:
+            return	# Only contained non-scenery stuff
+        elif self.libname:
             bname=self.libname
-        elif self.loc:	# Must have a location for placement
+            if self.loc:
+                if self.debug:
+                    self.debug.write("Location given for library object\n")
+                # Code below assumes no spurious location
+                raise struct.error
+        elif self.loc:
             bname=self.comment
             if bname.lower()[-4:]=='.bgl':
                 bname=bname[:-4]
-        elif not self.lightdat and not self.linedat and not self.objdat:
-            # Might have only contained non-scenery stuff
-            return
         else:
+            # Must have a location for placement
+            if self.debug: self.debug.write("No location\n")
             raise struct.error
 
-        # Add dummy objs so lights and lines are picked up
-        for loc in self.lightdat.keys()+self.linedat.keys():
-            for (oloc,otex) in self.objdat:
-                if oloc==loc:
-                    break
-            else:
-                self.objdat[(loc,None)]=[(None, 0, 0, None,[], [])]
+        objdat={}	# (vlight, vline, vt, idx, mattri) by (loc, hdg, tex)
 
-        # OK now sort throught the objects
-        objs=[]
-        for (loc,tex) in sorted(self.objdat):
-            vlight=[]
-            vline=[]
-            vt=[]
-            idx=[]
-            mattri=[]
-            objcount=0	# number of objs in output.objdat that we've added
+        # Sort throught lights and lines
+        for lkey in self.lightdat.keys()+self.linedat.keys():
+            (loc, matrix, scale)=lkey
+            newmatrix=matrix
+            newloc=loc
+            heading=0
             
-            if objcount==0:
-                # Add lights and lines to first obj
-                if loc in self.lightdat:
-                    for (scale, alt, matrix,
-                         (x,y,z), (r,g,b)) in self.lightdat[loc]:
-                        if matrix:
-                            (x,y,z)=matrix.transform(x,y,z)
-                        vlight.append((alt+x*scale,alt+y*scale,alt-z*scale,
-                                       r,g,b))
+            # Try to find tri data to bundle lights and lines with
+            for (oloc, omatrix, oscale, tex) in self.objdat:
+                if (oloc==loc and oscale==scale and
+                    ((not omatrix and not matrix) or
+                     (omatrix and matrix and omatrix.m==matrix.m))):
+                    break	# Found matching tri data
+            else:
+                tex=None	# Oh well, this will be a new object
+
+            if loc and matrix:
+                newloc=loc.biased(matrix.m[3][0]*scale, -matrix.m[3][2]*scale)
+                if matrix.m[1][1]==1:	# No pitch or bank?
+                    # Transform at placement time in hope of commonality
+                    heading=matrix.heading()
+                    if matrix.m[3][1]:
+                        # carry over alt
+                        newmatrix=Matrix()
+                        newmatrix.m[3][1]=matrix.m[3][1]
+                    else:
+                        newmatrix=None
+                else:
+                    newmatrix.m[3][0]=0
+                    newmatrix.m[3][2]=0
+
+            if newloc:
+                okey=(newloc.lat, newloc.lon, heading, tex)
+            else:
+                okey=(None, None, 0, tex)
+            if not okey in objdat:
+                vlight=[]
+                vline=[]
+                vt=[]
+                idx=[]
+                mattri=[]
+            else:
+                (vlight, vline, vt, idx, mattri)=objdat[okey]
+
+            if lkey in self.lightdat:
+                for (alt,(x,y,z),(r,g,b)) in self.lightdat[lkey]:
+                    if newmatrix:
+                        (x,y,z)=newmatrix.transform(x,y,z)
+                    vlight.append((x*scale,alt+y*scale,-z*scale, r,g,b))
                 
-                if loc in self.linedat:
-                    for (scale, alt, matrix, vtx, i,
-                         (r,g,b)) in self.linedat[loc]:
-                        for v in vtx:
-                            (x,y,z,nx,ny,nz,tu,tv)=v
-                            if matrix:
-                                (x,y,z)=matrix.transform(x,y,z)
-                            vline.append((alt+x*scale,alt+y*scale,alt-z*scale,
-                                          r,g,b))
-                        for ii in i:
-                            idx.append(ii)
-            objcount+=1
+            if lkey in self.linedat:
+                for (alt, vtx, i, (r,g,b)) in self.linedat[lkey]:
+                    for v in vtx:
+                        (x,y,z,nx,ny,nz,tu,tv)=v
+                        if newmatrix:
+                            (x,y,z)=newmatrix.transform(x,y,z)
+                        vline.append((x*scale,alt+y*scale,-z*scale, r,g,b))
+                    for ii in i:
+                        idx.append(ii)
+
+            objdat[okey]=(vlight, vline, vt, idx, mattri)
+
+        # OK now sort throught the objects.
+        # Matrix is brought out here to allow for detection of data in a bgl
+        # that is duplicated apart from translation and/or rotation by heading
+        for lkey in sorted(self.objdat):
+            (loc,matrix,scale,tex)=lkey
+            newmatrix=matrix
+            newloc=loc
+            heading=0
+
+            if loc and matrix:
+                newloc=loc.biased(matrix.m[3][0]*scale, -matrix.m[3][2]*scale)
+                if matrix.m[1][1]==1:	# No pitch or bank?
+                    # Transform at placement time in hope of commonality
+                    heading=matrix.heading()
+                    if matrix.m[3][1]:
+                        # carry over alt
+                        newmatrix=Matrix()
+                        newmatrix.m[3][1]=matrix.m[3][1]
+                    else:
+                        newmatrix=None
+                else:
+                    newmatrix.m[3][0]=0
+                    newmatrix.m[3][2]=0
+            if self.debug and matrix:
+                if tex:
+                    self.debug.write("New heading %d, matrix for %s:\n%s\n" % (
+                        heading, basename(tex), newmatrix))
+                else:
+                    self.debug.write("New heading %d, matrix for None:\n%s\n"%(
+                        heading, newmatrix))
+                    
+            # Consolidate with other data that only differs in matrix
+            if newloc:
+                okey=(newloc.lat, newloc.lon, heading, tex)
+            else:
+                okey=(None, None, 0, tex)
+            if not okey in objdat:
+                vlight=[]
+                vline=[]
+                vt=[]
+                idx=[]
+                mattri=[]
+            else:
+                (vlight, vline, vt, idx, mattri)=objdat[okey]
 
             # Sort to minimise attribute changes
-            for (m, scale, alt, matrix,
-                 vtx, i) in sorted(self.objdat[(loc,tex)]):
-                if not vtx:
-                    continue
-                
+            for (m, alt, vtx, i, dbl) in sorted(self.objdat[lkey]):
+
                 # replace materials with palette texture
                 if not tex:
                     (r,g,b)=m[0]
@@ -838,47 +1239,104 @@ class ProcScen:
                 vbase=len(vt)
                 firsttri=len(idx)
                     
-                isterrain=True
-                mins=0
-                maxs=0
                 for v in vtx:
                     (x,y,z,nx,ny,nz,tu,tv)=v
-                    if matrix:
-                        (x,y,z)=matrix.transform(x,y,z)
-                        (nx,ny,nz)=matrix.transformn(nx,ny,nz)
-                    # check if this is really like a terrain replacement
-                    #if y:
-                    #    isterrain=False
-                    #else:
-                    #    mins=min(mins,x*scale,y*scale)
-                    #    maxs=max(maxs,x*scale,y*scale)
+                    if newmatrix:
+                        (x,y,z)=newmatrix.transform(x,y,z)
+                        (nx,ny,nz)=newmatrix.rotate(nx,ny,nz)
                     # replace materials with palette texture
                     if not tex:
                         tu=pu
                         tv=pv
                     vt.append((x*scale, alt + y*scale, -z*scale,
                                nx,ny,-nz, tu,tv))
-                if 0:	#isterrain and (maxs-mins)>NM2m/4:
-                    self.output.log('Skipping terrain %d %s' % (maxs-mins,basename(tex)))
-                    vt[vbase:]=[]	# Lose the vertices we just addded
-                    continue
                     
                 # Reverse order of tris
                 for j in range(0,len(i),3):
                     for k in range(2,-1,-1):
                         idx.append(vbase+i[j+k])
-                mattri.append((m, firsttri, len(idx)-firsttri))
+
+                if mattri:
+                    # Consolidate TRI commands if possible
+                    (xm, xfirsttri, xlen, xdbl)=mattri[-1]
+                    if m==xm and dbl==xdbl:
+                        mattri[-1]=(m, xfirsttri, xlen+len(idx)-firsttri, dbl)
+                        continue
+                mattri.append((m, firsttri, len(idx)-firsttri, dbl))
 
             if not vlight and not vline and not vt:
-                continue
-            
+                continue	# Only contained non-scenery stuff
+
+            objdat[okey]=(vlight, vline, vt, idx, mattri)
+
+        objs=[]
+        for okey in objdat:
+            (lat, lon, heading, tex)=okey
+            (vlight, vline, vt, idx, mattri)=objdat[okey]
+            loc=Point(lat, lon)
             texname=tex
             if tex:
-                fname="%s-%s" % (bname, basename(tex).lower()[:-4])
+                # lowercase texname for filesystem uniqueness
+                # spaces not allowed in texture names
+                (fname,ext)=splitext(basename(tex).replace(' ','_').lower())
+                fname="%s-%s" % (bname, fname)
+                if ext[1].isdigit(): fname+=ext.upper()	# For *.xAF
             else:
                 fname=bname
-                if vt: texname='.\\palette.png'
-                
+                if vt: texname='Resources/FS2X-palette.png'
+
+            # Last check that bounding box of consolidated data is within a
+            # reasonable (100m) distance of the origin to prevent clipping.
+            # Can't do this for library objs, but those are probably
+            # reasonable anyway.
+            if not self.libname:
+                minx=minz=maxint
+                maxx=maxz=-maxint
+                for (x,y,z, r,g,b) in vlight:
+                    minx=min(minx,x)
+                    maxx=max(maxx,x)
+                    minz=min(minz,z)
+                    maxz=max(maxz,z)
+                for (x,y,z, r,g,b) in vline:
+                    minx=min(minx,x)
+                    maxx=max(maxx,x)
+                    minz=min(minz,z)
+                    maxz=max(maxz,z)
+                for (x,y,z, nx,ny,nz, tu,tv) in vt:
+                    minx=min(minx,x)
+                    maxx=max(maxx,x)
+                    minz=min(minz,z)
+                    maxz=max(maxz,z)
+                if not (Point(0,0).within(Point(minx,minz),Point(maxx,maxz)) or
+                        minx*minx+minz*minz<10000 or
+                        minx*minx+maxz*maxz<10000 or
+                        maxx*maxx+minz*minz<10000 or
+                        maxx*maxx+maxz*maxz<10000):
+                    newx=int((minx+maxx)/2)
+                    newz=int((minz+maxz)/2)
+                    (bx,by,bz)=Matrix().headed(heading).rotate(newx,0,-newz)
+                    loc=loc.biased(bx,bz)
+                    newv=[]
+                    for (x,y,z, r,g,b) in vlight:
+                        newv.append((x-newx,y,z-newz, r,g,b))
+                    vlight=newv
+                    newv=[]
+                    for (x,y,z, r,g,b) in vline:
+                        newv.append((x-newx,y,z-newz, r,g,b))
+                    vline=newv
+                    newv=[]
+                    for (x,y,z, nx,ny,nz, tu,tv) in vt:
+                        newv.append((x-newx,y,z-newz, nx,ny,nz, tu,tv))
+                    vt=newv
+                    if self.debug and tex:
+                        self.debug.write("New origin for %s: (%d,%d)\n" % (
+                            basename(tex), newx, newz))
+                        self.debug.write("%d,%d %d,%d\n" % (minx,minz,maxx,maxz))
+                    elif self.debug:
+                        self.debug.write("New origin for None: (%d,%d)\n" % (
+                            newx, newz))
+
+            # Finally build the object
             obj=Object(fname+'.obj', self.comment, texname, vlight, vline, vt,
                        idx, mattri)
             if self.libname:
@@ -898,9 +1356,10 @@ class ProcScen:
                         if obj==self.output.objdat[fname][0]:
                             break	# matched - re-use this object
                         i+=1
-
+                
                 self.output.objdat[fname]=[obj]
-                self.output.objplc.append((loc, 0, self.complexity, fname, 1))
+                self.output.objplc.append((loc, heading,
+                                           self.complexity, fname, 1))
 
         # Add objs to library with one name
         if self.libname and objs:
@@ -921,7 +1380,7 @@ class ProcScen:
             val=self.vars[var]
             return val
         else:
-            #self.output.log('Undefined variable 0x%04x' % var)
+            if self.debug: self.debug.write('Undefined variable 0x%04x\n'% var)
             return 0
 
 
@@ -989,9 +1448,7 @@ class ProcScen:
 # Handle exception section
 def ProcEx(bgl, output):
     while 1:
-        #print "Off %x:" % bgl.tell(),
         (c,)=unpack('<B',bgl.read(1))
-        #print "%x" % c
         if c==0:
             return
         elif c==3:
@@ -1005,10 +1462,128 @@ def ProcEx(bgl, output):
                 if e>180: e-=360
                 w=w*360.0/0x100000000
                 if w>180: w-=360
-                #print "Exclude:",n,s,e,w
                 output.exc.append((Point(s,w), Point(n,e)))
         elif c==4:
             # Exception
             bgl.seek(12,1)
         else:
             raise struct.error
+
+
+def subdivide(vtx):
+    # Subdivide concave polygon into tris
+    idx=[]
+    count=len(vtx)
+    
+    if count<=4:
+        # don't bother for quads
+        for i in range(1,count-1):
+            idx.extend([0,i,i+1])
+        return (vtx, idx)
+        
+    planar=True
+    ax=ay=az=au=av=0
+    vx=[]
+    vy=[]
+    (c,y0,c,c,c,c,c,c)=vtx[0]
+    for i in range(count):
+        (x,y,z, nx,ny,nz, tu, tv)=vtx[i]
+        if y!=y0:
+            planar=False
+        ax+=x
+        ay+=y
+        az+=z
+        au+=tu
+        av+=tv
+        vx.append(x)
+        vy.append(z)
+
+    if not planar:
+        # Just add a new vertex in the middle and use that in every triangle
+        ax/=float(count)
+        ay/=float(count)
+        az/=float(count)
+        for i in range(1,count-1):
+            idx.extend([0,i,i+1])
+        vtx.insert(0, (ax,ay,az, nx,ny,nz, au,av))
+        idx.extend([0,count-1,count, 0,count,1])
+        return (vtx, idx)
+
+    # Simple O(n2) Greedy algorithm.
+    # Remove candidate vertex if triangle formed by it and adjacent
+    # vertices doesn't cross any edges.
+
+    # Determine order
+    area2=0
+    for i in range(count):
+        area2+=(vx[i]*vy[(i+1)%count] - vx[(i+1)%count]*vy[i])
+
+    candidate=-1		# index of tested vertex
+    count=len(vx)
+    remaining=count
+    vi=[True for i in range(count)]	# whether vertex is still a candidate
+    edges=[]
+    for i in range(count):
+        edges.append((i,(i+1)%count))
+    infloop=0
+
+    # This needs to work for integer values of x and y
+    while remaining>4:
+        if infloop>count:
+            # Shouldn't happen
+            if self.debug: self.debug.write('InfLoop in polygon\n')
+            return(vtx,idx)
+
+        # Candidate and adjacent vertices
+        candidate=(candidate+1)%count
+        while not vi[candidate]: candidate=(candidate+1)%count
+        p1=(candidate+1)%count
+        while not vi[p1]: p1=(p1+1)%count
+        p2=(candidate-1)%count
+        while not vi[p2]: p2=(p2-1)%count
+
+        # Is this triangle outside?
+        a=0
+        ii=[candidate, p1, p2]
+        for i in range(3):
+            a+=(vx[ii[i]]*vy[ii[(i+1)%3]] - vx[ii[(i+1)%3]]*vy[ii[i]])
+        if area2*a<0:
+            # this triangle no good
+            infloop+=1
+            continue
+
+        # Does this triangle cross any edge (including those we've removed)?
+        for edge in edges:
+            (p3,p4)=edge
+            if p3==p1 or p3==p2 or p4==p1 or p4==p2:
+                continue
+            d=(vy[p4]-vy[p3])*(vx[p2]-vx[p1])-(vx[p4]-vx[p3])*(vy[p2]-vy[p1])
+            if d==0:
+                continue	# parallel
+            a=(vx[p4]-vx[p3])*(vy[p1]-vy[p3])-(vy[p4]-vy[p3])*(vx[p1]-vx[p3])
+            b=(vx[p2]-vx[p1])*(vy[p1]-vy[p3])-(vy[p2]-vy[p1])*(vx[p1]-vx[p3])
+            if a<0 or a>d or b<0 or b>d:
+                continue	# no intersection
+            # intersection - this triangle no good
+            infloop+=1
+            break
+        else:
+            # No intersection - make triangle
+            idx.extend([candidate, p1, p2])
+            vi[candidate]=False
+            edges.insert(0, (p2,p1))	# so tested first
+            remaining-=1
+            infloop=0
+
+    p1=0
+    while not vi[p1]: p1+=1
+    p2=p1+1
+    while not vi[p2]: p2+=1
+    p3=p2+1
+    while not vi[p3]: p3+=1
+    p4=p3+1
+    while not vi[p4]: p4+=1
+    idx.extend([p1,p2,p3, p1,p3,p4])
+    return(vtx,idx)
+
+

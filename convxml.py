@@ -1,20 +1,27 @@
-from os import system, unlink
+from math import sin, cos
+from os import unlink
 from os.path import exists, join
 from StringIO import StringIO
 import struct
 from struct import pack, unpack
+from sys import maxint
 from tempfile import gettempdir
 import xml.parsers.expat
 
 import convbgl
-from convutil import m2f, NM2m, complexity, AptNav, Object, Point
-from convtaxi import maketaxi
+from convutil import d2r, r2d, m2f, NM2m, complexity, AptNav, Object, Point, Matrix
+from convobjs import makeapronlight, maketaxilight, maketaxisign
+
+
+apronlightspacing=60.96	# [m] = 200ft
+taxilightspacing=30.48	# [m] = 100ft
+
 
 # member var is defined
 def D(c, v):
     return (v in dir(c) and eval("c.%s" % v))
 
-# member var is true
+# member var is defined and true
 def T(c, v):
     return (v in dir(c) and eval("c.%s" % v)=='TRUE')
 
@@ -120,7 +127,7 @@ class SceneryObject:
         for w in self.windsock:
             lit=0
             if T(w, 'lighted'): lit=1
-            out.misc.append((19, loc, lit))
+            output.misc.append((19, loc, lit))
             
         for b in self.beacon:
             if D(b, 'type') and b.type=='MILITARY':
@@ -131,7 +138,7 @@ class SceneryObject:
                 lit=3
             else:	# civilian land airport
                 lit=1
-            out.misc.append((18, loc, lit))
+            output.misc.append((18, loc, lit))
 
 
 class ModelData:
@@ -149,7 +156,9 @@ class ModelData:
         
         data=''
         bgldata=''
-        tran=[]
+        tbldata=''
+        scen=None
+        tran=None
         try:
             mdl=file(mdlname, 'rb')
         except IOError:
@@ -171,22 +180,24 @@ class ModelData:
                         if c in ['TEXT','MATE','VERT']:
                             data+=mdl.read(size-2)	# strip return
                             if mdl.read(2)!='\x22\0':	raise IOError
-                        elif c=='TRAN':
-                            for i in range(size/4):
-                                tran.append(unpack('<f',mdl.read(4)))
-                        #elif c in ['ANIC']:
-                        #    data+=mdl.read(size)
-                        #elif c in ['SCEN']:
-                        #    count=unpack('<H',mdl.read(2))
-                        #    data+=mdl.read(size-2)
                         elif c=='BGL ':
                             bgldata+=mdl.read(size)
                             bgldata+='\0\0'		# add EOF
+                        elif c in ['TRAN', 'ANIP', 'ANIC', 'SCEN']:
+                            # Need to maintain offsets between ANIC and SCEN
+                            if c=='TRAN':
+                                tran=len(tbldata)+8
+                            elif c=='SCEN':
+                                scen=len(tbldata)+8
+                            tbldata+=pack('<I',size)+c+mdl.read(size)
                         else:
                             mdl.seek(size,1)
                 else:
                     mdl.seek(size,1)
-            data+=bgldata	# must be last
+            data+=bgldata	# BGL section must be after other instructions
+            if scen: scen+=len(data)	# Offset from first instruction
+            if tran: tran+=len(data)	# Offset from first instruction
+            data+=tbldata	# Table data must be last so not interpreted
             if not data: raise IOError
         except (IOError, struct.error):
             output.log("Can't parse object %s in %s" % (
@@ -224,7 +235,7 @@ class ModelData:
         #bgl.seek(0)
         
         convbgl.Parse(bgl, "object %s in %s" % (self.name, self.filename),
-                      self.srcfile, output)
+                      self.srcfile, output, scen, tran)
         bgl.close()
 
 
@@ -257,6 +268,7 @@ class Airport:
         self.ndb=[]
         self.taxiwaysign=[]
         self.aprons=[]
+        self.apronedgelights=[]
         
     class Tower:
         def __init__(self, attrs):
@@ -380,6 +392,23 @@ class Airport:
                     for k, v in attrs.iteritems():
                         exec("self.%s=v" % k)
 
+    class ApronEdgeLights:
+        def __init__(self, attrs):
+            for k, v in attrs.iteritems():
+                exec("self.%s=v" % k)
+            self.edgelights=[]
+
+        class EdgeLights:
+            def __init__(self, attrs):
+                for k, v in attrs.iteritems():
+                    exec("self.%s=v" % k)
+                self.vertex=[]
+
+            class Vertex:
+                def __init__(self, attrs):
+                    for k, v in attrs.iteritems():
+                        exec("self.%s=v" % k)
+
     # Export airport to apt.dat and nav.dat
     def export(self, output):
 
@@ -426,9 +455,9 @@ class Airport:
             nos={'EAST':9, 'NORTH':0, 'NORTHEAST':4, 'NORTHWEST':31,
                  'SOUTH':18, 'SOUTHEAST':13, 'SOUTHWEST':22, 'WEST':27}
             if nos.has_key(runway.number):
-                number=("%02s" % nos[runway.number])
+                number=("%02d" % nos[runway.number])
             else:
-                number=("%02s" % int(runway.number))
+                number=("%02d" % int(runway.number))
             if D(runway, 'designator'):
                 des={'NONE':'', 'C':'C', 'CENTER':'C', 'L':'L', 'LEFT':'L',
                      'R':'R', 'RIGHT':'R', 'W':'', 'WATER':''}
@@ -560,6 +589,9 @@ class Airport:
                         0, ils.ident, name)))
                     
             if len(number)<3: number+='x'
+            for a in aptdat:
+                if a.code==10 and a.text[0:3]==number:
+                    output.fatal('Found duplicate definition of runway %s in %s' % (number.replace('x',''), self.filename))
             aptdat.append(AptNav(10, loc, "%s %6.2f %6d %04d.%04d %04d.%04d %4d %d%d%d%d%d%d %02d %d %d %4.2f %d %04d.%04d" % (
                 number, heading, length,
                 displaced[0], displaced[1], overrun[0], overrun[1], width,
@@ -589,6 +621,9 @@ class Airport:
                 number=("H%dx" % hno)
             else:
                 number=("H%d" % hno)
+            for a in aptdat:
+                if a.code==10 and a.text[0:3]==number:
+                    output.fatal('Found duplicate definition of helipad %s in %s' % (number.replace('x',''), self.filename))
             aptdat.append(AptNav(10, loc, "%s %6.2f %6d %04d.%04d %04d.%04d %4d 111111 %02d %d %d %4.2f %d %04d.%04d" % (
                 number, heading, length, 0, 0, 0, 0, width,
                 surface, 0, 0, 0.25, 0, 0, 0)))
@@ -602,6 +637,8 @@ class Airport:
             nodes[int(t.index)]=t
         holdshorts=[]
 
+        obj=maketaxilight()
+        fname=obj.filename[:-4]
         for t in self.taxiwaypath:
             if (t.type=='TAXI' and
                 ((not D(t, 'drawSurface')) or T(t, 'drawSurface'))):
@@ -620,6 +657,14 @@ class Airport:
                 # X-Plane considers size<1 to be an error. So skip placeholders
                 if length<1 or width<1:
                     continue
+                dupl=False
+                for a in aptdat:
+                    if a.code==10 and loc.lat==a.loc.lat and loc.lon==a.loc.lon:
+                        output.log('Skipping duplicate of taxiway at [%10.6f, %11.6f] in %s' % (loc.lat, loc.lon, self.filename))
+                        dupl=True
+                        break
+                if dupl:
+                    continue
 
                 if T(t, 'leftEdgeLighted') or T(t, 'rightEdgeLighted'):
                     lights=6
@@ -635,35 +680,91 @@ class Airport:
                     'xxx', heading, length, 0, 0, 0, 0, width,
                     lights, lights, surface, 0, 0, 0.25, 0, 0, 0)))
 
+                l=start.distanceto(end)-taxilightspacing/2
+                if T(t, 'centerLineLighted') and l>0:
+                    output.objdat[fname]=[obj]
+                    h=start.headingto(end)*d2r
+                    n=1+int(l/taxilightspacing)
+                    for j in range(n):
+                        l=(j+0.5)*taxilightspacing
+                        loc=start.biased(-sin(h)*l*j,cos(h)*l*j)
+                        output.objplc.append((loc, 0, 1, fname, 1))
+
+
         # Aprons
+        # Just do bounding box aligned with main (first) runway
+        if self.runway:
+            heading=float(self.runway[0].heading)%180
+            rot=Matrix().headed(-heading)
+            back=Matrix().headed(heading)
+        else:
+            heading=0
         for a in self.aprons:
             for apron in a.apron:
                 if (not D(apron, 'drawSurface')) or T(apron, 'drawSurface'):
                     surface=surfaces[apron.surface]
-                    latmin=90
-                    latmax=-90
-                    lonmin=180
-                    lonmax=-180
+                    minx=minz=maxint
+                    maxx=maxz=-maxint
                     for v in apron.vertex:
                         if D(v, 'lat') and D(v, 'lon'):
                             loc=Point(float(v.lat), float(v.lon))
+                            z=airloc.distanceto(loc)
+                            (x,y,z)=Matrix().headed(airloc.headingto(
+                                loc)).transform(0,0,z)
                         elif D(v, 'biasX') and D(v, 'biasZ'):
-                            loc=airloc.biased(float(v.biasX), float(v.biasZ))
+                            x=float(v.biasX)
+                            z=float(v.biasZ)
                         else:
                             continue
-                        latmin=min(latmin,loc.lat)
-                        latmax=max(latmax,loc.lat)
-                        lonmin=min(lonmin,loc.lon)
-                        lonmax=max(lonmax,loc.lon)
-                    heading=0
-                    loc=Point((latmax+latmin)/2, (lonmax+lonmin)/2)
-                    bl=Point(latmin,lonmin)
-                    width =m2f*bl.distanceto(Point(latmin,lonmax))
-                    length=m2f*bl.distanceto(Point(latmax,lonmin))
+                        # Rotate to be in line with runway
+                        if heading:
+                            (x,y,z)=rot.transform(x,0,z)
+                        minx=min(minx,x)
+                        maxx=max(maxx,x)
+                        minz=min(minz,z)
+                        maxz=max(maxz,z)
+                    width =m2f*(maxx-minx)
+                    length=m2f*(maxz-minz)
+                    if heading:
+                        (x,y,z)=back.transform((maxx+minx)/2,0,(maxz+minz)/2)
+                        loc=airloc.biased(x,z)
+                    else:
+                        loc=airloc.biased((maxx+minx)/2, (maxz+minz)/2)
+                    dupl=False
+                    for a in aptdat:
+                        if a.code==10 and loc.lat==a.loc.lat and loc.lon==a.loc.lon:
+                            output.log('Skipping duplicate of apron at [%10.6f, %11.6f] in %s' % (loc.lat, loc.lon, self.filename))
+                            dupl=True
+                            break
+                    if dupl:
+                        continue
                     aptdat.append(AptNav(10, loc, "%s %6.2f %6d %04d.%04d %04d.%04d %4d 111111 %02d %d %d %4.2f %d %04d.%04d" % (
                         'xxx', heading, length, 0, 0, 0, 0, width,
                         surface, 0, 0, 0.25, 0, 0, 0)))
-                    
+
+        # ApronEdgeLights
+        for a in self.apronedgelights:
+            for e in a.edgelights:
+                v=e.vertex
+                obj=makeapronlight()
+                fname=obj.filename[:-4]
+                if len(v)>1:
+                    for i in range(len(v)-1):
+                        start=Point(float(v[i].lat), float(v[i].lon))
+                        end=Point(float(v[i+1].lat), float(v[i+1].lon))
+                        l=start.distanceto(end)
+                        n=1+int(l/apronlightspacing)
+                        (x,y,z)=Matrix().headed(
+                            start.headingto(end)).transform(0,0,l/n)
+                        for j in range(n):
+                            loc=start.biased(x*j,z*j)
+                            output.objplc.append((loc, 0, 1, fname, 1))
+                # Last one
+                if len(v):
+                    output.objdat[fname]=[obj]
+                    output.objplc.append((Point(float(v[-1].lat),
+                                                float(v[-1].lon)),
+                                          0, 1, fname, 1))
 
         # Tower view location
         if D(self, 'name'):
@@ -773,7 +874,7 @@ class Airport:
             smap={'SIZE1':0.67,'SIZE2':0.8,'SIZE3':1,'SIZE4':1.25,'SIZE5':1.5}
             if D(t, 'size') and t.size in smap:
                 scale=smap[t.size]
-            obj=maketaxi(t.label)
+            obj=maketaxisign(t.label)
             output.objdat[obj.filename[:-4]]=[obj]
             output.objplc.append((loc, heading, 0, obj.filename[:-4], scale))
 
@@ -881,7 +982,7 @@ class Marker:
 
 
 class Parse:
-    def __init__(self, fd, name, srcfile, output):
+    def __init__(self, fd, name, srcfile, output, scen, tran):
         self.name=name
         self.srcfile=srcfile
         self.elems=[]
@@ -892,7 +993,6 @@ class Parse:
         parser=xml.parsers.expat.ParserCreate()
         parser.StartElementHandler = self.start_element
         parser.EndElementHandler = self.end_element
-        #parser.CommentHandler = self.comment
         parser.ParseFile(fd)
         fd.close()
 
@@ -900,11 +1000,6 @@ class Parse:
         for elem in self.elems:
             elem.export(self.output)
 
-    def comment(self, data):
-        l=data.find('Object type: ')
-        if l!=-1:
-            output.log("Unknown object type %s in %s" % (data[l+13:l+23],
-                                                         self.name))
     def start_element(self, name, attrs):
         try:
             attrs['filename']=self.name
