@@ -119,6 +119,33 @@ class SceneryObject:
             if D(bias, 'biasY'):
                 alt=alt+float(bias.biasY)
 
+        for b in self.beacon:
+            if D(b, 'baseType') and b.baseType=='SEA_BASE':
+                lit=2
+            elif D(b, 'baseType') and b.baseType=='HELIPORT':
+                lit=3
+            elif D(b, 'type') and b.type=='MILITARY':
+                lit=4
+            else:	# civilian land airport
+                lit=1
+            a=AptNav(18, '%10.6f %11.6f %d Beacon' % (loc.lat, loc.lon, lit))
+            if aptdat:
+                aptdat.append(a)
+            else:
+                output.misc.append((18, loc, [a]))
+
+        for w in self.windsock:
+            lit=0
+            if T(w, 'lighted'): lit=1
+            a=AptNav(19, '%10.6f %11.6f %d Windsock' %(loc.lat, loc.lon, lit))
+            if aptdat:
+                aptdat.append(a)
+            else:
+                output.misc.append((19, loc, [a]))
+
+        # Don't add placements if we're doing a second round of apt.dat
+        if output.doexcfac: return
+        
         for l in self.genericbuilding:
             scale=1.0
             if D(l, 'scale'): scale=round(float(l.scale),2)
@@ -201,30 +228,6 @@ class SceneryObject:
             if pitch or bank:
                 output.log('Non-zero pitch/bank (%s/%s) for object %s at (%10.6f, %11.6f) in file %s' % (pitch, bank, l.name, loc.lat, loc.lon, parser.filename))
             output.objplc.append((loc, heading, cmplx, l.name.lower(), scale))
-
-        for b in self.beacon:
-            if D(b, 'baseType') and b.baseType=='SEA_BASE':
-                lit=2
-            elif D(b, 'baseType') and b.baseType=='HELIPORT':
-                lit=3
-            elif D(b, 'type') and b.type=='MILITARY':
-                lit=4
-            else:	# civilian land airport
-                lit=1
-            a=AptNav(18, '%10.6f %11.6f %d Beacon' % (loc.lat, loc.lon, lit))
-            if aptdat:
-                aptdat.append(a)
-            else:
-                output.misc.append((18, loc, [a]))
-
-        for w in self.windsock:
-            lit=0
-            if T(w, 'lighted'): lit=1
-            a=AptNav(19, '%10.6f %11.6f %d Windsock' %(loc.lat, loc.lon, lit))
-            if aptdat:
-                aptdat.append(a)
-            else:
-                output.misc.append((19, loc, [a]))
 
 
 class ExclusionRectangle:
