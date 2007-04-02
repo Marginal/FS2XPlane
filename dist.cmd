@@ -23,7 +23,7 @@ del /s /q *.pyc >nul: 2>&1
 @set RSRC=Resources/*.bgl Resources/*.obj Resources/*.png "Resources/library objects.txt"
 
 @REM source
-zip -r FS2XPlane_%VER%_src.zip dist.cmd %PY% %DATA% %RSRC% linux MacOS win32 |findstr -vc:"adding:"
+REM zip -r FS2XPlane_%VER%_src.zip dist.cmd %PY% %DATA% %RSRC% linux MacOS win32 |findstr -vc:"adding:"
 
 @REM linux
 REM tar -zcf FS2XPlane_%VER%_linux.tar.gz %PY% %DATA% %RSRC% linux win32/bglunzip.exe win32/DSFTool.exe
@@ -84,8 +84,10 @@ mkdir FS2XPlane.app\Contents\Resources
 for %%I in (%DATA%) do (copy %%I FS2XPlane.app\Contents\Resources\ |findstr -v "file(s) copied")
 for %%I in (%RSRC%) do (copy "Resources\%%~nxI" FS2XPlane.app\Contents\Resources\ |findstr -v "file(s) copied")
 copy Resources\trees_0.bgl FS2XPlane.app\Contents\Resources\ |findstr -v "file(s) copied")
-move FS2XPlane.app\Contents\MacOS\Info.plist FS2XPlane.app\Contents\
+sed s/appversion/%VERSION%/ <FS2XPlane.app\Contents\MacOS\Info.plist >FS2XPlane.app\Contents\Info.plist
+del FS2XPlane.app\Contents\MacOS\Info.plist
 move FS2XPlane.app\Contents\MacOS\FS2XPlane.icns FS2XPlane.app\Contents\Resources\
+move /y FS2XPlane.app\Contents\MacOS\*.png FS2XPlane.app\Contents\Resources\ |findstr -vc:".png"
 zip -r FS2XPlane_%VER%_mac.zip FS2XPlane.app |findstr -vc:"adding:"
 
 @REM win32
