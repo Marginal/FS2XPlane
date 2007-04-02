@@ -302,7 +302,7 @@ class ProcScen:
         self.basescale=scale
         self.stack=[]	# (return address, layer, pop matrix?)
         self.tex=[]
-        self.mat=[[(1.0,1.0,1.0),(0,0,0),(0,0,0),0.5]]	# [[a,s,e,p]]
+        self.mat=[[(1.0,1.0,1.0),(0,0,0),(0,0,0),0]]	# [[a,s,e,p]]
         self.vtx=[]
         self.idx=[]	# Indices into vtx
         self.m=0	# Index into mat
@@ -530,7 +530,7 @@ class ProcScen:
             self.scale=self.basescale
             self.stack=[]	# (return address, layer, pop matrix?)
             self.tex=[]
-            self.mat=[[(1.0,1.0,1.0),(0,0,0),(0,0,0),0.5]]	# [[a,s,e,p]]
+            self.mat=[[(1.0,1.0,1.0),(0,0,0),(0,0,0),0]]	# [[a,s,e,p]]
             self.vtx=[]
             self.idx=[]	# Indices into vtx
             self.m=0	# Index into mat
@@ -557,14 +557,14 @@ class ProcScen:
         if not dotex:
             if not mat:
                 # must have a colour for lights and lines
-                mat=[(1.0,1.0,1.0),(0,0,0),(0,0,0),0.5]
+                mat=[(1.0,1.0,1.0),(0,0,0),(0,0,0),0]
         elif self.t==None:
             tex=palettetex
             if self.debug and not mat: self.debug.write("Transparent\n")
         else:
             # we don't use ambient colour
             if not mat:	# SColor24 alpha value only applies to untextured
-                mat=[(1.0,1.0,1.0),(0,0,0),(0,0,0),0.5]
+                mat=[(1.0,1.0,1.0),(0,0,0),(0,0,0),0]
             else:
                 mat[0]=(1.0,1.0,1.0)
             if self.vars[0x28c]!=1:
@@ -683,7 +683,7 @@ class ProcScen:
     def SColor(self):	# 14:Scolor, 50:GColor, 51:NewLColor, 52:NewSColor
         (c,)=unpack('H', self.bgl.read(2))
         self.m=0
-        self.mat=[[self.unicol(c), (0,0,0), (0,0,0), 0.5]]
+        self.mat=[[self.unicol(c), (0,0,0), (0,0,0), 0]]
         
     def TextureEnable(self):		# 17
         (c,)=unpack('<H', self.bgl.read(2))
@@ -899,13 +899,13 @@ class ProcScen:
         (r,a,g,b)=unpack('4B', self.bgl.read(4))
         self.m=0
         if a==0xf0:	# unicol
-            self.mat=[[self.unicol(0xf000+r), (0,0,0), (0,0,0), 0.5]]
+            self.mat=[[self.unicol(0xf000+r), (0,0,0), (0,0,0), 0]]
         elif (a>=0xb0 and a<=0xb4) or (a>=0xe0 and a<=0xe4):
             # E0 = transparent ... EF=opaque. Same for B?
             # Treat semi-transparent as fully transparent
             self.mat=[None]
         else:
-            self.mat=[[(r/255.0,g/255.0,b/255.0), (0,0,0), (0,0,0), 0.5]]
+            self.mat=[[(r/255.0,g/255.0,b/255.0), (0,0,0), (0,0,0), 0]]
         
     def Scale(self):		# 2f
         self.bgl.read(8)	# jump,range (LOD) (may be 0),size,reserved
@@ -1764,7 +1764,7 @@ class ProcScen:
                 (r,g,b,a)=unpack('<4f', self.bgl.read(16))
                 m.append((r,g,b))
             (p,)=unpack('<f', self.bgl.read(4))	# specular power
-            if m[1]==(0.0,0.0,0.0): p=0.0	# sometimes bogus power value
+            if m[1]==(0.0,0.0,0.0): p=0	# sometimes bogus value
             m.append(p)
             # ignore alpha
             #if da<0.2:	# eg KBOS taxilines.bgl uses 0.2
@@ -1774,7 +1774,7 @@ class ProcScen:
 
     def TextureList(self):	# b7
         self.tex=[]
-        self.t=0	# undefined - assume first
+        self.t=0		# undefined - assume first
         (count,)=unpack('<H', self.bgl.read(2))
         self.bgl.read(4)
         for i in range(count):

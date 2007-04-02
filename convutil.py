@@ -468,10 +468,11 @@ class Object:
             # Ambient and Specular don't work, according to 
             # xplanescenery.blogspot.com/2006/01/obj8-what-not-to-use.html
             # Also, Diffuse is to be avoided because its slow
+            # Derive shininess from average of specular colour.
             a=(1.0,1.0,1.0)
-            s=(0.0,0.0,0.0)
+            s=0
             e=(0.0,0.0,0.0)
-            p=0.5
+            p=0
             d=False
             for (m, start, count, dbl) in self.mattri:
                 if dbl and not d:
@@ -483,13 +484,9 @@ class Object:
                     e=(er,eg,eb)=m[2]
                     objfile.write("ATTR_emission_rgb\t%5.3f %5.3f %5.3f\n" %(
                         er,eg,eb))
-                if s!=m[1]:
-                    s=(sr,sg,sb)=m[1]
-                    objfile.write("ATTR_specular_rgb\t%5.3f %5.3f %5.3f\n" %(
-                        sr,sg,sb))
-                if p!=m[3]:
-                    p=m[3]
-                    objfile.write("ATTR_shiny_rat\t%5.3f\n" % p)
+                if s!=(m[1][0]+m[1][1]+m[1][2])/3:
+                    s=(m[1][0]+m[1][1]+m[1][2])/3
+                    objfile.write("ATTR_shiny_rat\t%5.3f\n" % s)
                 objfile.write("TRIS\t%d %d\n" % (start, count))
     
             objfile.close()
