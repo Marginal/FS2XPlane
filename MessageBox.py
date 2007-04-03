@@ -2,7 +2,7 @@ from os.path import join
 from sys import platform
 import wx
 
-from version import appname
+from version import appname, appversion
 
 # Custom MessageBox/MessageDialog to replace crappy wxMac default icons
 def myMessageBox(message, caption, style=wx.OK, parent=None):
@@ -46,7 +46,7 @@ def myMessageBox(message, caption, style=wx.OK, parent=None):
     if platform!='darwin':
         return wx.MessageBox(caption+'\n\n'+message, appname, style, parent)
         
-    assert (style&0xff in [wx.OK,wx.CANCEL,wx.YES_NO,wx.CANCEL|wx.YES_NO])
+    assert (style&~wx.ICON_MASK in [wx.OK,wx.CANCEL,wx.YES_NO,wx.CANCEL|wx.YES_NO])
     txtwidth=320
 
     dlg=wx.Dialog(parent, style=wx.CAPTION)
@@ -66,7 +66,7 @@ def myMessageBox(message, caption, style=wx.OK, parent=None):
     text.SetWindowVariant(wx.WINDOW_VARIANT_SMALL)
     WrapText(text, txtwidth)
 
-    if style&0xff in [wx.OK,wx.CANCEL]:
+    if style&~wx.ICON_MASK in [wx.OK,wx.CANCEL]:
         button=wx.Button(panel0, wx.ID_OK)
         button.SetDefault()
     else:
@@ -105,8 +105,39 @@ def myMessageBox(message, caption, style=wx.OK, parent=None):
 
     return retval
 
+def AboutBox(parent=None):
+    dlg=wx.Dialog(parent, style=wx.CLOSE_BOX)
+    panel0 = wx.Panel(dlg)
 
-def foo():
-    box1=wx.BoxSizer(wx.HORIZONTAL)
-    box1.Add([24,0])
-    box1.Add(cap)
+    bitmap=wx.StaticBitmap(panel0, -1,
+                           wx.Bitmap(join('Resources','%s.png' % appname),
+                                     wx.BITMAP_TYPE_PNG))
+
+    name=wx.StaticText(panel0, -1, appname)
+    name.SetWindowVariant(wx.WINDOW_VARIANT_LARGE)
+    font=name.GetFont()
+    font.SetWeight(wx.FONTWEIGHT_BOLD)
+    name.SetFont(font)
+    
+    ver=wx.StaticText(panel0, -1, "Version %4.2f" % appversion)
+    ver.SetWindowVariant(wx.WINDOW_VARIANT_SMALL)
+
+    blurb=wx.StaticText(panel0, -1, "Copyright 2006 Jonathan Harris")
+    blurb.SetWindowVariant(wx.WINDOW_VARIANT_SMALL)
+
+    box=wx.BoxSizer(wx.VERTICAL)
+    
+    box.Add([0,10])
+    box.Add(bitmap, flag=wx.ALIGN_CENTER)
+    box.Add([0,12])
+    box.Add(name,   flag=wx.ALIGN_CENTER)
+    box.Add([0,10])
+    box.Add(ver,    flag=wx.ALIGN_CENTER)
+    box.Add([0,8])
+    box.Add(blurb,  flag=wx.ALIGN_CENTER)
+
+    panel0.SetSizerAndFit(box)
+    dlg.SetClientSize([284,178])
+    dlg.CenterOnParent()
+    dlg.ShowModal()
+    dlg.Destroy()

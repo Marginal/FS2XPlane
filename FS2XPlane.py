@@ -64,7 +64,7 @@ else:
 
 from convmain import Output
 from convutil import FS2XError, viewer, helper
-from MessageBox import myMessageBox
+from MessageBox import myMessageBox, AboutBox
 from version import appname, appversion
 
 if platform=='darwin':
@@ -247,7 +247,15 @@ class MainWindow(wx.Frame):
             self.SetIcon(wx.Icon('Resources/%s.png' % appname,
                                  wx.BITMAP_TYPE_PNG))
         elif platform=='darwin':
-            pass	# icon pulled from Resources via Info.plist
+            # icon pulled from Resources via Info.plist. Need minimal menu
+            menubar = wx.MenuBar()
+            helpmenu = wx.Menu()
+            helpmenu.Append(wx.ID_HELP, '%s Help\tCtrl-?'  % appname)
+            wx.EVT_MENU(self, wx.ID_HELP, self.onHelp)
+            helpmenu.Append(wx.ID_ABOUT, 'About %s'  % appname)
+            wx.EVT_MENU(self, wx.ID_ABOUT, self.onAbout)
+            menubar.Append(helpmenu, '&Help')
+            self.SetMenuBar(menubar)
 
         panel0 = wx.Panel(self,-1)
         panel1 = wx.Panel(panel0,-1)
@@ -398,10 +406,10 @@ class MainWindow(wx.Frame):
         self.Close()
 
     def onHelp(self, evt):
-        if platform=='darwin':
-            viewer(join(curdir,'Resources',appname+'.html'))
-        else:
-            viewer(join(curdir,appname+'.html'))
+        viewer(join(curdir,appname+'.html'))
+
+    def onAbout(self, evt):
+        AboutBox(self)
 
     def onConvert(self, evt):
         dumplib=self.dumplib.GetValue()

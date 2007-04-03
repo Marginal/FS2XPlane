@@ -81,7 +81,7 @@ for %%I in (%PY%) do (copy %%I FS2XPlane.app\Contents\MacOS\ |findstr -v "file(s
 mkdir FS2XPlane.app\Contents\MacOS\win32
 for %%I in (win32\bglunzip.exe win32\fake2004.exe) do (copy %%I FS2XPlane.app\Contents\MacOS\win32 |findstr -v "file(s) copied")
 mkdir FS2XPlane.app\Contents\Resources
-for %%I in (%DATA%) do (copy %%I FS2XPlane.app\Contents\Resources\ |findstr -v "file(s) copied")
+for %%I in (%DATA%) do (copy %%I FS2XPlane.app\Contents\ |findstr -v "file(s) copied")
 for %%I in (%RSRC%) do (copy "Resources\%%~nxI" FS2XPlane.app\Contents\Resources\ |findstr -v "file(s) copied")
 copy Resources\trees_0.bgl FS2XPlane.app\Contents\Resources\ |findstr -v "file(s) copied")
 sed s/appversion/%VERSION%/ <FS2XPlane.app\Contents\MacOS\Info.plist >FS2XPlane.app\Contents\Info.plist
