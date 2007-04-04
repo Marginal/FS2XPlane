@@ -30,7 +30,7 @@
 import os	# for startfile
 from os import chdir, getenv, listdir, mkdir, makedirs
 from os.path import abspath, basename, curdir, dirname, expanduser, exists, isdir, join, normpath, pardir, sep
-from sys import argv, exit, platform
+from sys import argv, exit, platform, version
 from traceback import print_exc
 
 from convutil import asciify, sortfolded
@@ -68,6 +68,7 @@ from MessageBox import myMessageBox, AboutBox
 from version import appname, appversion
 
 if platform=='darwin':
+    from Carbon import Menu
     # Hack: wxMac 2.5 requires the following to get shadows to look OK:
     # ... wx.ALIGN_CENTER_VERTICAL|wx.TOP|wx.BOTTOM, 2)
     pad=2
@@ -368,6 +369,10 @@ class MainWindow(wx.Frame):
         # +50 is a hack cos I can't work out how to change minsize of TextCtrl
         self.SetSizeHints(sz.width+50, height, -1, height)
         self.Show(True)
+
+        if platform=='darwin':
+            # Hack! Change name on application menu. wxMac always uses id 1.
+            Menu.GetMenuHandle(1).SetMenuTitleWithCFString(appname)
 
         if newfsroot:
             myMessageBox('Install your MSFS sceneries under\n%s' % fspath, 'Created a fake FS2004 installation.', wx.ICON_INFORMATION|wx.OK, None)

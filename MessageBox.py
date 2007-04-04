@@ -79,7 +79,7 @@ def myMessageBox(message, caption, style=wx.OK, parent=None):
     grid.Add([16,15], (0,2))
     grid.Add([txtwidth,15],(0,3), (1,4))	# Minimum size
     
-    grid.Add(bitmap,  (1,1), (3,1), flag=wx.ALIGN_TOP|wx.ALIGN_LEFT)
+    grid.Add(bitmap,  (1,1), (4,1), flag=wx.ALIGN_TOP|wx.ALIGN_LEFT)
     grid.Add(cap,     (1,3), (1,4), flag=wx.ALIGN_TOP|wx.ALIGN_LEFT)
 
     #grid.Add([0,8],  (2,3))
