@@ -158,6 +158,10 @@ class Point:
                               sin(lat1)*cos(lat2)*cos(lon2-lon1))) %
                        twopi)
 
+    # like headingto but just on 2D plane - result in radians
+    def angleto(self, to):
+        return atan2(to.lon-self.lon, to.lat-self.lat)
+
     def within(self, bl, tr):
         return (self.lat>=bl.lat and self.lat<=tr.lat and
                 self.lon>=bl.lon and self.lon<=tr.lon)

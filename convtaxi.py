@@ -25,7 +25,7 @@
 #   http://creativecommons.org/licenses/by-sa/2.5/legalcode
 #
 
-from math import sin, cos, pi, radians, degrees, atan2
+from math import sin, cos, pi, radians, degrees
 from os.path import join
 from sys import maxint
 
@@ -220,7 +220,7 @@ def edgefeature(link1, side1, link2=None, side2=None):
 def follow(subgraph, ccw, tessObj, dump):
 
     # ccw is 1 or 0 (cw)
-    if dump: print "ccw=", ccw, "#links=",len(subgraph)
+    if dump: print "Follow. CCW=", ccw, "#links=",len(subgraph)
 
     # Find nodes (this is more nodes than a convex hull)
     # start with westmost
@@ -231,16 +231,16 @@ def follow(subgraph, ccw, tessObj, dump):
     nodes=[start]
     
     n=nodes[0]
-    lastheading=270	# heading to last node
+    lastheading=pi*1.5	# heading to last node
     #if dump: print n.loc, "node", lastheading
     while True:
         # Ack - O(n3) algorithm?!
         bestnode=None
         bestlink=None
         if not ccw and len(nodes)==1:
-            bestheading=lastheading+360
+            bestheading=lastheading+twopi
         else:
-            bestheading=lastheading-360
+            bestheading=lastheading-twopi
         #if not n.links: break	# node has no links - ignore
         for link in n.links:
             # find rightmost link
@@ -251,8 +251,8 @@ def follow(subgraph, ccw, tessObj, dump):
                 if o==n:
                     # We have a candidate
                     o=link.nodes[1-end]
-                    h=n.loc.headingto(o.loc)
-                    if h>=lastheading: h=h-360
+                    h=n.loc.angleto(o.loc)
+                    if h>=lastheading: h=h-twopi
                     #if dump: print o.loc, h
                     if not ccw and len(nodes)==1:
                         if h<bestheading:
@@ -273,7 +273,7 @@ def follow(subgraph, ccw, tessObj, dump):
             # On a spur - backtrack
             bestnode=nodes[nodes.index(n)-1]
         nodes.append(bestnode)
-        lastheading=bestnode.loc.headingto(n.loc)
+        lastheading=bestnode.loc.angleto(n.loc)
         #if dump: print bestnode.loc, "node", lastheading
         n=bestnode
 
@@ -287,7 +287,7 @@ def follow(subgraph, ccw, tessObj, dump):
         # This is only the exterior of _this_ surface - there might
         # be other exterior links. Arrange in order.
         elinks=[]
-        lastheading=radians(n.loc.headingto(nodes[(nodeno-1)%len(nodes)].loc))
+        lastheading=n.loc.angleto(nodes[(nodeno-1)%len(nodes)].loc)
         for link in n.links:
             # find links to the right
             for end in [0,1]:
@@ -295,7 +295,7 @@ def follow(subgraph, ccw, tessObj, dump):
                 if o==n:
                     # We have a candidate
                     o=link.nodes[1-end]
-                    h=radians(n.loc.headingto(o.loc))
+                    h=n.loc.angleto(o.loc)
                     if h>lastheading: h=h-twopi
                     elinks.append((o,h,link,end))
                     break
@@ -308,16 +308,18 @@ def follow(subgraph, ccw, tessObj, dump):
 
         if len(elinks)==1:	# Stub
             (n1,h1,link1,end1)=elinks[0]
-            (loc1,bez1,good1)=link1.intersect[end1][1]	# left
-            (loc2,bez2,good2)=link1.intersect[end1][0]	# right
+            (loc1,bez1,bad1)=link1.intersect[end1][1]	# left
+            (loc2,bez2,bad2)=link1.intersect[end1][0]	# right
             code2=edgefeature(link1, end1)
-            if not good1: bad+=1
-            if not good2: bad+=1
+            if bad1: bad+=1
+            if bad2: bad+=1
             if dump:
                 print "%7.2f stub      %s" % (round(degrees(h1),2), loc1)
                 print "%7.2f stub      %s" % (round(degrees(h1),2), loc2)
-            points.append((loc1, None, None, False, ''))
-            points.append((loc2, None, None, False, code2))
+            #points.append((loc1, None, None, 0, ''))
+            #points.append((loc2, None, None, 0, code2))
+            points.append((loc1, loc1, None, None, 0, ''))
+            points.append((loc2, loc2, None, None, 0, code2))
             link1.done+=1
             continue
 
@@ -330,13 +332,15 @@ def follow(subgraph, ccw, tessObj, dump):
             # link to same (i!=0) or different surface
             (n2,h2,link2,end2)=elinks[(i+1)%len(elinks)]
 
-            (loc1,bez1,good1)=link1.intersect[end1][1]	# ccw
-            (loc2,bez2,good2)=link2.intersect[end2][0]	# 1-ccw
+            (int1,bez1,bad1)=link1.intersect[end1][1]	# ccw
+            (int2,bez2,bad2)=link2.intersect[end2][0]	# 1-ccw
+            loc1=int1
+            loc2=int2
             code1=edgefeature(link1, 1-end1, link2, end2)
             code2=edgefeature(link2, end2)
             blank1=blank2=None
-            if not good1: bad+=1
-            if not good2: bad+=1
+            if bad1: bad+=1
+            if bad2: bad+=1
 
             # cases:
             # 1 link to runway
@@ -346,8 +350,11 @@ def follow(subgraph, ccw, tessObj, dump):
             
             # n1
             if dump: print "%7.2f" % round(degrees(h1),2),
-            if not (ccw or good1):
+            if not ccw and bad1:
+                loc1=bez1=None
+            elif bad1==2:
                 loc1=None
+                if dump: print "bad1      ",
             elif link1 not in subgraph and (link1.type=='RUNWAY' or link1.draw) and link2 not in subgraph and (link2.type=='RUNWAY' or link2.draw):
                 loc1=n.loc	# 1: no fillets between runways
                 bez1=None
@@ -378,15 +385,18 @@ def follow(subgraph, ccw, tessObj, dump):
                 if not loc1:
                     print "skip"
                 elif bez1:
-                    print bez1, "bez"
+                    print bez1, "bez", int(degrees(h1-h2)%360)
                 else:
                     print loc1
 
             # n2
             if dump: print "%7.2f" % round(degrees(h2),2),
-            if not (ccw or good2):
+            if not ccw and bad2:
+                loc2=bez2=None
+            elif bad2==2:
                 loc2=None
-            if link2 not in subgraph and (link2.type=='RUNWAY' or link2.draw) and link1 not in subgraph and (link1.type=='RUNWAY' or link1.draw):
+                if dump: print "bad2      ",
+            elif link2 not in subgraph and (link2.type=='RUNWAY' or link2.draw) and link1 not in subgraph and (link1.type=='RUNWAY' or link1.draw):
                 loc2=n.loc	# 1: no fillets between runways
                 bez2=None
                 code2=''
@@ -415,112 +425,94 @@ def follow(subgraph, ccw, tessObj, dump):
                 if not loc2:
                     print "skip"
                 elif bez2:
-                    print bez2, "bez"
+                    print bez2, "bez", int(degrees(h1-h2)%360)
                 else:
                     print loc2
 
-            if not loc1:
-                pass
-            elif bez1:
-                cnt1=(bez1+(loc1-bez1)*(2.0/3)).round()
-                points.append((bez1, cnt1, blank1, False, code1))
-                if (h1-h2)%twopi>pi:	# dummy for outscribing reflex curves
-                    points.append((cnt1, None, None, True, code1))	# dummy
-            else:
-                points.append((loc1, None, None, False, code1))
-            if not loc2:
-                pass
-            elif bez2:
-                cnt2=(bez2+(bez2-loc2)*(2.0/3)).round()
-                if (h1-h2)%twopi>pi:	# dummy for outscribing reflex curves
-                    points.append((bez2+bez2-cnt2, None, None, True, code1))
-                points.append((bez2, cnt2, blank2, False, code2))
-            else:
-                points.append((loc2, None, None, False, code2))
+            points.append((int1, loc1, bez1, blank1, bad1, code1))
+            points.append((int2, loc2, bez2, blank2, bad2, code2))
 
-    # Skip this contour if empty or interior and >1/4 points bad
-    if dump and points and not ccw: print "goodness", len(points), bad, points[0][0]
-    if len(points)<3 or (not ccw and bad*3>len(points)):
-        if dump and points: print "Skip interior:", len(points), bad, points[0][0]
-        return
-    if not points: return
-
-    if not ccw:
+    if dump:
         n=len(points)
         area2=0
         i=0
         while i<n:
-            (pt,bez,blank,dummy,code)=points[i]
-            (pt1,bez1,blank1,dummy1,code1)=points[(i+1)%n]
-            area2+=(pt.lon * pt1.lat - pt1.lon * pt.lat)
+            (int1, loc1, bez1, blank1, bad1, code1)=points[i]
+            (int2, loc2, bez2, blank2, bad2, code2)=points[(i+1)%n]
+            area2+=(int1.lon * int2.lat - int2.lon * int1.lat)
             i+=1
-        if dump: print "Interior poly:", n, area2, points[0][0]
+        if n==0:
+            print "Poly", ccw, n, area2
+            print "Empty poly!"
+        else:
+            print "Poly", ccw, n, area2, points[0][0]
+            if (ccw and area2<=0) or (not ccw and area2>=0): print "Reversed poly!"
+            if not ccw: print "goodness", len(points), bad
 
-    if False:
-        inttessObj = gluNewTess()
-        gluTessNormal(inttessObj, 0, -1, 0)
-        gluTessProperty(inttessObj,GLU_TESS_WINDING_RULE,GLU_TESS_WINDING_NONZERO)
-        gluTessProperty(inttessObj,GLU_TESS_BOUNDARY_ONLY,GL_TRUE)
+    # Skip this contour if empty or interior and >1/3 points bad
+    if len(points)<3 or (not ccw and bad*2>len(points)):
+        if dump and points: print "Skip poly:", len(points), bad, points[0][0]
+        return
 
-        try:
-            newpoints=[]
-            debez=[]
-            gluTessBeginPolygon(inttessObj, (newpoints, debez, dump))
-            #gluTessBeginPolygon(inttessObj, None)
-            gluTessBeginContour(inttessObj)
-            n=len(points)
-            for i in range(n):
-                (loc1, bez1, blank1, dummy1, code1)=points[i]
-                (loc2, bez2, blank2, dummy2, code2)=points[(i+1)%n]
-                if (not loc1.equals(loc2)): #or (bez1 and not bez2) or (bez2 and not bez1):
-                    gluTessVertex(inttessObj, [loc1.lon, 0, loc1.lat], None)
-            gluTessEndContour(inttessObj)
-            gluTessEndPolygon(inttessObj)
-        except:
-            if dump: print "Skipping"
-            points=[]
-        gluDeleteTess(inttessObj)
-        if not points: return
-
-    # Feed points to tessellator, eliminating duplicates
+    # Feed points to tessellator, eliminating duplicates and adding
+    # dummys to outscribe reflex curves
+    if dump: print "Dummies:"
     gluTessBeginContour(tessObj)
     n=len(points)
-    for i in range(n):
-        (loc1, bez1, blank1, dummy1, code1)=points[i]
-        (loc2, bez2, blank2, dummy2, code2)=points[(i+1)%n]
-        if (not loc1.equals(loc2)): #or (bez1 and not bez2) or (bez2 and not bez1):
-            gluTessVertex(tessObj, [loc1.lon, 0, loc1.lat], points[i])
-        elif dump and bez1 and bez2 and (abs(bez1.lat-bez2.lat)>=0.000002 or abs(bez1.lon-bez2.lon)>=0.000002):
-            # Control points should be in same place, allowing for maths
-            print "WTF!", loc1, bez1, bez2
+    for i in range(0,n,2):
+        # 1 and 2 are a pair of points at a node
+        (int0, loc0, bez0, blank0, bad0, code0)=points[(i-1)%n]
+        (int1, loc1, bez1, blank1, bad1, code1)=points[i]
+        (int2, loc2, bez2, blank2, bad2, code2)=points[i+1]
+        (int3, loc3, bez3, blank3, bad3, code3)=points[(i+2)%n]
+        if not loc1:
+            pass
+        elif loc2 and not bez1 and not bez2 and loc1.equals(loc2):
+            pass	# eg straight
+        elif bad1==2:
+            gluTessVertex(tessObj, [loc1.lon, 0, loc1.lat],
+                          (loc1, None, None, bad1, code1))            
+        elif bez1:
+            cnt1=(bez1+(loc1-bez1)*(2.0/3)).round()
+            gluTessVertex(tessObj, [bez1.lon, 0, bez1.lat],
+                          (bez1, cnt1, blank1, 0, code1))
+        elif loc1:
+            gluTessVertex(tessObj, [loc1.lon, 0, loc1.lat],
+                          (loc1, None, blank1, 0, code1))
+        if bez1 or bez2:
+            # dummy points to outscribe reflex curves
+            h1=int1.angleto(int0)
+            h2=int2.angleto(int3)
+            if dump:
+                print int0, int1, int3, round(degrees((h1-h2)%twopi),2)
+                assert(int1.equals(int2))
+            if (h1-h2)%twopi>pi:
+                if bez1:
+                    cnt1=(bez1+(loc1-bez1)*(2.0/3)).round()	# XXX
+                    gluTessVertex(tessObj, [cnt1.lon, 0, cnt1.lat],
+                                  (cnt1, None, None, 1, code1))	# dummy
+                if bez2:
+                    cnt2=(bez2+(loc2-bez2)*(2.0/3)).round()
+                    gluTessVertex(tessObj, [cnt2.lon, 0, cnt2.lat],
+                                  (cnt2, None, None, 1, code2))	# dummy
+        if not loc2:
+            pass
+        elif loc3 and not bez2 and not bez3 and loc2.equals(loc3):
+            pass	# eg at runway node
+        elif bez2 and bez3 and abs(bez2.lat-bez3.lat)<=0.0000025 and abs(bez2.lon-bez3.lon)<=0.0000025:
+            pass	# short link with shared bezier
+        elif bad2==2:
+            gluTessVertex(tessObj, [loc2.lon, 0, loc2.lat],
+                          (loc2, None, None, bad2, code2))            
+        elif bez2:
+            cnt2=(bez2+(bez2-loc2)*(2.0/3)).round()
+            gluTessVertex(tessObj, [bez2.lon, 0, bez2.lat],
+                          (bez2, cnt2, blank2, 0, code2))
+        elif loc2:
+            gluTessVertex(tessObj, [loc2.lon, 0, loc2.lat],
+                          (loc2, None, blank2, 0, code2))
     gluTessEndContour(tessObj)
 
-    if False:
-        gluTessEndPolygon(tessObj)
-        gluDeleteTess(tessObj)
-        tessObj=saved
-        if dump: print "Interior tessellation", len(newpoints)
-        for points in newpoints:
-            points.reverse()
-            n=len(points)
-            area2=0
-            i=0
-            while i<n:
-                (pt,bez,blank,dummy,code)=points[i]
-                (pt1,bez1,blank1,dummy1,code1)=points[(i+1)%n]
-                area2+=(pt.lon * pt1.lat - pt1.lon * pt.lat)
-                i+=1
-            if dump: print n, area2
-            #if area2<0: continue	# hole
-            gluTessBeginContour(tessObj)
-            for pt in points:
-                (loc,bez,blank,dummy,code)=pt
-                if loc in debez:
-                    # Turn an intersected bezier curves in to straight lines
-                    gluTessVertex(tessObj, [loc.lon, 0, loc.lat], (loc,None,None,dummy,code))
-                else:
-                    gluTessVertex(tessObj, [loc.lon, 0, loc.lat], pt)
-            gluTessEndContour(tessObj)
 
 # --------------------------------------------------------------------------
 
@@ -538,23 +530,21 @@ def tessvertex(vertex, data):
     (points, debez, dump)=data
     # just accumulate points
     points[-1].append(vertex)
-    #if dump:
-    #    (pt, bez, blank, dummy, code)=vertex
-    #    print "Vertex", pt, bez, blank, dummy, code
 
 def tesscombine(coords, vertex, weight, data):
     (points, debez, dump)=data
     if dump: print "Combine", Point(coords[2], coords[0])
     for i in range(len(weight)):
         if weight[i]:
-            (pt, bez, blank, dummy, code)=vertex[i]
-            if dump:  print pt, bez, blank, dummy, code, round(weight[i],3)
-            if weight[i]>0.1:	# arbitrary. Probably still OK if far away
+            (loc, cnt, blank, dummy, code)=vertex[i]
+            if dump:  print loc, cnt, blank, dummy, code, round(weight[i],3)
+            if True:#weight[i]>0.1:	# arbitrary. Probably still OK if far away
                 # Can no longer guarantee sanity of the bezier curve
-                debez.append(pt)
-    (pt, bez, blank, dummy, code)=vertex[0]	# arbitrary - use first code
+                debez.append(loc)
+    (loc, cnt, blank, dummy, code)=vertex[0]	# arbitrary - use first code
     return (Point(round(coords[2],6), round(coords[0],6)),
-            None, None, False, code)
+    #return (Point(coords[2], coords[0]),
+            None, None, 0, code)
 
 
 # --------------------------------------------------------------------------
@@ -563,9 +553,10 @@ def taxilayout(allnodes, alllinks, surfaceheading, output, aptdat=None, ident="u
 
     # Edges ----------------------------------------------------------------
 
-    dump=(output.debug and ident=="ESGG" and open(join(output.xppath, ident+"_nodes.txt"), "at"))
+    dump=output.debug
     if dump:
-        print ident
+        print "Layout", ident
+        nodesfile=open(join(output.xppath, ident+"_nodes.txt"), "at")
         interfile=open(join(output.xppath, ident+"_inter.txt"), "at")
         pointfile=open(join(output.xppath, ident+"_point.txt"), "at")
 
@@ -580,12 +571,12 @@ def taxilayout(allnodes, alllinks, surfaceheading, output, aptdat=None, ident="u
                 o=link.nodes[end]
                 if o!=n: continue
                 o=link.nodes[1-end]
-                h=radians(n.loc.headingto(o.loc))
+                h=n.loc.angleto(o.loc)
                 elinks.append((o,h,link))
         elinks.sort(lambda (o1,h1,l1),(o2,h2,l2): cmp(h2,h1)) # CCW
         
         if dump:
-            dump.write("%.6f\t%.6f\n" % (n.loc.lon, n.loc.lat))
+            nodesfile.write("%.6f\t%.6f\n" % (n.loc.lon, n.loc.lat))
             print n.loc, "node", len(elinks), "links"
 
         for i in range(len(elinks)):
@@ -601,7 +592,7 @@ def taxilayout(allnodes, alllinks, surfaceheading, output, aptdat=None, ident="u
                 else:
                     loc1=n.loc.biased((cos(h1)-sin(h1))*w, (-sin(h1)-cos(h1))*w).round()
                     loc2=n.loc.biased((-cos(h1)-sin(h1))*w, (sin(h1)-cos(h1))*w).round()
-                link1.intersect[end1]=[(loc1,None,True), (loc2,None,True)]
+                link1.intersect[end1]=[(loc1,None,0), (loc2,None,0)]
                 if dump:
                     print loc1, "stub", i
                     print loc2, "stub", i
@@ -618,78 +609,113 @@ def taxilayout(allnodes, alllinks, surfaceheading, output, aptdat=None, ident="u
                 # not quite average but close enough
                 intersect=n.loc.biased(-w*(cos(h1)+cos(h2-pi))/2,
                                        w*(sin(h1)+sin(h2-pi))/2).round()
-                link1.intersect[end1][1]=(intersect,None,True)
-                link2.intersect[end2][0]=(intersect,None,True)
-                if dump: print intersect, "straight ", i, degrees(h1), degrees(h2)
+                link1.intersect[end1][1]=(intersect,None,0)
+                link2.intersect[end2][0]=(intersect,None,0)
+                if dump: print intersect, "straight ", i, int(degrees(h1)), int(degrees(h2))
             else:
                 ratio=0.5/sin((h1-pi)%twopi-h2)
                 intersect=n.loc.biased(-sin(h1)*link2.width*ratio - sin(h2)*link1.width*ratio,
                                        -cos(h1)*link2.width*ratio - cos(h2)*link1.width*ratio).round()
-                link1.intersect[end1][1]=(intersect,True,True)
-                link2.intersect[end2][0]=(intersect,True,True)
-                if dump: print intersect, "intersect", i, degrees(h1), degrees(h2)
+                link1.intersect[end1][1]=(intersect,True,0)
+                link2.intersect[end2][0]=(intersect,True,0)
+                if dump: print intersect, "intersect", i, int(degrees(h1)), int(degrees(h2))
             if dump: interfile.write("%.6f\t%.6f\n" % (intersect.lon, intersect.lat))
             
     # Fill in bezier points. Can't do bezier control points yet
-    #if dump: print "Beziers"
+    if dump: print "Beziers"
     for link in alllinks:
         #if not link.intersect[0][0]: continue	# unlinked link!
         for end in [0,1]:
-            (loc1,bez1,good1)=link.intersect[end][0]
-            (loc2,bez2,good2)=link.intersect[1-end][1]
-            # check whether link length is too short for curves
-            d=loc1.distanceto(loc2)
-            d1=link.nodes[end].loc-loc1
-            d2=link.nodes[end].loc-loc2
-            if d1.lat*d1.lat+d1.lon*d1.lon>=d2.lat*d2.lat+d2.lon*d2.lon:
+            (loc1,bez1,bad1)=link.intersect[end][0]
+            (loc2,bez2,bad2)=link.intersect[1-end][1]
+            # check whether intersections cross  ie link length is too short
+            # for curves
+            # http://astronomy.swin.edu.au/~pbourke/geometry/lineline2d
+            # p1=link.nodes[end], p2=loc1, p3=link.nodes[1-end], p4=loc2
+            p1=link.nodes[end].loc
+            p3=link.nodes[1-end].loc
+            d=(loc2.lat-p3.lat)*(loc1.lon-p1.lon)-(loc2.lon-p3.lon)*(loc1.lat-p1.lat)
+            if d==0:
+                c=0
+                a=b=5
+            else:
+                a=((loc2.lon-p3.lon)*(p1.lat-p3.lat)-(loc2.lat-p3.lat)*(p1.lon-p3.lon))/d
+                b=((loc1.lon-p1.lon)*(p1.lat-p3.lat)-(loc1.lat-p1.lat)*(p1.lon-p3.lon))/d
+            if a>=0 and a<=1 and b>=0 and b<=1:
                 # link is too small and intersection points cross so beziers
                 # will loop weirdly. Just let tessellator sort it out.
+                d11=link.nodes[end].loc-loc1
+                d12=link.nodes[end].loc-loc2
+                d21=link.nodes[1-end].loc-loc1
+                d22=link.nodes[1-end].loc-loc2
+                bad1=max(bad1,1)
+                bad2=max(bad2,1)
                 bez1=bez2=None
-                good1=good2=False
+                if d21.lat*d21.lat+d21.lon*d21.lon<=d22.lat*d22.lat+d22.lon*d22.lon:
+                    bad1=2
+                    bez1=None
+                # mark other links' intersections with this link also bad
+                for l2 in link.nodes[end].links:
+                    for e2 in [0,1]:
+                        if l2.nodes[e2]==link.nodes[end]:
+                            for side in [0,1]:
+                                if l2.intersect[e2][side][0].equals(loc1):
+                                    l2.intersect[e2][side]=(loc1,None,bad1)
+                if d11.lat*d11.lat+d11.lon*d11.lon>=d12.lat*d12.lat+d12.lon*d12.lon:
+                    bad2=2
+                    bez2=None
+                # mark other links' intersections with this link also bad
+                for l2 in link.nodes[1-end].links:
+                    for e2 in [0,1]:
+                        if l2.nodes[e2]==link.nodes[1-end]:
+                            for side in [0,1]:
+                                if l2.intersect[e2][side][0].equals(loc2):
+                                    l2.intersect[e2][side]=(loc2,None,bad2)
                 if dump:
-                    print loc1, "degenerate1"
-                    print loc2, "degenerate2"
-            elif True: #XXX bez1 and bez2:
-                # eg KBJC
-                if d<2.04*link.width:	# small fudge factor for safety
-                    # Would like to use a single point, but then
-                    # tessellator will merge in some circumstances (eg
-                    # adjacent taxiways off runway) and we lose the code.
-                    if bez1: bez1=(loc1+(loc2-loc1)*0.48).round()
-                    if bez2: bez2=(loc1+(loc2-loc1)*0.52).round()
-                    if dump:
-                        print loc1, bez1, "merge1"
-                        print loc2, bez2, "merge2"
-                else:
-                    if bez1: bez1=(loc1+(loc2-loc1)*link.width/d).round()
-                    if bez2: bez2=(loc2+(loc1-loc2)*link.width/d).round()
-                    if dump:
-                        print loc1, bez1
-                        print loc2, bez2
-            elif bez1:
-                if d<1.02*link.width:	# small fudge factor for safety
-                    bez1=loc2
-                    #if dump: print loc1, bez1, "merge1 with point2"
-                else:
-                    bez1=(loc1+(loc2-loc1)*link.width/d).round()
-                    #if dump: print loc1, bez1
-                #if dump: print loc2, "point2"
-            elif bez2:
-                #if dump: print loc1, "point1"
-                if d<1.02*link.width:	# small fudge factor for safety
-                    bez2=loc1
-                    #if dump: print loc2, bez2, "merge2 with point1"
-                else:
-                    bez2=(loc2+(loc1-loc2)*link.width/d).round()
-                    #if dump: print loc2, bez2
+                    print loc1, bez1, bad1, "degenerate1"
+                    print loc2, bez2, bad2, "degenerate2"
+
+            # eg KBJC
+            d=loc1.distanceto(loc2)
+            if (bez1 or bez2) and d<2.04*link.width:	# small fudge factor for safety
+                # Would like to use a single point, but then
+                # tessellator will merge in some circumstances (eg
+                # adjacent taxiways off runway) and we lose the code.
+                # So only make a single point if all adjacent links
+                # are of the sdame surface -> will be in same pavement
+                if bez1: bez1=(loc1+(loc2-loc1)*0.5).round()
+                if bez2: bez2=(loc1+(loc2-loc1)*0.5).round()
+                if bez1 and bez2:
+                    h=loc1.angleto(loc2)
+                    delta=Point(cos(h)*0.000001,sin(h)*0.000001).round()
+                    bez1-=delta
+                    bez2+=delta
+                    for link2 in link.nodes[0].links:
+                        if link2.type=='RUNWAY' or link2.surface!=link.surface: break
+                    else:
+                        for link2 in link.nodes[1].links:
+                            if link2.type=='RUNWAY' or link2.surface!=link.surface: break
+                        else:
+                            bez1=(loc1+(loc2-loc1)*0.5).round()
+                            bez2=(loc1+(loc2-loc1)*0.5).round()
+                if dump:
+                    print loc1, bez1, bad1, "shorten1"
+                    print loc2, bez2, bad2, "shorten2"
+            else:
+                if bez1: bez1=(loc1+(loc2-loc1)*link.width/d).round()
+                if bez2: bez2=(loc2+(loc1-loc2)*link.width/d).round()
+                if dump:
+                    print loc1, bez1, bad1
+                    print loc2, bez2, bad2
+                    
             if bez1 and abs(bez1.lat-loc1.lat)<0.00001 and abs(bez1.lon-loc1.lon)<0.00001:
                 bez1=None	# collapses to a point
                 #if dump: print "collapse1"
-            link.intersect[end][0]=(loc1,bez1,good1)
+            link.intersect[end][0]=(loc1,bez1,bad1)
             if bez2 and abs(bez2.lat-loc2.lat)<0.00001 and abs(bez2.lon-loc2.lon)<0.00001:
                 bez1=None	# collapses to a point
                 #if dump: print "collapse2"
-            link.intersect[1-end][1]=(loc2,bez2,good2)
+            link.intersect[1-end][1]=(loc2,bez2,bad2)
             if dump:
                 if bez1:
                     pointfile.write("%.6f\t%.6f\n" % (bez1.lon, bez1.lat))
@@ -703,6 +729,7 @@ def taxilayout(allnodes, alllinks, surfaceheading, output, aptdat=None, ident="u
     tessObj = gluNewTess()
     gluTessNormal(tessObj, 0, -1, 0)
     gluTessProperty(tessObj,GLU_TESS_WINDING_RULE,GLU_TESS_WINDING_NONZERO)
+    #gluTessProperty(tessObj,GLU_TESS_WINDING_RULE,GLU_TESS_WINDING_POSITIVE)
     gluTessProperty(tessObj,GLU_TESS_BOUNDARY_ONLY,GL_TRUE)
     gluTessCallback(tessObj,GLU_TESS_BEGIN_DATA,   tessbegin)
     gluTessCallback(tessObj,GLU_TESS_VERTEX_DATA,  tessvertex)
@@ -750,11 +777,12 @@ def taxilayout(allnodes, alllinks, surfaceheading, output, aptdat=None, ident="u
         # Turn an intersected bezier curves in to straight lines
         for points in newpoints:
             for i in range(len(points)):
-                (pt,bez,blank,dummy,code)=points[i]
-                if pt in debez:
-                    points[i]=(pt,None,None,dummy,code)
+                (loc,cnt,blank,dummy,code)=points[i]
+                if loc in debez or cnt in debez:
+                    points[i]=(loc,None,None,dummy,code)
 
         # Tessellator spits out points in any order - first split out exteriors
+        if dump: print "After tessellation:"
         outpoints=[]
         j=0
         while j<len(newpoints):
@@ -763,9 +791,9 @@ def taxilayout(allnodes, alllinks, surfaceheading, output, aptdat=None, ident="u
             area2=0
             i=0
             while i<n:
-                (pt,bez,blank,dummy,code)=points[i]
-                (pt1,bez1,blank1,dummy1,code1)=points[(i+1)%n]
-                area2+=(pt.lon * pt1.lat - pt1.lon * pt.lat)
+                (loc,cnt,blank,dummy,code)=points[i]
+                (loc1,cnt1,blank1,dummy1,code1)=points[(i+1)%n]
+                area2+=(loc.lon * loc1.lat - loc1.lon * loc.lat)
                 i+=1
 
             if area2>=0:	# exterior
@@ -777,10 +805,12 @@ def taxilayout(allnodes, alllinks, surfaceheading, output, aptdat=None, ident="u
             else:
                 j+=1
             if dump:
-                if area2>=0: print "exterior %3d " % n, area2
-                else: print "interior %3d" % n, area2
+                if area2>=0: print "exterior %3d " % n, area2, area2>=1e-7
+                else: print "interior %3d " % n, area2, area2<=-1e-8
 
-        # Attach interiors to corresponding exterior. Assumes no intersections 
+        # Attach interiors to corresponding exterior. Assumes no intersections
+        # http://local.wasp.uwa.edu.au/~pbourke/geometry/insidepoly/ (Soln 2)
+        #if dump and newpoints: print "Assign interiors:"
         for e in outpoints:
             opoints=e[0]	# the exterior polygon
             n=len(opoints)
@@ -788,20 +818,16 @@ def taxilayout(allnodes, alllinks, surfaceheading, output, aptdat=None, ident="u
             j=0
             while j<len(newpoints):
                 points=newpoints[j]	# candidate interior polygon
-                for (pt,bez,blank,dummy,code) in points:
-                    #if dump: print
-                    #if dump: print j, len(points), pt
+                for (loc,cnt,blank,dummy,code) in points:
+                    #if dump: print len(points), j, loc,
                     angle=0
                     for i in range(n):
-                        if pt.equals(opoints[i][0]):
+                        if loc.equals(opoints[i][0]):
                             # try another point in the candidate
-                            #if dump: print "Coincident", pt
+                            #if dump: print "Coincident", loc,
                             break
                         # sum angles between exterior points
-                        thisangle=(atan2(opoints[(i+1)%n][0].lat-pt.lat,
-                                         opoints[(i+1)%n][0].lon-pt.lon)-
-                                   atan2(opoints[i][0].lat-pt.lat,
-                                         opoints[i][0].lon-pt.lon))
+                        thisangle=loc.angleto(opoints[i][0])-loc.angleto(opoints[(i+1)%n][0])
                         if thisangle>pi: thisangle-=twopi
                         if thisangle<-pi: thisangle+=twopi
                         #print opoints[i][0], opoints[(i+1)%n][0], round(thisangle,6)
@@ -818,8 +844,11 @@ def taxilayout(allnodes, alllinks, surfaceheading, output, aptdat=None, ident="u
                         break
                 else:
                     # wtf - all interior points were coincident with exterior
-                    #if dump: print "wtf"
+                    #if dump: print "wtf", angle
                     newpoints.pop(j)
+        if dump and newpoints:
+            print "Unassigned interiors!"
+            for points in newpoints: print len(points), points[0][0]
         
         # Finally output the polygons
         out=[]
@@ -828,18 +857,19 @@ def taxilayout(allnodes, alllinks, surfaceheading, output, aptdat=None, ident="u
                 surface, 0.25, surfaceheading, name)))
             for points in tw:
                 n=len(points)
-                if points[0][3] and points[n-1][3]:	# dummy - see below
+                if points[0][3]==1 and points[n-1][3]==1:	# dummy - see below
                     i=1
                 else:
                     i=0
                 while i<n:
                     (pt,bez,blank,dummy,code)=points[i]
                     i+=1
-                    # if not one of a pair of dummies then an adjacent point
-                    # must be inserted by a combine operation so make real
-                    if dummy and points[i%n][3]:
+                    #if dummy==2: continue
+                    if dummy==1 and points[i%n][3]==1:
                         i+=1 
                         continue
+                    # if not one of a pair of dummies then an adjacent point
+                    # must be inserted by a combine operation so make real
                     if blank==True:	# end of blank
                         out.append(AptNav(111, "%10.6f %11.6f" % (pt.lat, pt.lon)))
                     if bez:
@@ -1100,17 +1130,16 @@ def taxilayout(allnodes, alllinks, surfaceheading, output, aptdat=None, ident="u
             # Find a link that starts at this node
             for link in n.links:
                 if link.nodes[0]==n:
-                    h=n.loc.headingto(link.nodes[1].loc)
+                    h=n.loc.angleto(link.nodes[1].loc)
                     #if dump: print n.loc, n.type, "forward", h,
                     break
             else:	# No link starts at this node - reverse
                 link=n.links[0]
-                h=link.nodes[0].loc.headingto(n.loc)
+                h=link.nodes[0].loc.angleto(n.loc)
                 #if dump: print n.loc, n.type, "backward", h,
             out=[AptNav(120, "%s hold short" % link.name)]
             #if dump: print "reverse=", n.reverse
-            if n.reverse: h=h+180
-            h=radians(h%360)
+            if n.reverse: h=(h+pi)%twopi
             w=max(1, link.width/2-0.5)
             if n.type=='HOLD_SHORT':
                 code="54"
@@ -1137,7 +1166,7 @@ def taxilayout(allnodes, alllinks, surfaceheading, output, aptdat=None, ident="u
                 for end in [0,1]:
                     o=link.nodes[end]
                     if o!=n: break
-                h=radians(n.loc.headingto(o.loc))
+                h=n.loc.angleto(o.loc)
                 w=link.width/4
                 if n.type=='VEHICLE':
                     code="22"	# not sure what to do
