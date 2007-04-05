@@ -49,7 +49,7 @@ else:
         import tkMessageBox
         Tkinter.Tk().withdraw()	# make and suppress top-level window
         if platform=='darwin':
-            tkMessageBox._show("Error", "wxPython is not installed.\nThis application requires\nwxPython 2.5.3 (py%s) or later." % version[:3], icon="question", type="ok")
+            tkMessageBox._show("Error", "wxPython is not installed.\nThis application requires\nwxPython2.5.3-py%s or later." % version[:3], icon="question", type="ok")
         else:	# linux
             tkMessageBox._show("Error", "wxPython is not installed.\nThis application requires\npython wxgtk2.5.3 or later.", icon="error", type="ok")
         exit(1)
@@ -59,7 +59,7 @@ else:
         import Tkinter
         import tkMessageBox
         Tkinter.Tk().withdraw()	# make and suppress top-level window
-        tkMessageBox._show("Error", "PyOpenGL is not installed.\nThis application requires\npyopengl2 or later.", icon="error", type="ok")
+        tkMessageBox._show("Error", "PyOpenGL is not installed.\nThis application requires\nPyOpenGL2 or later.", icon="error", type="ok")
         exit(1)
 
 from convmain import Output
