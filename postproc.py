@@ -20,7 +20,7 @@ for line in h:
         edges=bezpt=None
         taxiway=False
 
-    elif code==110 and c[-1]=='Taxiway':	# exclude Aprons
+    elif code==110 and 'Apron' not in c:	# exclude Aprons
         taxiway=True
 
     elif taxiway and code in range(111,115):

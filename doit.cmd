@@ -37,6 +37,10 @@ REM set TARGET="%XP%\Raizet"
 REM set SOURCE="%FS9%\Juliana"
 REM set TARGET="%XP%\Juliana"
 
+REM set SOURCE="%FS9%\CYYZ2007"
+REM set TARGET="%XP%\CYYZ"
+REM set LB=
+
 REM set SOURCE="%FS9%\EFHK"
 REM set TARGET="%XP%\EFHK"
 
@@ -48,7 +52,7 @@ REM set TARGET="%XP%\EFRO"
 
 REM set SOURCE="%FS9%\Espoo_photoscenery_1.0"
 REM set TARGET="%XP%\Espoo"
-REM REM set LB=
+REM set LB=
 
 REM set SOURCE="%FS9%\Helsinki_photoscenery_1.0"
 REM set TARGET="%XP%\Helsinki"
@@ -68,13 +72,13 @@ REM set SOURCE="%FS9%\ESSA_v2"
 REM set TARGET="%XP%\ESSA"
 REM set LB=
 
-REM set SOURCE="%FS9%\ESGG_v2"
-REM set TARGET="%XP%\ESGG"
-REM set LB=
-
-set SOURCE="%FS9%\ESMS_v2"
-set TARGET="%XP%\ESMS"
+set SOURCE="%FS9%\ESGG_v2"
+set TARGET="%XP%\ESGG"
 set LB=
+
+REM set SOURCE="%FS9%\ESMS_v2"
+REM set TARGET="%XP%\ESMS"
+REM set LB=
 
 REM set SOURCE="%FS9%\escenario_scie"
 REM set TARGET="%XP%\SCIE"
@@ -154,8 +158,8 @@ REM set TARGET="%XP%\UK2000pt2"
 REM set SOURCE="%FS9%\..\uk2000 scenery\UK2000 Part 6"
 REM set TARGET="%XP%\UK2000pt6"
 
-set SOURCE="%FS9%\simferopol1"
-set TARGET="%XP%\UKFF"
+REM set SOURCE="%FS9%\simferopol1"
+REM set TARGET="%XP%\UKFF"
 
 REM set SOURCE="%FS9%\Mumbai"
 REM set TARGET="%XP%\Mumbai"
