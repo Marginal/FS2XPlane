@@ -72,13 +72,13 @@ REM set SOURCE="%FS9%\ESSA_v2"
 REM set TARGET="%XP%\ESSA"
 REM set LB=
 
-set SOURCE="%FS9%\ESGG_v2"
-set TARGET="%XP%\ESGG"
-set LB=
-
-REM set SOURCE="%FS9%\ESMS_v2"
-REM set TARGET="%XP%\ESMS"
+REM set SOURCE="%FS9%\ESGG_v2"
+REM set TARGET="%XP%\ESGG"
 REM set LB=
+
+set SOURCE="%FS9%\ESMS_v2"
+set TARGET="%XP%\ESMS"
+set LB=
 
 REM set SOURCE="%FS9%\escenario_scie"
 REM set TARGET="%XP%\SCIE"
