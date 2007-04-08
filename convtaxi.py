@@ -444,7 +444,7 @@ def taxilayout(allnodes, alllinks, surfaceheading, output, aptdat=None, ident="u
 
             # links
             for link in alllinks:
-                if link.type==t and link.surface==surface and link.width>1 and (link.draw or link.lights[0] or link.lights[1] or link.lines[0]!='NONE' or link.lines[1]!='NONE'):
+                if link.type==t and link.surface==surface and link.width>1 and (link.draw or link.lights[0] or link.lights[1] or link.lines[0]!='NONE' or link.lines[1]!='NONE') and (not aptdat or not (output.excluded(link.nodes[0].loc) or output.excluded(link.nodes[1].loc))):
                     gluTessBeginContour(tessObj)
                     if __debug__: print "Link"
                     for end in [0,1]:
@@ -456,7 +456,7 @@ def taxilayout(allnodes, alllinks, surfaceheading, output, aptdat=None, ident="u
                             cnt=(bez+(loc-bez)*(2.0/3)).round()
                             gluTessVertex(tessObj, [bez.lon, 0, bez.lat],
                                           (bez, cnt, 0, bad, code))
-                            if __debug__: print bez, "bez", code
+                            if __debug__: print bez, cnt, code
                         else:
                             gluTessVertex(tessObj, [loc.lon, 0, loc.lat],
                                           (loc, None, 0, bad, code))
@@ -472,7 +472,7 @@ def taxilayout(allnodes, alllinks, surfaceheading, output, aptdat=None, ident="u
                             cnt=(bez+(bez-loc)*(2.0/3)).round()
                             gluTessVertex(tessObj, [bez.lon, 0, bez.lat],
                                           (bez, cnt, 0, bad, code))
-                            if __debug__: print bez, "bez", code
+                            if __debug__: print bez, cnt, code
                         else:
                             gluTessVertex(tessObj, [loc.lon, 0, loc.lat],
                                           (loc, None, 0, bad, code))
@@ -562,7 +562,7 @@ def taxilayout(allnodes, alllinks, surfaceheading, output, aptdat=None, ident="u
                         cnt1=(bez1+(bez1-loc1)*(2.0/3)).round()
                         gluTessVertex(tessObj, [bez1.lon, 0, bez1.lat],
                                       (bez1, cnt1, blank1, 0, code1))
-                        if __debug__: print bez1, "bez", int(degrees(h1-h2)%360), code1
+                        if __debug__: print bez1, cnt1, int(degrees(h1-h2)%360), code1
                     elif loc1:
                         gluTessVertex(tessObj, [loc1.lon, 0, loc1.lat],
                                       (loc1, None, blank1, 0, code1))
@@ -572,7 +572,7 @@ def taxilayout(allnodes, alllinks, surfaceheading, output, aptdat=None, ident="u
                         cnt2=(bez2+(loc2-bez2)*(2.0/3)).round()
                         gluTessVertex(tessObj, [bez2.lon, 0, bez2.lat],
                                       (bez2, cnt2, blank2, 0, code2))
-                        if __debug__: print bez2, "bez", int(degrees(h1-h2)%360), code2
+                        if __debug__: print bez2, cnt2, int(degrees(h1-h2)%360), code2
                         if (h1-h2)%twopi>pi:
                             gluTessVertex(tessObj, [cnt2.lon, 0, cnt2.lat],
                                           (cnt2, None, 0, 1, code2))	# dummy
@@ -601,7 +601,7 @@ def taxilayout(allnodes, alllinks, surfaceheading, output, aptdat=None, ident="u
                             j+=1
                         j=1
                         while True:
-                            (loc,cnt,blank,dummy,code)=points[(i+1)%n]
+                            (loc,cnt,blank,dummy,code)=points[(i+j)%n]
                             points[(i+1)%n]=(loc,None,blank,0,code)
                             if not dummy: break
                             j+=1
@@ -690,7 +690,7 @@ def taxilayout(allnodes, alllinks, surfaceheading, output, aptdat=None, ident="u
                         if blank==3:
                             # was joined, eg adjacent taxiways off runway
                             (pt0,bez0,blank0,dummy0,code0)=points[(i-1)%n]
-                            (pt1,bez1,blank1,dummy1,code1)=points[(i+1)%n]
+                            (pt2,bez2,blank2,dummy2,code2)=points[(i+1)%n]
                             if blank0 or blank1:
                                 bez=None
                                 code=''
@@ -699,12 +699,12 @@ def taxilayout(allnodes, alllinks, surfaceheading, output, aptdat=None, ident="u
                         if blank==2 and bez:	# end of blank
                             out.append(AptNav(111, "%10.6f %11.6f" % (pt.lat, pt.lon)))
                         if bez:
-                            out.append(AptNav(112, "%10.6f %11.6f %10.6f %11.6f %s" % (
-                                pt.lat, pt.lon, bez.lat, bez.lon, code)))
+                            out.append(AptNav(112, "%10.6f %11.6f %10.6f %11.6f %s" % (pt.lat, pt.lon, bez.lat, bez.lon, code)))
                         else:
                             out.append(AptNav(111, "%10.6f %11.6f %s" % (pt.lat, pt.lon, code)))
                         if blank==1 and bez:	# start of blank
                             out.append(AptNav(111, "%10.6f %11.6f" % (pt.lat, pt.lon)))
+                    assert(out[-1].code!=110)
                     out[-1].code+=2		# Terminate last
         
             if aptdat:
