@@ -444,7 +444,7 @@ def taxilayout(allnodes, alllinks, surfaceheading, output, aptdat=None, ident="u
 
             # links
             for link in alllinks:
-                if link.type==t and link.surface==surface and link.width>1 and (link.draw or link.lights[0] or link.lights[1] or link.lines[0]!='NONE' or link.lines[1]!='NONE') and (not aptdat or not (output.excluded(link.nodes[0].loc) or output.excluded(link.nodes[1].loc))):
+                if link.type==t and link.surface==surface and link.width>1 and (link.draw or link.lights[0] or link.lights[1] or link.lines[0]!='NONE' or link.lines[1]!='NONE') and (not aptdat or not (output.excluded(link.nodes[0].loc) and output.excluded(link.nodes[1].loc))):
                     gluTessBeginContour(tessObj)
                     if __debug__: print "Link"
                     for end in [0,1]:
@@ -452,7 +452,7 @@ def taxilayout(allnodes, alllinks, surfaceheading, output, aptdat=None, ident="u
                         if bad:
                             (loc,bez,bad)=link.intersect[1-end][0]	# right
                         code=''
-                        if bez:
+                        if bez and not output.excluded(link.nodes[end].loc):
                             cnt=(bez+(loc-bez)*(2.0/3)).round()
                             gluTessVertex(tessObj, [bez.lon, 0, bez.lat],
                                           (bez, cnt, 0, bad, code))
@@ -468,7 +468,7 @@ def taxilayout(allnodes, alllinks, surfaceheading, output, aptdat=None, ident="u
                             code=''
                         else:
                             code=edgefeature(link, end)
-                        if bez:
+                        if bez and not output.excluded(link.nodes[end].loc):
                             cnt=(bez+(bez-loc)*(2.0/3)).round()
                             gluTessVertex(tessObj, [bez.lon, 0, bez.lat],
                                           (bez, cnt, 0, bad, code))
@@ -623,20 +623,19 @@ def taxilayout(allnodes, alllinks, surfaceheading, output, aptdat=None, ident="u
     
                 if area2>=0:	# exterior
                     p=newpoints.pop(j)
-                    if area2>=1e-7:	# crappy exterior - arbitrary (eg ESSA, KLAS)
+                    if area2>=1e-8:	# crappy exterior - arbitrary (eg ESSA, KLAS)
                         outpoints.append([p])
                 elif area2>-1e-8:	# crappy interior - arbitrary
                     newpoints.pop(j)
                 else:
                     j+=1
                 if __debug__:
-                    if area2>=0: print "exterior %3d " % n, area2, area2>=1e-7
+                    if area2>=0: print "exterior %3d " % n, area2, area2>=1e-8
                     else: print "interior %3d " % n, area2, area2<=-1e-8
     
-            # Attach interiors to corresponding exterior. Assumes no intersections
-            # http://local.wasp.uwa.edu.au/~pbourke/geometry/insidepoly/ (Soln 2)
-            #if __debug__:
-            # if newpoints: print "Assign interiors:"
+            # Attach interiors to enclosing exterior. Assumes no intersections
+            # http://local.wasp.uwa.edu.au/~pbourke/geometry/insidepoly/ Sln 2
+            #if __debug__: if newpoints: print "Assign interiors:"
             for e in outpoints:
                 opoints=e[0]	# the exterior polygon
                 n=len(opoints)
@@ -691,7 +690,7 @@ def taxilayout(allnodes, alllinks, surfaceheading, output, aptdat=None, ident="u
                             # was joined, eg adjacent taxiways off runway
                             (pt0,bez0,blank0,dummy0,code0)=points[(i-1)%n]
                             (pt2,bez2,blank2,dummy2,code2)=points[(i+1)%n]
-                            if blank0 or blank1:
+                            if blank0 or blank2:
                                 bez=None
                                 code=''
                             blank=0
@@ -706,8 +705,10 @@ def taxilayout(allnodes, alllinks, surfaceheading, output, aptdat=None, ident="u
                             out.append(AptNav(111, "%10.6f %11.6f" % (pt.lat, pt.lon)))
                     assert(out[-1].code!=110)
                     out[-1].code+=2		# Terminate last
-        
-            if aptdat:
+
+            if not outpoints:
+                pass	# only exterior was too crappy
+            elif aptdat:
                 aptdat.extend(out)
             else:
                 output.misc.append((110, outpoints[0][0][0][0], out))
