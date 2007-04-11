@@ -66,7 +66,7 @@ def makeapronlight():
     idx=[2,1,0,3,2,0]
     return Object("ApronLight.obj", "ApronEdgeLights",
                   'Resources/FS2X-ApronLight.png', None, None,
-                  vlight, [], [], vt, idx,
+                  vlight, [], [], [], vt, idx,
                   [([(1,1,1),(0,0,0),(0,0,0),0.5],0,6,False)], 2)
     
 
@@ -74,7 +74,7 @@ def maketaxilight():
     vlight=[(0,0.1,0, 0.75,0.75,0)]
     return Object("TaxiwayLight.obj",
                   "TaxiwayPath.centerLineLighted", None, None, None,
-                  vlight, [], [], [], [], [], 0)
+                  vlight, [], [], [], [], [], [], 0)
     
 
 def maketaxisign(label):
@@ -262,7 +262,7 @@ def maketaxisign(label):
         fname=fname.replace(c,'_')
     fname="TaxiwaySign-%s.obj" % fname
     return Object(fname, 'TaxiwaySign "%s"' % label,
-                  'Resources/FS2X-Taxi.png', None, None, [], [], [], vt, idx,
+                  'Resources/FS2X-Taxi.png', None, None, [],[],[],[], vt, idx,
                   [([(1,1,1),(0,0,0),(0,0,0),0.5],
                     0,frameilen,False),
                    ([(1,1,1),(0,0,0),(1,1,1),0.5],
@@ -271,12 +271,12 @@ def maketaxisign(label):
 
 def makestock(output, uid, name):
     if name in libobjs:
-        return Object(libobjs[name], "X-Plane library object", None,None,None,
+        return Object(libobjs[name], "X-Plane library object", None,None,None,None,
                       None, None, None, None, None, None, 0)
     
     objname=name+'.obj'
     #defaultobj=Object(objname, "Placeholder for built-in object %s (%s)" %
-    #                  (uid, name), None, None, None, [], [], [], [], [], [],0)
+    #                  (uid, name), None, None, None, [],[],[],[],[],[],[],0)
     if not objname in listdir('Resources'): return None
 
     tex=None
@@ -305,7 +305,7 @@ def makestock(output, uid, name):
                         int(tokens[10])])
     obj.close()
     return Object(objname, "(c) Jonathan Harris 2007. http://creativecommons.org/licenses/by-sa/2.5/",
-                  tex, None, None, [], [], [], vt, idx,
+                  tex, None, None, [], [], [], [], vt, idx,
                   [([(1,1,1),(0,0,0),(0,0,0),0.5], 0, len(idx), False)], 0)
 
 
@@ -431,7 +431,7 @@ def makegenquad(name, x, z, incx, incz, heights, texs, roof):
         idx.extend([base+2,base+1,base, base,base+3,base+2])
         
     return Object(name, "Generic building", palettetex, None,
-                  None, [], [], [], vt, idx,
+                  None, [], [], [], [], vt, idx,
                   [([(1,1,1),(0,0,0),(0,0,0),0.5], 0, len(idx), False)], 0)
 
 
@@ -501,7 +501,7 @@ def makegenmulti(name, sides, x, z, heights, texs):
                         base+(corner*2+2)%sides2])
 
     return Object(name, "Generic building", palettetex, None,
-                  None, [], [], [], vt, idx,
+                  None, [], [], [], [], vt, idx,
                   [([(1,1,1),(0,0,0),(0,0,0),0.5], 0, len(idx), False)], 0)
 
 

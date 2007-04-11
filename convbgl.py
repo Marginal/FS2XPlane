@@ -2396,7 +2396,7 @@ class ProcScen:
             # Find existing data at this location with same tex to consolidate
             if okey in objdat:
                 for i in range(len(objdat[okey])):
-                    (otex,olit, vlight, vline, veffect, vt, idx, mattri)=objdat[okey][i]
+                    (otex,olit, vlight, vline, lines, veffect, vt, idx, mattri)=objdat[okey][i]
                     if not vt or (tex==otex and lit==olit):
                         # if no vertices in existing data then tex irrelevant
                         objdat[okey].pop(i)
@@ -2405,6 +2405,7 @@ class ProcScen:
                     # new data at existing location
                     vlight=[]
                     vline=[]
+                    lines=[]
                     veffect=[]
                     vt=[]
                     idx=[]
@@ -2414,6 +2415,7 @@ class ProcScen:
                 objdat[okey]=[]
                 vlight=[]
                 vline=[]
+                lines=[]
                 veffect=[]
                 vt=[]
                 idx=[]
@@ -2428,6 +2430,7 @@ class ProcScen:
             if lkey in self.linedat:
                 for (vtx, i, (r,g,b)) in self.linedat[lkey]:
                     vbase=len(vline)
+                    ibase=len(idx)
                     for v in vtx:
                         (x,y,z,nx,ny,nz,tu,tv)=v
                         if newmatrix:
@@ -2435,6 +2438,7 @@ class ProcScen:
                         vline.append([x*scale,alt+y*scale,-z*scale, r,g,b])
                     for j in i:
                         idx.append(vbase+j)
+                    lines.append([ibase,len(i)])
 
             if lkey in self.effectdat:
                 for ((x,y,z),(effect,s)) in self.effectdat[lkey]:
@@ -2481,18 +2485,18 @@ class ProcScen:
             if not vlight and not vline and not veffect and not vt:
                 continue	# Only contained non-scenery stuff
 
-            objdat[okey].append((tex, lit, vlight, vline, veffect, vt, idx, mattri))
+            objdat[okey].append((tex, lit, vlight, vline, lines, veffect, vt, idx, mattri))
 
         # If altmsl adjust to ground level of all objects with same placement
         for okey in objdat:
             (lat, lon, layer, altmsl, heading)=okey
             if not altmsl: continue
             miny=maxint
-            for (tex, lit, vlight, vline, veffect, vt, idx, mattri) in objdat[okey]:
+            for (tex, lit, vlight, vline, lines, veffect, vt, idx, mattri) in objdat[okey]:
                 for v in vlight + vline + veffect + vt:
                     miny=min(miny,v[1])
             if not miny: continue	# already at ground level
-            for (tex, lit, vlight, vline, veffect, vt, idx, mattri) in objdat[okey]:
+            for (tex, lit, vlight, vline, lines, veffect, vt, idx, mattri) in objdat[okey]:
                 for v in vlight + vline + veffect + vt:
                     v[1]=v[1]-miny
 
@@ -2500,7 +2504,7 @@ class ProcScen:
         for okey in objdat:
             (lat, lon, layer, altmsl, heading)=okey
             loc=Point(lat, lon)
-            for (tex, lit, vlight, vline, veffect, vt, idx, mattri) in objdat[okey]:
+            for (tex, lit, vlight, vline, lines, veffect, vt, idx, mattri) in objdat[okey]:
                 if tex==palettetex or (not tex and not lit):
                     fname=asciify(bname)
                 else:
@@ -2535,7 +2539,7 @@ class ProcScen:
                         #    poly=2	# probably detail
                     
                 # Finally build the object
-                obj=Object(fname+'.obj', self.comment, tex, lit, layer, vlight, vline, veffect, vt, idx, mattri, poly)
+                obj=Object(fname+'.obj', self.comment, tex, lit, layer, vlight, vline, lines, veffect, vt, idx, mattri, poly)
                 if self.libname:
                     objs.append(obj)
                 else:
@@ -2802,6 +2806,7 @@ def ProcTerrain(bgl, srcfile, output, debug):
             break
     else:
         return
+    output.photos.append(texdir)
 
     for tex in glob(join(texdir, '[0123][0123][0123][0123][0123][0123][0123][0123][0123][0123][0123][0123][0123][0123][0123][sS][uU].[bBdD][mMdD][pPsS]')):
         seasonal=glob(tex[:-6]+["[sS][pP]","[sS][uU]","[fF][aA]","[wW][iI]"][output.season]+".[bBdD][mMdD][pPsS]")
@@ -2818,9 +2823,10 @@ def ProcTerrain(bgl, srcfile, output, debug):
                 lon=lon+1
         lat=90-lat*LATRES
         lon=lon*LONRES-180
-        if debug: debug.write("%s: %s,%s\n" % (basename(tex), lat, lon))
+        if debug: debug.write("%s: %s,%s " % (basename(tex), lat, lon))
         if lon+LONRES>floor(lon)+1:
             # Split EW
+            if debug: debug.write("EW ")
             points=[[(Point(lat-LATRES,lon),0,0),
                      (Point(lat-LATRES,floor(lon)+1),(floor(lon)+1-lon)/LONRES,0),
                      (Point(lat,floor(lon)+1),(floor(lon)+1-lon)/LONRES,1),
@@ -2830,18 +2836,21 @@ def ProcTerrain(bgl, srcfile, output, debug):
                      (Point(lat,lon+LONRES),1,1),
                      (Point(lat,floor(lon)+1),(floor(lon)+1-lon)/LONRES,1)]]
         else:
+            if debug: debug.write("OK ")
             points=[[(Point(lat-LATRES,lon),0,0),	# SW
                      (Point(lat-LATRES,lon+LONRES),1,0),
                      (Point(lat,lon+LONRES),1,1),	# NE
                      (Point(lat,lon),0,1)]]
         if lat>floor(lat-LATRES)+1:
+            if debug: debug.write("NS\n")
             # Split NS
             for i in range(len(points)):
-                points.append([(Point(floor(lat-LATRES)+1,points[i][3].lon),points[i][3][1],(floor(lat-LATRES)+1-lat+LATRES)/LATRES),
-                               (Point(floor(lat-LATRES)+1,points[i][2].lon),points[i][2][1],(floor(lat-LATRES)+1-lat+LATRES)/LATRES),
+                points.append([(Point(floor(lat-LATRES)+1,points[i][3][0].lon),points[i][3][1],(floor(lat-LATRES)+1-lat+LATRES)/LATRES),
+                               (Point(floor(lat-LATRES)+1,points[i][2][0].lon),points[i][2][1],(floor(lat-LATRES)+1-lat+LATRES)/LATRES),
                                points[i][2], points[i][3]])
                 points[i][2]=points[-1][1]
                 points[i][3]=points[-1][0]
+        elif debug: debug.write("OK\n")
 
         name=basename(tex)[:-6]
         lit=findtex(basename(tex)[:-6]+'lm', texdir, True)
@@ -2849,7 +2858,6 @@ def ProcTerrain(bgl, srcfile, output, debug):
         output.polydat[name]=poly
         for p in points:
             output.polyplc.append((name, 65535, p))
-    output.photos.append(texdir)
 
 
 def subdivide(vtx):
