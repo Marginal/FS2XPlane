@@ -324,7 +324,7 @@ class AptNav:
 
 class Object:
     def __init__(self, filename, comment, tex, lit, layer,
-                 vlight, vline, veffect, vt, idx, mattri, poly):
+                 vlight, vline, lines, veffect, vt, idx, mattri, poly):
         self.filename=filename
         self.comment=comment
         self.tex=tex
@@ -337,6 +337,7 @@ class Object:
             self.surface=False
         self.vlight=vlight
         self.vline=vline
+        self.lines=lines	# [start, count]
         self.veffect=veffect
         self.vt=vt
         self.idx=idx
@@ -352,6 +353,7 @@ class Object:
                 #self.surface==o.surface and	# redundant
                 self.vlight==o.vlight and
                 self.vline==o.vline and
+                self.lines==o.lines and
                 self.veffect==o.veffect and
                 self.vt==o.vt and
                 self.idx==o.idx and
@@ -461,13 +463,8 @@ class Object:
                 
             if self.vlight:
                 objfile.write("LIGHTS\t0 %d\n" % len(self.vlight))
-            if self.vline:
-                # Infer number of line indices from first tri index
-                if self.mattri:
-                    (m, n, count, dbl)=self.mattri[0]
-                else:
-                    n=len(self.idx)
-                objfile.write("LINES\t0 %d\n" % n)
+            for (start, count) in self.lines:
+                objfile.write("LINES\t%d %d\n" % (start, count))
 
             # Ambient and Specular don't work, according to 
             # xplanescenery.blogspot.com/2006/01/obj8-what-not-to-use.html
