@@ -1,5 +1,5 @@
-fix lines
 safedock (LIMC, LIRF?)
+Real, not overlay orthophotos
 FSX new MDL
 FSX new custom terrain textures
 NorAp (ReScale)

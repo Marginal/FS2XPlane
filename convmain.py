@@ -407,6 +407,7 @@ class Output:
 
         # set up exclusions that affect facilities
         self.excfac=list(self.exc)
+        # If there's a polygon it's intended to overwrite AFCADs
         for (name, heading, points) in self.polyplc:
             minlat=minlon=maxint
             maxlat=maxlon=-maxint
@@ -787,7 +788,7 @@ class Output:
         for path, dirs, files in walk(self.fspath):
             for filename in files:
                 (s,e)=splitext(filename)
-                if e.lower() in ['.htm', '.html', '.rtf', '.doc', '.pdf']:
+                if e.lower() in ['.htm', '.html', '.rtf', '.doc', '.pdf', '.jpg']:
                     copyfile(join(path, filename),
                              join(self.xppath, filename))
                 else:
@@ -981,6 +982,7 @@ class Output:
         for (typ, sw, ne) in self.excfac:
             if p.lat>=sw.lat and p.lat<=ne.lat and p.lon>=sw.lon and p.lon<=ne.lon:
                 self.needfull=True
+                #if self.debug: self.debug.write("Excluded: %s\n" % p)
                 return self.doexcfac
         return False
 

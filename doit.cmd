@@ -80,6 +80,13 @@ set SOURCE="%FS9%\ESMS_v2"
 set TARGET="%XP%\ESMS"
 set LB=
 
+REM set SOURCE="%FS9%\Granada"
+REM set TARGET="%XP%\Granada"
+REM set LB=
+
+REM set SOURCE="%FS9%\Granada2k6"
+REM set TARGET="%XP%\Granada2k6"
+
 REM set SOURCE="%FS9%\escenario_scie"
 REM set TARGET="%XP%\SCIE"
 
