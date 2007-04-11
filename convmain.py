@@ -406,17 +406,7 @@ class Output:
                 if tmp and exists(tmp) and not self.debug: unlink(tmp)
 
         # set up exclusions that affect facilities
-        self.excfac=list(self.exc)
-        # If there's a polygon it's intended to overwrite AFCADs
-        for (name, heading, points) in self.polyplc:
-            minlat=minlon=maxint
-            maxlat=maxlon=-maxint
-            for p in points:
-                minlat=min(minlat,p[0].lat)
-                maxlat=max(maxlat,p[0].lat)
-                minlon=min(minlon,p[0].lon)
-                maxlon=max(maxlon,p[0].lon)
-            self.excfac.append((None, Point(minlat,minlon), Point(maxlat,maxlon)))
+        self.excfac=self.exc
 
         # Do airport facilities last so that exclusions have been set up
         for self.doexcfac in [False, True]:
@@ -743,8 +733,10 @@ class Output:
         keys=fslayers.keys()
         keys.sort()
         # need runway lights so objects must be below runways
-        #layermap=["taxiways +1", "taxiways +2", "taxiways +3", "taxiways +4", "taxiways +5", "runways -5", "runways -4", "runways -3", "runways -2", "runways -1"]
-        layermap=["shoulders +1", "shoulders +2", "shoulders +3", "shoulders +4", "shoulders +5", "taxiways -5", "taxiways -4", "taxiways -3", "taxiways -2", "taxiways -1"]
+        # prefer apron markings to be above implicit taxiways
+        layermap=["taxiways +1", "taxiways +2", "taxiways +3", "taxiways +4", "taxiways +5", "runways -5", "runways -4", "runways -3", "runways -2", "runways -1"]
+        # explicit taxiways/roads ought to be on top of objects at layers<24
+        #layermap=["shoulders +1", "shoulders +2", "shoulders +3", "shoulders +4", "shoulders +5", "taxiways -5", "taxiways -4", "taxiways -3", "taxiways -2", "taxiways -1"]
         for i in range(len(keys)):
             if keys[i]>=24:
                 fslayers[keys[i]]="objects -1"
