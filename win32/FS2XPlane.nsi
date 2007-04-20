@@ -5,6 +5,8 @@
 
 !define MUI_ABORTWARNING
 
+SetCompressor /SOLID lzma
+
 Name "FS2XPlane $%VERSION%"
 Caption "FS2XPlane $%VERSION% Installer"
 OutFile "FS2XPlane_$%VER%_win32.exe"
