@@ -221,12 +221,12 @@ class Output:
                     try:
                         bgl=file(bglname, 'rb')
                     except IOError:
-                        self.log("Can't read \"%s\"" % bglname)
+                        self.log("Can't read \"%s\"" % filename)
                         self.done[bglname]=True
                         continue
                     c=bgl.read(2)
                     if len(c)!=2:
-                        self.log("Can't read \"%s\"" % bglname)
+                        self.log("Can't read \"%s\"" % filename)
                         self.done[bglname]=True
                         continue
                     done=True
@@ -250,9 +250,22 @@ class Output:
                         bgl.seek(122)
                         (spare2,)=unpack('<I',bgl.read(4))
                         if spare2:
+                            # compressed
                             bgl.close()
                             tmp=join(gettempdir(), filename)
-                            helper(self.bglexe, bglname, tmp)
+                            if platform!='win32':
+                                compressed=bglname
+                                # Wine can't handle non-ascii?
+                                try:
+                                    bglname[len(self.toppath):].encode("ascii")
+                                except:
+                                    compressed=join(gettempdir(), 'fs2xp1.bgl')
+                                    copyfile(bglname, compressed)
+                                    tmp=join(gettempdir(), 'fs2xp2.bgl')
+                                helper(self.bglexe, compressed, tmp)
+                                if compressed!=bglname: unlink(compressed)
+                            else:
+                                helper(self.bglexe, bglname, tmp)
                             if not exists(tmp):
                                 # Check for uncompressed version
                                 tmp=join('Resources',basename(bglname).lower())
@@ -388,9 +401,22 @@ class Output:
                     bgl.seek(122)
                     (spare2,)=unpack('<I',bgl.read(4))
                     if spare2:
+                        # compressed
                         bgl.close()
                         tmp=join(gettempdir(), filename)
-                        helper(self.bglexe, bglname, tmp)
+                        if platform!='win32':
+                            compressed=bglname
+                            # Wine can't handle non-ascii?
+                            try:
+                                bglname[len(self.fspath):].encode("ascii")
+                            except:
+                                compressed=join(gettempdir(), 'fs2xp1.bgl')
+                                copyfile(bglname, compressed)
+                                tmp=join(gettempdir(), 'fs2xp2.bgl')
+                            helper(self.bglexe, compressed, tmp)
+                            if compressed!=bglname: unlink(compressed)
+                        else:
+                            helper(self.bglexe, bglname, tmp)
                         if not exists(tmp):
                             self.log("Can't parse compressed file %s" % (
                                 filename))
@@ -733,7 +759,7 @@ class Output:
         keys=fslayers.keys()
         keys.sort()
         # need runway lights so objects must be below runways
-        # prefer apron markings to be above implicit taxiways
+        # prefer apron markings to be above implicit taxiways (but this hides taxi lights)
         layermap=["taxiways +1", "taxiways +2", "taxiways +3", "taxiways +4", "taxiways +5", "runways -5", "runways -4", "runways -3", "runways -2", "runways -1"]
         # explicit taxiways/roads ought to be on top of objects at layers<24
         #layermap=["shoulders +1", "shoulders +2", "shoulders +3", "shoulders +4", "shoulders +5", "taxiways -5", "taxiways -4", "taxiways -3", "taxiways -2", "taxiways -1"]
@@ -780,7 +806,7 @@ class Output:
         for path, dirs, files in walk(self.fspath):
             for filename in files:
                 (s,e)=splitext(filename)
-                if e.lower() in ['.htm', '.html', '.rtf', '.doc', '.pdf', '.jpg']:
+                if e.lower() in ['.htm', '.html', '.rtf', '.doc', '.pdf', '.jpg', '.jpeg']:
                     copyfile(join(path, filename),
                              join(self.xppath, filename))
                 else:

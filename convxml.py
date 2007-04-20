@@ -519,12 +519,12 @@ class Airport:
                     end=1
                 displaced[end]=float(off.length)
 
-            for bp in runway.blastpad:
+            for bp in runway.blastpad + runway.overrun:
                 if bp.end=='PRIMARY':
                     end=0
                 else:
                     end=1
-                overrun[end]=float(bp.length)
+                overrun[end]+=float(bp.length)
 
             surface=surfaces[runway.surface]
 

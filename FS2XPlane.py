@@ -119,7 +119,7 @@ def log(msg):
     if not isdir(dirname(frame.logname)):
         mkdir(dirname(frame.logname))
     logfile=file(frame.logname, 'at')
-    logfile.write('%s\n' % msg)
+    logfile.write('%s\n' % msg.encode("utf-8"))
     logfile.close()
     
 

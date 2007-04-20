@@ -1238,7 +1238,6 @@ class ProcScen:
         width=m2f*z*self.scale
         if self.debug: self.debug.write("SurfaceType %d (%dx%d) %d\n" % (
             sfc, length, width, alt))
-        #self.output.misc.append((10, self.loc, 'xxx %6.2f %6d 0000.0000 0000.0000 %4d 111111 %02d 0 0 0.25 0 0000.0000' % (heading, length, width, 15)))
 
     def TextureRepeat(self):	# 5d
         (x,c,y)=unpack('<3h', self.bgl.read(6))
@@ -1293,9 +1292,10 @@ class ProcScen:
         (x,y,z)=unpack('<hhh', self.bgl.read(6))
         (type, width, centerline)=self.linktype
         if type and not (-1<=width<=1):
-            self.nodes.append(TaxiwayPoint(self.loc.biased(x*self.scale, z*self.scale)))
-            self.links.append(TaxiwayPath(type, width, centerline,
-                                          len(self.nodes)-2,len(self.nodes)-1))
+            node=self.loc.biased(x*self.scale, z*self.scale)
+            if not node.equals(self.nodes[-1]):
+                self.nodes.append(TaxiwayPoint(node))
+                self.links.append(TaxiwayPath(type, width, centerline, len(self.nodes)-2,len(self.nodes)-1))
 
     def RiverStart(self):	# 6b
         # ignored

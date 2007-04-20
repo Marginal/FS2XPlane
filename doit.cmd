@@ -50,6 +50,9 @@ REM set TARGET="%XP%\EFHF"
 REM set SOURCE="%FS9%\EFRO4"
 REM set TARGET="%XP%\EFRO"
 
+REM set SOURCE="%FS9%\EFLL 1.0"
+REM set TARGET="%XP%\EFLL"
+
 REM set SOURCE="%FS9%\Espoo_photoscenery_1.0"
 REM set TARGET="%XP%\Espoo"
 REM set LB=
@@ -57,6 +60,10 @@ REM set LB=
 REM set SOURCE="%FS9%\Helsinki_photoscenery_1.0"
 REM set TARGET="%XP%\Helsinki"
 REM set LB=
+
+set SOURCE="%FS9%\Vantaa_photoscenery_1.0"
+set TARGET="%XP%\Vantaa"
+set LB=
 
 REM set SOURCE="C:\Documents and Settings\Jonathan\My Documents\FS2004SDK\TERRAIN_SDK\Samples\NiagaraFalls test\NiagaraFallsSample"
 REM set TARGET="%XP%\Niagra"
@@ -76,9 +83,9 @@ REM set SOURCE="%FS9%\ESGG_v2"
 REM set TARGET="%XP%\ESGG"
 REM set LB=
 
-set SOURCE="%FS9%\ESMS_v2"
-set TARGET="%XP%\ESMS"
-set LB=
+REM set SOURCE="%FS9%\ESMS_v2"
+REM set TARGET="%XP%\ESMS"
+REM set LB=
 
 REM set SOURCE="%FS9%\Granada"
 REM set TARGET="%XP%\Granada"
@@ -266,6 +273,10 @@ REM set LB=
 
 REM set SOURCE="%FS9%\London Test"
 REM set TARGET="%XP%\London Test"
+REM set LB=
+
+REM set SOURCE="%FS9%\EGLL"
+REM set TARGET="%XP%\MS-EGLL"
 REM set LB=
 
 REM set SOURCE="%FS9%\Test"

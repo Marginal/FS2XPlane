@@ -10,7 +10,7 @@ set RPM=%TMP%\fs2xplane
 @if exist fs2xplane-%VERSION%-%RELEASE%.i386.rpm del fs2xplane-%VERSION%-%RELEASE%.i386.rpm
 @if exist fs2xplane_%VERSION%-%RELEASE%_i386.deb del fs2xplane_%VERSION%-%RELEASE%_i386.deb
 @if exist FS2XPlane_%VER%_mac.zip del FS2XPlane_%VER%_mac.zip
-@if exist FS2XPlane_%VER%_win32.zip del FS2XPlane_%VER%_win32.exe
+@if exist FS2XPlane_%VER%_win32.exe del FS2XPlane_%VER%_win32.exe
 
 if exist FS2XPlane.app rd /s /q FS2XPlane.app >nul: 2>&1
 if exist "%RPM%" rd /s /q "%RPM%"
@@ -91,7 +91,7 @@ move /y FS2XPlane.app\Contents\MacOS\*.png FS2XPlane.app\Contents\Resources\ |fi
 zip -r FS2XPlane_%VER%_mac.zip FS2XPlane.app |findstr -vc:"adding:"
 
 @REM win32
-win32\setup.py -q py2exe
+"C:\Program Files\Python24\python.exe" -OO win32\setup.py -q py2exe
 REM @set cwd="%CD%"
 REM cd dist
 REM zip -r ..\FS2XPlane_%VER%_win32.zip * |findstr -vc:"adding:"
