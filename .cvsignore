@@ -1,5 +1,6 @@
 dist
 FS2XPlane.app
 *.pyc
+*.pyo
 *.zip
 foo*

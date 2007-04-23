@@ -311,6 +311,8 @@ class Output:
                                     name=self.friendly[uid]
                                 else:
                                     name=uid
+                            else:
+                                self.friendly[uid]=name
                             if not uid in self.libobj:	# 1st wins
                                 if self.debug and toppath==self.fspath: debug.write("%s:\t%s\t%s\n" % (uid, name, bglname[len(toppath)+1:]))
                                 self.libobj[uid]=(False, bglname, tmp,
@@ -446,9 +448,9 @@ class Output:
                         xmlfile.close()
                         if not self.debug: unlink(tmp)
                     except:
-                        self.log("Can't parse file %s" % filename)
+                        self.log("Can't parse file %s" % basename(bglname))
                 else:
-                    self.log("Can't parse file %s (%s)" % (filename, x))
+                    self.log("Can't parse file %s (%s)" % (basename(bglname), x))
             if self.doexcfac or not self.needfull: break
             # Do them again, this time with exclusions
             self.aptfull=self.apt
@@ -679,6 +681,21 @@ class Output:
                         else:
                             self.log("Can't find an airport for %s at (%10.6f, %11.6f)" % (name, loc.lat, loc.lon))
                             #if self.debug: self.debug.write('Can\'t place runway %s""\n' % data[0])
+                elif code==110:
+                    # Add taxiways and roads before aprons so overlay them
+                    for i in range(len(self.apt[airport][1])):
+                        if self.apt[airport][1][i].code>=110:
+                            self.apt[airport]=(self.apt[airport][0],self.apt[airport][1][:i]+data+self.apt[airport][1][i:])
+                            break
+                    else:
+                        self.apt[airport][1].extend(data)
+                    if self.aptfull:
+                        for i in range(len(self.aptfull[airport][1])):
+                            if self.aptfull[airport][1][i].code>=110:
+                                self.aptfull[airport]=(self.aptfull[airport][0],self.aptfull[airport][1][:i]+data+self.aptfull[airport][1][i:])
+                                break
+                        else:
+                            self.aptfull[airport][1].extend(data)
                 else:
                     self.apt[airport][1].extend(data)
                     if self.aptfull: self.aptfull[airport][1].extend(data)

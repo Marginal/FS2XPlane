@@ -31,11 +31,13 @@ from os.path import join
 
 from convutil import Object, rgb2uv, palettetex
 
-# X-Plane autonmatically generates versions of these from nav.dat data 
+# X-Plane automatically generates versions of these from nav.dat data 
 ignorestock=['air_localizerantenna01', 'air_ndb_dmeantenna','air_ndb_dmeshack','air_ndb_dmetower','gen_dme','gen_ndb01','gen_tacan','ndb','sco_gen_checkershed','sco_gen_ilstransmitter','sco_gen_radarshackb','sco_gen_radarshackbaseb','sco_gen_radarshackdish','sco_gen_vor03','sco_gen_vor03dme','sco_gen_vorsmall','sco_gen_vorsmall2','sco_gen_vorsmall2dme','sco_gen_vorsmalldme']
 
 # Stock X-Plane objects that are close enough to stock MSFS objects
-libobjs={'ag_gas_2':		'trans/truckstop.obj',
+libobjs={'ag_building_1':	'ins/church.obj',
+         'ag_factory':		'/lib/global8/us/ind_irr_60_30r.obj',
+         'ag_gas_2':		'trans/truckstop.obj',
          'ag_gas_3':		'ind/truckstop.obj',
          'gen_aviator01':	'lib/cars/car.obj',
          'gen_oilrig01':	'lib/ships/OilPlatform.obj',

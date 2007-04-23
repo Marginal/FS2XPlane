@@ -61,9 +61,9 @@ REM set SOURCE="%FS9%\Helsinki_photoscenery_1.0"
 REM set TARGET="%XP%\Helsinki"
 REM set LB=
 
-set SOURCE="%FS9%\Vantaa_photoscenery_1.0"
-set TARGET="%XP%\Vantaa"
-set LB=
+REM set SOURCE="%FS9%\Vantaa_photoscenery_1.0"
+REM set TARGET="%XP%\Vantaa"
+REM set LB=
 
 REM set SOURCE="C:\Documents and Settings\Jonathan\My Documents\FS2004SDK\TERRAIN_SDK\Samples\NiagaraFalls test\NiagaraFallsSample"
 REM set TARGET="%XP%\Niagra"
@@ -91,8 +91,8 @@ REM set SOURCE="%FS9%\Granada"
 REM set TARGET="%XP%\Granada"
 REM set LB=
 
-REM set SOURCE="%FS9%\Granada2k6"
-REM set TARGET="%XP%\Granada2k6"
+set SOURCE="%FS9%\Granada2k6"
+set TARGET="%XP%\Granada2k6"
 
 REM set SOURCE="%FS9%\escenario_scie"
 REM set TARGET="%XP%\SCIE"
