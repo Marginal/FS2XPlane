@@ -221,13 +221,18 @@ class SceneryObject:
         for l in self.libraryobject:
             scale=1.0
             if D(l, 'scale'): scale=round(float(l.scale),2)
+            name=l.name.lower()
+            if name in output.friendly:
+                friendly=output.friendly[name]
+            else:
+                friendly=name
             if D(self, 'altitudeIsAgl') and not T(self, 'altitudeIsAgl'):
-                output.log('Absolute altitude (%sm) for object %s at (%10.6f, %11.6f) in file %s' % (round(alt,2), l.name, loc.lat, loc.lon, parser.filename))
+                output.log('Absolute altitude (%sm) for object %s at (%10.6f, %11.6f) in file %s' % (round(alt,2), friendly, loc.lat, loc.lon, parser.filename))
             elif alt!=0:
-                output.log('Non-zero altitude (%sm) for object %s at (%10.6f, %11.6f) in file %s' % (round(alt,2), l.name, loc.lat, loc.lon, parser.filename))
+                output.log('Non-zero altitude (%sm) for object %s at (%10.6f, %11.6f) in file %s' % (round(alt,2), friendly, loc.lat, loc.lon, parser.filename))
             if pitch or bank:
-                output.log('Non-zero pitch/bank (%s/%s) for object %s at (%10.6f, %11.6f) in file %s' % (pitch, bank, l.name, loc.lat, loc.lon, parser.filename))
-            output.objplc.append((loc, heading, cmplx, l.name.lower(), scale))
+                output.log('Non-zero pitch/bank (%s/%s) for object %s at (%10.6f, %11.6f) in file %s' % (pitch, bank, friendly, loc.lat, loc.lon, parser.filename))
+            output.objplc.append((loc, heading, cmplx, name, scale))
 
 
 class ExclusionRectangle:

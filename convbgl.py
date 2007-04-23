@@ -298,8 +298,8 @@ class ProcScen:
         self.altmsl=0
         self.layer=None
         self.matrix=[None]
-        self.scale=scale
-        self.basescale=scale
+        self.scale=1.0	# don't know what to do with scale value in FS8 libs
+        self.basescale=self.scale
         self.stack=[]	# (return address, layer, pop matrix?)
         self.tex=[]
         self.mat=[[(1.0,1.0,1.0),(0,0,0),(0,0,0),0]]	# [[a,s,e,p]]
@@ -1256,9 +1256,13 @@ class ProcScen:
     def LibraryCall(self):	# 63
         (off,a,b,c,d)=unpack('<hIIII', self.bgl.read(18))
         name="%08x%08x%08x%08x" % (a,b,c,d)
+        if name in self.output.friendly:
+            friendly=self.output.friendly[name]
+        else:
+            friendly=name
         if self.libname:
             # recursive call in library
-            self.output.log('Unsupported request for object %s in %s' % (name, self.comment))
+            self.output.log('Unsupported request for object %s in %s' % (friendly, self.comment))
             return
         if self.matrix[-1]:
             heading=self.matrix[-1].heading()	# not really
@@ -1269,14 +1273,13 @@ class ProcScen:
             heading=0
             loc=self.loc
         if self.debug:
-            self.debug.write("LibraryCall %s\n%s\n" % (name,self.matrix[-1]))
+            self.debug.write("LibraryCall %s %s\n%s\n" % (name,friendly,self.matrix[-1]))
         self.output.objplc.append((loc, heading, self.complexity,
                                    name, round(self.scale,2)))
         if self.altmsl:
-            pass
-            #self.output.log('Absolute altitude (%sm) for object %s at (%10.6f, %11.6f) in %s' % (round(self.altmsl,2), name, self.loc.lat, self.loc.lon, self.comment))
+            self.output.log('Absolute altitude (%sm) for object %s at (%10.6f, %11.6f) in %s' % (round(self.altmsl,2), friendly, self.loc.lat, self.loc.lon, self.comment))
         elif self.alt:
-            self.output.log('Non-zero altitude (%sm) for object %s at (%10.6f, %11.6f) in %s' % (round(self.alt,2), name, self.loc.lat, self.loc.lon, self.comment))
+            self.output.log('Non-zero altitude (%sm) for object %s at (%10.6f, %11.6f) in %s' % (round(self.alt,2), friendly, self.loc.lat, self.loc.lon, self.comment))
 
     def RoadStart(self):	# 69
         (width,x,y,z)=unpack('<hhhh', self.bgl.read(8))
