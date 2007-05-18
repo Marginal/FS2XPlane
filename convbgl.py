@@ -572,14 +572,14 @@ class ProcScen:
                 lit=self.tex[self.t]
                 # Look for _lm version, eg LIEE cittadella universitaria-dm_liee_44
                 (src,ext)=splitext(basename(lit))
-                litlit=findtex(src+'_lm', dirname(lit), True)
+                litlit=findtex(src+'_lm', dirname(lit), self.output.addtexdir, True)
                 if litlit: lit=litlit
                 if self.haze: self.output.haze[lit]=self.haze
             else:
                 tex=self.tex[self.t]
                 if self.haze: self.output.haze[tex]=self.haze
                 (src,ext)=splitext(basename(tex))
-                lit=findtex(src+'_lm', dirname(tex), True)
+                lit=findtex(src+'_lm', dirname(tex), self.output.addtexdir, True)
                 if lit and self.haze: self.output.haze[lit]=self.haze
         layer=self.layer
         if layer>=40:	# ground element
@@ -698,7 +698,7 @@ class ProcScen:
         l=tex.find('.')
         if l!=-1:	# Sometimes formatted as 8.3 with spaces
             tex=tex[:l].rstrip(' \0')+tex[l:]
-        self.tex=[findtex(tex, self.texdir)]
+        self.tex=[findtex(tex, self.texdir, self.output.addtexdir)]
         self.t=0
         if self.debug: self.debug.write("%s\n" % basename(self.tex[0]))
         if x or y:
@@ -1140,7 +1140,7 @@ class ProcScen:
                 break
             tex=tex+c
             size=size-1
-        self.tex=[findtex(tex.rstrip(), self.texdir)]
+        self.tex=[findtex(tex.rstrip(), self.texdir, self.output.addtexdir)]
         if self.debug: self.debug.write("%s\n" % basename(self.tex[0]))
         self.t=0
         
@@ -1783,7 +1783,7 @@ class ProcScen:
         for i in range(count):
             cls=unpack('<I', self.bgl.read(4))
             self.bgl.read(12)
-            self.tex.append(findtex(self.bgl.read(64).rstrip(' \0'), self.texdir))
+            self.tex.append(findtex(self.bgl.read(64).rstrip(' \0'), self.texdir, self.output.addtexdir))
 
     def SetMaterial(self):	# b8
         (self.m,self.t)=unpack('<2h', self.bgl.read(4))
@@ -2152,14 +2152,14 @@ class ProcScen:
             lit=self.tex[self.t]
             # Look for _lm version, eg LIEE cittadella universitaria-dm_liee_44
             (src,ext)=splitext(basename(lit))
-            litlit=findtex(src+'_lm', dirname(lit), True)
+            litlit=findtex(src+'_lm', dirname(lit), self.output.addtexdir, True)
             if litlit: lit=litlit
             if self.haze: self.output.haze[lit]=self.haze
         else:
             tex=self.tex[self.t]
             if self.haze: self.output.haze[tex]=self.haze
             (src,ext)=splitext(basename(tex))
-            lit=findtex(src+'_lm', dirname(tex), True)
+            lit=findtex(src+'_lm', dirname(tex), self.output.addtexdir, True)
             if lit and self.haze: self.output.haze[lit]=self.haze
         layer=self.layer
         if layer>=40:	# ground element
@@ -2856,7 +2856,7 @@ def ProcTerrain(bgl, srcfile, output, debug):
         elif debug: debug.write("OK\n")
 
         name=basename(tex)[:-6]
-        lit=findtex(basename(tex)[:-6]+'lm', texdir, True)
+        lit=findtex(basename(tex)[:-6]+'lm', texdir, output.addtexdir, True)
         poly=Polygon(name+'.pol', tex, lit, True, 1216, 0)
         output.polydat[name]=poly
         for p in points:
@@ -2897,28 +2897,30 @@ def tessvertex(vertex, (points, idx)):
 
 
 # Helper to return fully-qualified case-sensitive texture filename
-def findtex(name, texdir, dropmissing=False):
-    f=listdir(texdir)
-    # Handle unicode
-    if type(texdir)==types.UnicodeType:
-        name=unicodeify(name)
-        for i in range(len(f)):
-            f[i]=normalize(f[i])
-    # Extension is ignored by MSFS?
-    (s,e)=splitext(name.lower())
-    if len(s)==8 and s[-2]=='~' and s[-1].isdigit():
-        # Crappy 8.3 name - pick first match
-        s=s[:-2]
-        crappy83=True
-    else:
-        crappy83=False
-    for ext in [e, '.dds', '.bmp', '.r8']:
-        # Fix case for case sensitive filesystems
-        for i in f:
-            if i.lower()==s+ext or (crappy83 and i.lower()[:-4].startswith(s) and i.lower()[-4:]==ext):
-                return join(texdir, i)
+def findtex(name, thistexdir, addtexdir, dropmissing=False):
+    for texdir in [thistexdir, addtexdir]:
+        if not texdir: continue
+        f=listdir(texdir)
+        # Handle unicode
+        if type(texdir)==types.UnicodeType:
+            name=unicodeify(name)
+            for i in range(len(f)):
+                f[i]=normalize(f[i])
+        # Extension is ignored by MSFS?
+        (s,e)=splitext(name.lower())
+        if len(s)==8 and s[-2]=='~' and s[-1].isdigit():
+            # Crappy 8.3 name - pick first match
+            s=s[:-2]
+            crappy83=True
+        else:
+            crappy83=False
+        for ext in [e, '.dds', '.bmp', '.r8']:
+            # Fix case for case sensitive filesystems
+            for i in f:
+                if i.lower()==s+ext or (crappy83 and i.lower()[:-4].startswith(s) and i.lower()[-4:]==ext):
+                    return join(texdir, i)
     # Not found
     if dropmissing:
         return None
     else:
-        return join(texdir, s+e)	# make lower-case to prevent dupes
+        return join(thistexdir, s+e)	# make lower-case to prevent dupes

@@ -41,6 +41,12 @@ REM set SOURCE="%FS9%\CYYZ2007"
 REM set TARGET="%XP%\CYYZ"
 REM set LB=
 
+REM set SOURCE="%FS9%\EDDN Freeware"
+REM set TARGET="%XP%\EDDN"
+
+set SOURCE="%FS9%\DS_EDDL_v1"
+set TARGET="%XP%\EDDL"
+
 REM set SOURCE="%FS9%\EFHK"
 REM set TARGET="%XP%\EFHK"
 
@@ -53,6 +59,16 @@ REM set TARGET="%XP%\EFRO"
 REM set SOURCE="%FS9%\EFLL 1.0"
 REM set TARGET="%XP%\EFLL"
 
+REM set SOURCE="C:\Documents and Settings\Jonathan\My Documents\FS2004SDK\TERRAIN_SDK\Samples\NiagaraFalls test\NiagaraFallsSample"
+REM set TARGET="%XP%\Niagra"
+REM set LB=
+
+REM set SOURCE="%FS9%\EFKA_1_0"
+REM set TARGET="%XP%\EFKA"
+
+REM set SOURCE="%FS9%\EFTP2004"
+REM set TARGET="%XP%\EFTP"
+
 REM set SOURCE="%FS9%\Espoo_photoscenery_1.0"
 REM set TARGET="%XP%\Espoo"
 REM set LB=
@@ -64,16 +80,6 @@ REM set LB=
 REM set SOURCE="%FS9%\Vantaa_photoscenery_1.0"
 REM set TARGET="%XP%\Vantaa"
 REM set LB=
-
-REM set SOURCE="C:\Documents and Settings\Jonathan\My Documents\FS2004SDK\TERRAIN_SDK\Samples\NiagaraFalls test\NiagaraFallsSample"
-REM set TARGET="%XP%\Niagra"
-REM set LB=
-
-REM set SOURCE="%FS9%\EFKA_1_0"
-REM set TARGET="%XP%\EFKA"
-
-REM set SOURCE="%FS9%\EFTP2004"
-REM set TARGET="%XP%\EFTP"
 
 REM set SOURCE="%FS9%\ESSA_v2"
 REM set TARGET="%XP%\ESSA"
@@ -91,8 +97,8 @@ REM set SOURCE="%FS9%\Granada"
 REM set TARGET="%XP%\Granada"
 REM set LB=
 
-set SOURCE="%FS9%\Granada2k6"
-set TARGET="%XP%\Granada2k6"
+REM set SOURCE="%FS9%\Granada2k6"
+REM set TARGET="%XP%\Granada2k6"
 
 REM set SOURCE="%FS9%\escenario_scie"
 REM set TARGET="%XP%\SCIE"

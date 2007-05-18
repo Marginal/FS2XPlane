@@ -151,7 +151,7 @@ class SceneryObject:
             if D(l, 'scale'): scale=round(float(l.scale),2)
             if D(self, 'altitudeIsAgl') and not T(self, 'altitudeIsAgl'):
                 output.log('Absolute altitude (%sm) for generic building at (%10.6f, %11.6f) in file %s' % (round(alt,2), loc.lat, loc.lon, parser.filename))
-            elif alt!=0:
+            elif abs(alt)>0.1:
                 output.log('Non-zero altitude (%sm) for generic building at (%10.6f, %11.6f) in file %s' % (round(alt,2), loc.lat, loc.lon, parser.filename))
             if pitch or bank:
                 output.log('Non-zero pitch/bank (%s/%s) for generic building at (%10.6f, %11.6f) in file %s' % (pitch, bank, loc.lat, loc.lon, parser.filename))
@@ -228,7 +228,7 @@ class SceneryObject:
                 friendly=name
             if D(self, 'altitudeIsAgl') and not T(self, 'altitudeIsAgl'):
                 output.log('Absolute altitude (%sm) for object %s at (%10.6f, %11.6f) in file %s' % (round(alt,2), friendly, loc.lat, loc.lon, parser.filename))
-            elif alt!=0:
+            elif abs(alt)>0.1:
                 output.log('Non-zero altitude (%sm) for object %s at (%10.6f, %11.6f) in file %s' % (round(alt,2), friendly, loc.lat, loc.lon, parser.filename))
             if pitch or bank:
                 output.log('Non-zero pitch/bank (%s/%s) for object %s at (%10.6f, %11.6f) in file %s' % (pitch, bank, friendly, loc.lat, loc.lon, parser.filename))

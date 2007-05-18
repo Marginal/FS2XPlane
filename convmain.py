@@ -108,6 +108,12 @@ class Output:
                 raise FS2XError('"%s" does not exist' % path)
             if path and not isdir(path):
                 raise FS2XError('"%s" is not a folder' % path)
+
+        if lbpath:
+            self.addtexdir=join(lbpath, 'texture')
+        else:
+            self.addtexdir=None
+
         if not self.dumplib and (basename(dirname(xppath)).lower()!='custom scenery' or not isdir(dirname(xppath))):
             raise FS2XError('"%s" is not a sub-folder of "Custom Scenery"' % (
                 xppath))
@@ -424,7 +430,10 @@ class Output:
                                 filename))
                             continue
                         bgl=file(tmp, 'rb')
-                    convbgl.Parse(bgl, bglname, self)
+                    try:
+                        convbgl.Parse(bgl, bglname, self)
+                    except:
+                        self.log("Can't read \"%s\"" % filename)
                 elif c==0x201:
                     xmls.append(bglname)
                 else:
