@@ -3,7 +3,7 @@
 
 for /f "usebackq tokens=1,2" %%I in (`c:\Progra~1\Python24\python.exe -c "from version import appversion; print '%%4.2f %%d'%%(appversion, round(appversion*100,0))"`) do (set VERSION=%%I&set VER=%%J)
 
-set RELEASE=1
+set RELEASE=2
 set RPM=%TMP%\fs2xplane
 
 @if exist FS2XPlane_%VER%_src.zip del FS2XPlane_%VER%_src.zip
