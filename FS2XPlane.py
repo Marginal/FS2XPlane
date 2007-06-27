@@ -33,7 +33,7 @@ from os.path import abspath, basename, curdir, dirname, expanduser, exists, isdi
 from sys import argv, exit, platform, version
 from traceback import print_exc
 
-from convutil import asciify, sortfolded
+from convutil import asciify, unicodeify, sortfolded
 
 if platform.lower().startswith('linux') and not getenv("DISPLAY"):
     print "Can't run: DISPLAY is not set"
@@ -185,7 +185,7 @@ if platform=='win32':
                 newfsroot=fsroot
 
 else:
-    home=expanduser('~')
+    home=unicodeify(expanduser('~'))	# Unicode so paths listed as unicode
     for xppath in [join(home, 'Desktop', 'X-Plane', 'Custom Scenery'),
                    join(home, 'X-Plane', 'Custom Scenery')]:
         if isdir(xppath): break
