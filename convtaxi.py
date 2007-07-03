@@ -279,9 +279,9 @@ def taxilayout(allnodes, alllinks, surfaceheading, output, aptdat=None, ident="u
 
     if __debug__:
         print "Layout", ident
-        nodesfile=open(join(output.xppath, ident+"_nodes.txt"), "at")
-        interfile=open(join(output.xppath, ident+"_inter.txt"), "at")
-        pointfile=open(join(output.xppath, ident+"_point.txt"), "at")
+        nodesfile=open(join(output.xppath, ident+"_nodes.txt"), "wt")
+        interfile=open(join(output.xppath, ident+"_inter.txt"), "wt")
+        pointfile=open(join(output.xppath, ident+"_point.txt"), "wt")
 
     # First find intersection & bezier points between every pair of links.
     # Then just join the dots.
