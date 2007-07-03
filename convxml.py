@@ -501,6 +501,7 @@ class Airport:
             else:
                 number[0]=("%02d" % int(runway.number))
                 number[1]=("%02d" % ((18+int(runway.number))%36))
+            if number[0]=='00': number[0]='36'
             if number[1]=='00': number[1]='36'
             if D(runway, 'designator'):
                 if runway.designator in designators:
@@ -614,7 +615,7 @@ class Airport:
                 if D(ils, 'name'):
                     name=("%s %s" % (self.ident, ils.name))
                 else:
-                    name=('%s %s ILS' % (self.ident, number))
+                    name=('%s %s ILS' % (self.ident, number[end]))
                 if D(ils, 'range'):
                     rng=float(ils.range)/NM2m
                 else:
@@ -628,7 +629,7 @@ class Airport:
                     if D(ils, 'name'):
                         name=("%s %s" % (self.ident, ils.name))
                     else:
-                        name=('%s %s GS' % (self.ident, number))
+                        name=('%s %s GS' % (self.ident, number[end]))
                     if D(gs, 'range'):
                         rng=float(gs.range)/NM2m
                     else:
@@ -642,7 +643,7 @@ class Airport:
                     if D(ils, 'name'):
                         name=("%s %s" % (self.ident, ils.name))
                     else:
-                        name=('%s %s DME-ILS' % (self.ident, number))
+                        name=('%s %s DME-ILS' % (self.ident, number[end]))
                     if D(dme, 'range'):
                         rng=float(dme.range)/NM2m
                     else:
@@ -680,7 +681,12 @@ class Airport:
                 
             # VASIs
             for vasi in runway.vasi:
-                if vasi.type in ['PAPI2', 'PAPI4', 'APAP', 'PANEL']:
+                if False: # vasi.type=='PAPI2':	# PAPI2 not supported in 8.50 
+                    if vasi.side=='RIGHT':
+                        vtype=8
+                    else:
+                        vtype=7
+                elif vasi.type in ['PAPI2', 'PAPI4', 'APAP', 'PANEL']:
                     if vasi.side=='RIGHT':
                         vtype=3
                     else:
@@ -692,8 +698,10 @@ class Airport:
                 vangle=float(vasi.pitch)
                 if vasi.end=='PRIMARY':
                     vheading=heading
+                    end=0
                 else:
                     vheading=(heading+180)%360
+                    end=1
                 x=float(vasi.biasX)
                 z=float(vasi.biasZ)
                 # location in MSFS is of rear innermost light
@@ -705,9 +713,9 @@ class Airport:
                 if vasi.side=='RIGHT': x=-x
                 h=radians(vheading)
                 vloc=cloc.biased(-cos(h)*x-sin(h)*z, sin(h)*x-cos(h)*z)
-                # was not output.excluded(vloc):, but keep VASI info
-                aptdat.append(AptNav(21, '%10.6f %11.6f %d %6.2f %3.1f' % (
-                    vloc.lat, vloc.lon, vtype, vheading, vangle)))
+                # was: not output.excluded(vloc), but keep VASI info
+                aptdat.append(AptNav(21, '%10.6f %11.6f %d %6.2f %3.1f %s' % (
+                    vloc.lat, vloc.lon, vtype, vheading, vangle, number[end])))
 
         # Helipads
         hno=0
