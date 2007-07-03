@@ -57,16 +57,7 @@ MSFS scenery packages tend to use lots of small texture files)</small>.</p>
   <dd>Requires Windows 2000 or later.</dd>
   <dt>&nbsp;</dt>
   <dt><b>Mac OS</b></dt>
-  <dd>Requires Mac OS 10.3.9 or later.<br>
-If you have an Intel Mac then you should install X11 from the your Mac OS
-<a target="_blank" href="http://docs.info.apple.com/article.html?artnum=301229">DVD</a> or
-<a target="_blank" href="http://docs.info.apple.com/article.html?artnum=25735">CD 3</a>,
-and also 
-<a target="_blank" href="http://darwine.sourceforge.net/download.php">download</a> Darwine (x86) -
-drag the folder <code>Darwine</code> to your Applications folder to install it.
-This will allow you to run MSFS scenery package installer programs
-and will also in some cases allow FS2XPlane to produce more complete
-X-Plane scenery.</dd>
+  <dd>Requires Mac OS 10.3.9 or later.</dd>
   <dt>&nbsp;</dt>
   <dt><b>Linux</b></dt>
   <dd>Requires "Wine". Wine is shipped with most distros, or you can
@@ -78,20 +69,37 @@ The GUI application additionally requires the wxPython runtime. wxPython
 a binary (or just stick with the command-line program).</dd>
 </dl>
 <h3><a name="settingup">Setting Up</a></h3>
-<p>Run the <samp>FS2XPlane</samp> application.</p>
 <dl>
   <dt><b>Windows</b></dt>
-  <dd>If you don't have FS2004 or FSX installed then FS2XPlane creates a
+  <dd>Start the <samp>FS2XPlane</samp> application.<br>
+If you don't have FS2004 or FSX installed then FS2XPlane creates a
 fake FS2004 installation
 in<code> Program&nbsp;Files\Microsoft&nbsp;Games\Flight&nbsp;Simulator&nbsp;9 </code>and
 sets up the subfolders and registry entries that some MSFS scenery package
 installer programs require.</dd>
   <dt>&nbsp;</dt>
-  <dt><b>Mac OS</b> and <b>Linux</b></dt>
-  <dd>FS2XPlane creates a fake FS2004 installation in the folder
-<code>FS2004</code> inside of your home folder, and sets up the folders and
-Wine registry entries that some MSFS scenery package installer programs
-require.<br>
+  <dt><b>Mac OS</b></dt>
+  <dd>If you have an Intel Mac then:
+  <ul>
+    <li>Quit the <samp>FS2XPlane</samp> application (if you have it running).</li>
+    <li>Install X11 from the your Mac OS
+<a target="_blank" href="http://docs.info.apple.com/article.html?artnum=301229">DVD</a> or
+<a target="_blank" href="http://docs.info.apple.com/article.html?artnum=25735">CD 3</a>.</li>
+    <li><a target="_blank" href="http://darwine.sourceforge.net/download.php">Download</a>
+Darwine (x86) - drag the folder <code>Darwine</code> to your
+<code>Applications</code> folder to install it.</li>
+  </ul>
+Start the <samp>FS2XPlane</samp> application.<br>
+FS2XPlane creates a fake FS2004 installation in the folder <code>FS2004</code>
+inside of your home folder and, if you have installed Darwine,
+sets up the folders and Wine registry entries that some MSFS
+scenery package installer programs require.<br>
+  <dt><b>Linux</b></dt>
+  <dd>Start the <samp>FS2XPlane</samp> application.<br>
+FS2XPlane creates a fake FS2004 installation in the folder <code>FS2004</code>
+inside of your home folder and
+sets up the folders and Wine registry entries that some MSFS
+scenery package installer programs require.<br>
 (If you want to move or rename the <code>FS2004</code> folder then you must
 update the UNIX symbolic link<code> ~/.wine/dosdevices/c:/Program Files/Microsoft Games/Flight Simulator 9 </code>to point to the new location).</dd>
 </dl>      
@@ -101,10 +109,9 @@ update the UNIX symbolic link<code> ~/.wine/dosdevices/c:/Program Files/Microsof
 package or it can extract all the objects in MSFS scenery libraries.<p>
 <h4>Converting a scenery package</h4>
 <ul>
-  <li>Run the <samp>FS2XPlane</samp> application.</li>
   <li>Download the scenery package that you want to convert. There are
 two kinds of scenery packages; those that come with an installer program
-and those that you install manually:</li>
+(<code>.exe</code>) and those that you install manually:</li>
     <dl>
       <dt>Installer program:</dt>
       <dd>Double-click on the installer program to run it
@@ -116,7 +123,7 @@ and those that you install manually:</li>
       the<code> Addon&nbsp;Scenery </code> folder).</dd>
       <dt>Manual installation:</dt>
       <dd>Read the installation notes for the scenery package. Most
-      packages require you to unzip the package into a new folder under
+      packages require you to put the unzipped package into a new folder under
       the<code> Addon&nbsp;Scenery </code> folder inside of your MSFS
       installation.</dd>
     </dl>
@@ -136,7 +143,8 @@ installation notes). If so, the installation notes may advise you to copy
 one of these files to the<code> scenery </code>folder inside the
 installed package.</li>
   </ul>
-  <li>In FS2XPlane, supply the location of the folder that contains the MSFS scenery package.</li>
+  <li>Start the <samp>FS2XPlane</samp> application.</li>
+  <li>Supply the location of the folder that contains the MSFS scenery package.</li>
   <li>Supply the location of any additional MSFS libraries that the
 package depends on. Specify the<code> Addon&nbsp;Scenery </code>folder to
 have FS2XPlane search through all installed libraries (recommended),
@@ -166,7 +174,7 @@ libraries. It cannot read uncompiled "API", "SBuilder", "SCM" or "MDL" files
     <li>For the "rwy12" library see the notes <a href="#rwy12">below</a>.</li>
     <li>Otherwise follow the installation notes in the scenery library.</li>
   </ul>
-  <li>Run the <samp>FS2XPlane</samp> application.</li>
+  <li>Start the <samp>FS2XPlane</samp> application.</li>
   <li>Select the "Just extract library objects" option.</li>
   <li>Ignore the "MSFS scenery location" - it's not used.</li>
   <li>Supply the location where you put the MSFS scenery libraries.</code></li>
@@ -651,7 +659,7 @@ You may be asked whether to overwrite some files; say yes.</li>
 <table style="width: 100%;" border="0" cellpadding="2">
   <tbody>
     <tr>
-      <td class="banner">Version 2.22 &copy; 2006 <a href="mailto:x-plane@marginal.org.uk">Jonathan Harris</a>
+      <td class="banner">Version 2.23 &copy; 2006 <a href="mailto:x-plane@marginal.org.uk">Jonathan Harris</a>
 <a rel="license" href="http://creativecommons.org/licenses/by-sa/2.5/"><img style="border: 0px solid ; width: 88px; height: 31px; vertical-align: text-bottom;" alt="Creative Commons License" src="http://creativecommons.org/images/public/somerights20.png"></a><br>
       </td>
     </tr>
