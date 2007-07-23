@@ -372,7 +372,10 @@ class MainWindow(wx.Frame):
 
         if platform=='darwin':
             # Hack! Change name on application menu. wxMac always uses id 1.
-            Menu.GetMenuHandle(1).SetMenuTitleWithCFString(appname)
+            try:
+                Menu.GetMenuHandle(1).SetMenuTitleWithCFString(appname)
+            except:
+                pass
 
         if newfsroot:
             myMessageBox('Install your MSFS sceneries under\n%s' % fspath, 'Created a fake FS2004 installation.', wx.ICON_INFORMATION|wx.OK, None)
@@ -387,22 +390,26 @@ class MainWindow(wx.Frame):
             self.fsbrowse.Enable()
 
     def onFSbrowse(self, evt):
+        style=wx.DEFAULT_DIALOG_STYLE|wx.RESIZE_BORDER
+        if 'DD_DIR_MUST_EXIST' in dir(wx): style|=wx.DD_DIR_MUST_EXIST
         dlg=wx.DirDialog(self, "Location of MSFS scenery package:",
-                         self.fspath.GetValue(), wx.DD_NEW_DIR_BUTTON)
+                         self.fspath.GetValue(), style)
         dlg.ShowModal()
         self.fspath.SetValue(dlg.GetPath())
         dlg.Destroy()
 
     def onLBbrowse(self, evt):
+        style=wx.DEFAULT_DIALOG_STYLE|wx.RESIZE_BORDER
+        if 'DD_DIR_MUST_EXIST' in dir(wx): style|=wx.DD_DIR_MUST_EXIST
         dlg=wx.DirDialog(self,"Location of additional MSFS scenery libraries:",
-                         self.lbpath.GetValue(), wx.DD_NEW_DIR_BUTTON)
+                         self.lbpath.GetValue(), style)
         dlg.ShowModal()
         self.lbpath.SetValue(dlg.GetPath())
         dlg.Destroy()
 
     def onXPbrowse(self, evt):
         dlg=wx.DirDialog(self, "Location for new X-Plane scenery package:",
-                         self.xppath.GetValue(), wx.DD_NEW_DIR_BUTTON)
+                         self.xppath.GetValue(), wx.DD_DEFAULT_STYLE|wx.DD_NEW_DIR_BUTTON)
         dlg.ShowModal()
         self.xppath.SetValue(dlg.GetPath())
         dlg.Destroy()

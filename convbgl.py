@@ -44,7 +44,7 @@ except NameError:
     gluTessVertex = GLU._gluTessVertex
 
 from convutil import cirp, m2f, NM2m, complexity, asciify, unicodeify, normalize, rgb2uv, cross, dot, AptNav, Object, Polygon, Point, Matrix, FS2XError, unique, palettetex, groundfudge, planarfudge, effects
-from convobjs import maketaxilight, makegenquad, makegenmulti
+from convobjs import makegenquad, makegenmulti
 from convtaxi import taxilayout, Node, Link
 
 # Subset of XML TaxiwayPoint
@@ -111,7 +111,8 @@ class Parse:
         else:
             debug=None
         # Per-BGL counts
-        output.gencount=0
+        output.gencount=1	# next generic building number
+        output.gencache={}	# cache of generic buildings
         output.anccount=0	# Not used for library objects
         name=basename(srcfile)
         for section in [42,54,58,102,114]:
@@ -1194,15 +1195,25 @@ class ProcScen:
             incx=incz=pi*22.5/180
         else:
             roof=0
-        self.output.gencount += 1
+        newobj=None
         name="%s-generic-%d.obj" % (asciify(self.srcfile[:-4]),
                                     self.output.gencount)
         if typ==3:
-            obj=makegenmulti(name,8,size_x, size_z, heights, texs)
+            foo=(8,size_x, size_z, tuple(heights), tuple(texs))
+            if foo in self.output.gencache:
+                name=self.output.gencache[foo]
+            else:
+                newobj=makegenmulti(name,*foo)
         else:
-            obj=makegenquad(name,size_x, size_z, incx, incz,
-                            heights, texs, roof)
-        self.output.objdat[name]=[obj]
+            foo=(size_x, size_z, incx, incz, tuple(heights), tuple(texs), roof)
+            if foo in self.output.gencache:
+                name=self.output.gencache[foo]
+            else:
+                newobj=makegenquad(name, *foo)
+        if newobj:
+            self.output.objdat[name]=[newobj]
+            self.output.gencache[foo]=name
+            self.output.gencount += 1
         if self.matrix[-1]:
             heading=self.matrix[-1].heading()	# not really
             # handle translation
@@ -1505,14 +1516,25 @@ class ProcScen:
         else:
             heading=0
             loc=self.loc
-        self.output.gencount += 1
+        newobj=None
         name="%s-generic-%d.obj" % (asciify(self.srcfile[:-4]),
                                     self.output.gencount)
         if typ in [10,11]:
-            obj=makegenmulti(name,sides, size_x, size_z, heights, texs)
+            foo=(sides, size_x, size_z, tuple(heights), tuple(texs))
+            if foo in self.output.gencache:
+                name=self.output.gencache[foo]
+            else:
+                newobj=makegenmulti(name,*foo)
         else:
-            obj=makegenquad(name,size_x, size_z, incx,incz,heights,texs,roof)
-        self.output.objdat[name]=[obj]
+            foo=(size_x, size_z, incx, incz, tuple(heights), tuple(texs), roof)
+            if foo in self.output.gencache:
+                name=self.output.gencache[foo]
+            else:
+                newobj=makegenquad(name, *foo)
+        if newobj:
+            self.output.objdat[name]=[newobj]
+            self.output.gencache[foo]=name
+            self.output.gencount += 1
         self.output.objplc.append((loc, heading, self.complexity, name, 1))
         if self.altmsl:
             pass

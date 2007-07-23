@@ -26,7 +26,7 @@
 #
 
 from math import floor, sin, cos, radians
-from os import curdir, mkdir, pardir, sep, stat, unlink, walk
+from os import curdir, listdir, mkdir, pardir, sep, stat, unlink, walk
 from os.path import basename, dirname, exists, isdir, join, normpath, splitext
 from shutil import copyfile
 from StringIO import StringIO
@@ -64,6 +64,7 @@ class Output:
 
         # Per-BGL counts - should live somewhere else
         self.gencount=0
+        self.gencache={}# cache of generic buildings
         self.anccount=0	# Not used for library objects
 
         self.apt={}	# (location, AptNav entries) by ICAO code
@@ -109,9 +110,12 @@ class Output:
             if path and not isdir(path):
                 raise FS2XError('"%s" is not a folder' % path)
 
-        if lbpath:
-            self.addtexdir=join(lbpath, 'texture')
-        else:
+        try:
+            for f in listdir(lbpath):
+                if f.lower()=='texture':
+                    self.addtexdir=join(lbpath, f)
+                    break
+        except:
             self.addtexdir=None
 
         if not self.dumplib and (basename(dirname(xppath)).lower()!='custom scenery' or not isdir(dirname(xppath))):

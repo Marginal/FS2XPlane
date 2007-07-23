@@ -28,8 +28,8 @@ REM set TARGET="%XP%\KSFO"
 REM set SOURCE="C:\Program Files\VisualFlight\VisualFlightLondon"
 REM set TARGET="%XP%\EGLC"
 
-REM set SOURCE="%FS9%\Adisutjipto scenery"
-REM set TARGET="%XP%\Adisutjipto"
+set SOURCE="%FS9%\Ádisutjipto scenery"
+set TARGET="%XP%\Adisutjipto"
 
 REM set SOURCE="%FS9%\A‚roport du Raizet"
 REM set TARGET="%XP%\Raizet"
@@ -44,8 +44,8 @@ REM set LB=
 REM set SOURCE="%FS9%\EDDN Freeware"
 REM set TARGET="%XP%\EDDN"
 
-set SOURCE="%FS9%\DS_EDDL_v1"
-set TARGET="%XP%\EDDL"
+REM set SOURCE="%FS9%\DS_EDDL_v1"
+REM set TARGET="%XP%\EDDL"
 
 REM set SOURCE="%FS9%\EFHK"
 REM set TARGET="%XP%\EFHK"
