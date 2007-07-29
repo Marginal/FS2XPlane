@@ -45,21 +45,22 @@ else:
     try:
         import wx
     except:
-        import Tkinter
-        import tkMessageBox
-        Tkinter.Tk().withdraw()	# make and suppress top-level window
         if platform=='darwin':
-            tkMessageBox._show("Error", "wxPython is not installed.\nThis application requires\nwxPython2.5.3-py%s or later." % version[:3], icon="question", type="ok")
+            from EasyDialogs import Message
+            Message("wxPython is not installed. This application\nrequires wxPython2.5.3-py%s or later." % version[:3])
         else:	# linux
-            tkMessageBox._show("Error", "wxPython is not installed.\nThis application requires\npython wxgtk2.5.3 or later.", icon="error", type="ok")
+            import tkMessageBox
+            tkMessageBox._show("Error", "wxPython is not installed. This application\nrequires python wxgtk2.5.3 or later.", icon="error", type="ok")
         exit(1)
     try:
         import OpenGL
     except:
-        import Tkinter
-        import tkMessageBox
-        Tkinter.Tk().withdraw()	# make and suppress top-level window
-        tkMessageBox._show("Error", "PyOpenGL is not installed.\nThis application requires\nPyOpenGL2 or later.", icon="error", type="ok")
+        if platform=='darwin':
+            from EasyDialogs import Message
+            Message("PyOpenGL is not installed. This application\nrequires PyOpenGL2 or later.")
+        else:	# linux
+            import tkMessageBox
+            tkMessageBox._show("Error", "PyOpenGL is not installed. This application\nrequires PyOpenGL2 or later.", icon="error", type="ok")
         exit(1)
 
 from convmain import Output
