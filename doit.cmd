@@ -28,8 +28,8 @@ REM set TARGET="%XP%\KSFO"
 REM set SOURCE="C:\Program Files\VisualFlight\VisualFlightLondon"
 REM set TARGET="%XP%\EGLC"
 
-set SOURCE="%FS9%\Ádisutjipto scenery"
-set TARGET="%XP%\Adisutjipto"
+REM set SOURCE="%FS9%\Ádisutjipto scenery"
+REM set TARGET="%XP%\Adisutjipto"
 
 REM set SOURCE="%FS9%\A‚roport du Raizet"
 REM set TARGET="%XP%\Raizet"
@@ -197,8 +197,8 @@ REM set SOURCE="%FS9%\cagliari_2004_FS9\LIEE_2004_FS9\Cagliari PhotoReal"
 REM set TARGET="%XP%\Cagliari PhotoReal"
 REM set LB=
 
-REM set SOURCE="%FS9%\ISDproject - LIEO2004 v2 forFS2004\addon scenery\ISDproject - LIEO2004v2"
-REM set TARGET="%XP%\LIEO"
+set SOURCE="%FS9%\ISDproject - LIEO2004 v2 forFS2004\addon scenery\ISDproject - LIEO2004v2"
+set TARGET="%XP%\LIEO"
 
 REM set SOURCE="%FS9%\ltba2005"
 REM set TARGET="%XP%\LTBA"

@@ -1944,18 +1944,25 @@ class ProcScen:
         if self.t==None: return False	# Only care about textured polygons
         if not self.loc: return False	# Not for library objects
         if self.debug: self.debug.write("Poly: %s %s %s %d " % (basename(self.tex[self.t]), self.alt, self.layer, self.zbias))
-        
-        # Find unique points
+
+        matrix=self.matrix[-1] or Matrix()
+
         if idx:
             # Altitude test
-            yval=vtx[idx[0]][1]
-            if not self.altmsl and yval*self.scale+self.alt>groundfudge:
-                if self.debug: self.debug.write("Above ground %s\n" % (yval*self.scale+self.alt))
+            (x,y,z)=matrix.transform(*vtx[idx[0]][:3])
+            yval=y*self.scale
+            if not self.altmsl and yval+self.alt>groundfudge:
+                if self.debug: self.debug.write("Above ground %s\n" % (yval+self.alt))
                 return False
-            # Arrange points in order. Assumes all points are on the edge
+
+            # Transform
+            newvtx=[]
+            for (x,y,z, nx,ny,nz, tu,tv) in vtx:
+                (x,y,z)=matrix.transform(x,y,z)
+                newvtx.append((x*self.scale,y*self.scale,z*self.scale, nx,ny,nz, tu,tv))
+            vtx=newvtx
 
             # Remove duplicates - O(n2) - eg EGPF Terraindetail.bmp
-            dump=self.debug and 'taxilineEg' in self.tex[self.t]
             if len(idx)<1000:	# arbitrary, gets too slow
                 idx=list(idx)
                 for i in range(len(idx)):
@@ -1970,6 +1977,7 @@ class ProcScen:
             for i in range(0,len(idx),3):
                 for j in range(3):
                     e=idx[i+j]
+                    #self.debug.write("%s\n" % vtx[e][1])
                     if abs(vtx[e][1]-yval)>planarfudge:
                         if self.debug: self.debug.write("Not coplanar\n")
                         return False
@@ -1989,6 +1997,7 @@ class ProcScen:
             allidx.remove(bestidx)
             thisheading=270
 
+            # Arrange points in order. Assumes all points are on the edge
             while allidx:
                 thisidx=bestidx
                 thispoint=Point(vtx[thisidx][2], vtx[thisidx][0])
@@ -2014,10 +2023,19 @@ class ProcScen:
             return False	# Eh?
         else:
             # Altitude test
-            yval=vtx[0][1]
-            if not self.altmsl and yval*self.scale+self.alt>groundfudge:
-                if self.debug: self.debug.write("Above ground %s\n" % (yval*self.scale+self.alt))
+            (x,y,z)=matrix.transform(*vtx[0][:3])
+            yval=y*self.scale
+            if not self.altmsl and yval+self.alt>planarfudge:
+                if self.debug: self.debug.write("Above ground %s\n" % (yval+self.alt))
                 return False
+
+            # Transform
+            newvtx=[]
+            for (x,y,z, nx,ny,nz, tu,tv) in vtx:
+                (x,y,z)=matrix.transform(x,y,z)
+                newvtx.append((x*self.scale,y*self.scale,z*self.scale, nx,ny,nz, tu,tv))
+            vtx=newvtx
+
             # Order must be CCW
             count=len(vtx)
             area2=0
@@ -2027,7 +2045,6 @@ class ProcScen:
                     return False
                 area2+=(vtx[i][0]*vtx[(i+1)%count][2] - vtx[(i+1)%count][0]*vtx[i][2])
             if area2<0:	# Tested on SAEZ, LIRF
-                vtx=list(vtx)
                 vtx.reverse()
 
         # Trim textures that spill over edge
@@ -2050,15 +2067,10 @@ class ProcScen:
         minx=minz=maxint
         maxx=maxz=-maxint
         for (x,y,z, nx,ny,nz, tu,tv) in vtx:
-            x=x*self.scale
-            y=y*self.scale
-            z=z*self.scale
             minx=min(minx,x)
             maxx=max(maxx,x)
             minz=min(minz,z)
             maxz=max(maxz,z)
-            if self.matrix[-1]:
-                (x,y,z)=self.matrix[-1].transform(x,y,z)
             if len(vtx)>4 and (tu-minu > 1+TEXFUDGE or tv-minv > 1+TEXFUDGE):
                 if self.debug and haveuv: self.debug.write("Dropping textures - %s,%s\n" % (tu-minu,tv-minv))
                 haveuv=False
@@ -2068,7 +2080,8 @@ class ProcScen:
         # 8.60 has a bug with polygons at different layers sharing textures,
         # so minimise use of polygons by making this an object if it's small
         # enough to be unlikely to cause Z-buffer issues.
-        if (maxx-minx)<NM2m/8 and (maxz-minz)<NM2m/8:    # arbitrary
+        # Assume for no good reason that polys with explicit UV coords are OK.
+        if not haveuv and (maxx-minx)<NM2m/8 and (maxz-minz)<NM2m/8:    # arbitrary
             if self.debug: self.debug.write("Too small %s %s\n" % (maxx-minx, maxz-minz))
             return False	# probably detail
 
