@@ -39,7 +39,6 @@ if platform=='win32':
                 'win32/bglunzip.exe',
                 'win32/bmp2png.exe',
                 'win32/DSFTool.exe',
-                'win32/FS2XPlane.ico',
                 ])
               ]
 

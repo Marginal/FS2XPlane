@@ -30,7 +30,7 @@
 import os	# for startfile
 from os import chdir, getenv, listdir, mkdir, makedirs
 from os.path import abspath, basename, curdir, dirname, expanduser, exists, isdir, join, normpath, pardir, sep
-from sys import argv, exit, platform, version
+from sys import argv, executable, exit, platform, version
 from traceback import print_exc
 
 from convutil import asciify, unicodeify, sortfolded
@@ -244,7 +244,7 @@ class MainWindow(wx.Frame):
         wx.Frame.__init__(self,parent,id,title)
 
         if platform=='win32':
-            self.SetIcon(wx.Icon('win32/%s.ico' % appname, wx.BITMAP_TYPE_ICO))
+            self.SetIcon(wx.Icon(executable, wx.BITMAP_TYPE_ICO))
         elif platform.lower().startswith('linux'):	# PNG supported by GTK
             self.SetIcon(wx.Icon('Resources/%s.png' % appname,
                                  wx.BITMAP_TYPE_PNG))

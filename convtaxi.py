@@ -395,7 +395,7 @@ def taxilayout(allnodes, alllinks, surfaceheading, output, aptdat=None, ident="u
                 # tessellator will merge in some circumstances (eg
                 # adjacent taxiways off runway) and we lose the code.
                 # So only make a single point if all adjacent links
-                # are of the sdame surface -> will be in same pavement
+                # are of the same surface -> will be in same pavement
                 if bez1: bez1=(loc1+(loc2-loc1)*0.5).round()
                 if bez2: bez2=(loc1+(loc2-loc1)*0.5).round()
                 if __debug__:
