@@ -33,15 +33,15 @@ Section "Install"
   File /r dist\*
   CreateShortCut "$SMPROGRAMS\FS2XPlane.lnk" "$INSTDIR\FS2XPlane.exe"
 
-  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\FS2XPlane" "Contact" "x-plane@marginal.org.uk"
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\FS2XPlane" "DisplayIcon" "$INSTDIR\FS2XPlane.exe,0"
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\FS2XPlane" "DisplayName" "FS2XPlane"
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\FS2XPlane" "DisplayVersion" "$%VERSION%"
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\FS2XPlane" "InstallLocation" "$INSTDIR"
-  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\FS2XPlane" "Publisher" "Jonathan Harris"
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\FS2XPlane" "Publisher" "Jonathan Harris <x-plane@marginal.org.uk>"
   WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\FS2XPlane" "NoModify" 1
   WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\FS2XPlane" "NoRepair" 1
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\FS2XPlane" "UninstallString" "$INSTDIR\uninstall.exe"
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\OverlayEditor" "URLInfoAbout" "mailto:Jonathan Harris <x-plane@marginal.org.uk>?subject=FS2XPlane $%VERSION%"
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\FS2XPlane" "URLUpdateInfo" "http://marginal.org.uk/x-planescenery"
 
 WriteUninstaller "$INSTDIR\uninstall.exe"
