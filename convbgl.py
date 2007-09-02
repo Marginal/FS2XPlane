@@ -2077,13 +2077,19 @@ class ProcScen:
             loc=self.loc.biased(x,z)
             points[0].append((loc,max(0,min(1,tu-minu)),max(0,min(1,tv-minv))))
 
-        # 8.60 has a bug with polygons at different layers sharing textures,
-        # so minimise use of polygons by making this an object if it's small
-        # enough to be unlikely to cause Z-buffer issues.
-        # Assume for no good reason that polys with explicit UV coords are OK.
-        if not haveuv and (maxx-minx)<NM2m/8 and (maxz-minz)<NM2m/8:    # arbitrary
-            if self.debug: self.debug.write("Too small %s %s\n" % (maxx-minx, maxz-minz))
-            return False	# probably detail
+        if haveuv:
+            # Really small - better dealt with as an object
+            if (maxx-minx)<10 and (maxz-minz)<10:	# arbitrary
+                if self.debug: self.debug.write("Too small %s %s\n" % (maxx-minx, maxz-minz))
+                return False	# probably detail
+        else:
+            # 8.60 has a bug with polygons at different layers sharing
+            # textures, so minimise use of polygons by making this an object
+            # if it's small enough to be unlikely to cause Z-buffer issues.
+            # Assume that polys with explicit UV coords won't be shared.
+            if (maxx-minx)<NM2m/8 and (maxz-minz)<NM2m/8:	# arbitrary
+                if self.debug: self.debug.write("Too small %s %s\n" % (maxx-minx, maxz-minz))
+                return False	# probably detail
 
         # Split EW
         while True:
@@ -2204,7 +2210,7 @@ class ProcScen:
         if not layer and self.zbias:
             layer=24
         for p in points:
-            self.polydat.append((p, layer, heading, int(self.scale*256), tex, lit))
+            self.polydat.append((p, layer, heading, max(1,int(self.scale*256)), tex, lit))
         if self.debug: self.debug.write("OK %s %s\n" % (maxx-minx, maxz-minz))
         return True
 
