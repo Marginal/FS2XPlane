@@ -788,8 +788,10 @@ class Output:
             if poly.layer and poly.layer>4: fslayers[poly.layer]=None
         keys=fslayers.keys()
         keys.sort()
-        # need runway lights so objects must be below runways
-        # prefer apron markings to be above implicit taxiways (but this hides taxi lights)
+        # Need runway lights so objects must be below runways.
+        # Should really use "taxiways -1" and earlier for strobes to show up.
+        # But prefer apron markings to be above implicit taxiways (but this
+        # hides taxi lights)
         layermap=["taxiways +1", "taxiways +2", "taxiways +3", "taxiways +4", "taxiways +5", "runways -5", "runways -4", "runways -3", "runways -2", "runways -1"]
         # explicit taxiways/roads ought to be on top of objects at layers<24
         #layermap=["shoulders +1", "shoulders +2", "shoulders +3", "shoulders +4", "shoulders +5", "taxiways -5", "taxiways -4", "taxiways -3", "taxiways -2", "taxiways -1"]
