@@ -33,8 +33,6 @@ from os.path import abspath, basename, curdir, dirname, expanduser, exists, isdi
 from sys import argv, executable, exit, platform, version
 from traceback import print_exc
 
-from convutil import asciify, unicodeify, sortfolded
-
 if platform.lower().startswith('linux') and not getenv("DISPLAY"):
     print "Can't run: DISPLAY is not set"
     exit(1)
@@ -64,7 +62,7 @@ else:
         exit(1)
 
 from convmain import Output
-from convutil import FS2XError, viewer, helper
+from convutil import FS2XError, asciify, unicodeify, sortfolded, viewer, helper
 from MessageBox import myMessageBox, AboutBox
 from version import appname, appversion
 
@@ -127,6 +125,8 @@ def log(msg):
 # Set up paths
 newfsroot=None
 if platform=='win32':
+    from sys import getwindowsversion
+    sysdesc="System:\tWindows %s.%s %s\n" % (getwindowsversion()[0], getwindowsversion()[1], getwindowsversion()[4])
     from _winreg import OpenKey, CreateKey, QueryValueEx, SetValueEx, HKEY_LOCAL_MACHINE, HKEY_CURRENT_USER, REG_SZ, REG_EXPAND_SZ
     if isdir('C:\\X-Plane\\Custom Scenery'):
         xppath='C:\\X-Plane\\Custom Scenery'
@@ -186,6 +186,8 @@ if platform=='win32':
                 newfsroot=fsroot
 
 else:
+    from os import uname	# not defined in win32 builds
+    sysdesc="System:\t%s %s %s\n" % (uname()[0], uname()[2], uname()[4])
     home=unicodeify(expanduser('~'))	# Unicode so paths listed as unicode
     for xppath in [join(home, 'Desktop', 'X-Plane', 'Custom Scenery'),
                    join(home, 'X-Plane', 'Custom Scenery')]:
@@ -196,8 +198,10 @@ else:
     try:
         if platform.lower().startswith('linux'):
             helper(join(curdir,'linux','fake2004'))
+            sysdesc+="Wine:\t%s\n" % helper(join(curdir,'linux','winever'))
         else:
             helper(join(curdir,'MacOS','fake2004'))
+            sysdesc+="Wine:\t%s\n" % helper(join(curdir,'MacOS','winever'))
         newfsroot=fsroot
     except:
         pass
@@ -470,6 +474,9 @@ class MainWindow(wx.Frame):
                 self.progress.Destroy()
                 self.progress=None
             if exists(self.logname):
+                logfile=file(self.logname, 'at')
+                logfile.write(sysdesc)
+                logfile.close()
                 viewer(self.logname)
                 myMessageBox('Displaying summary "%s"' %(
                     self.logname), 'Done.', wx.ICON_INFORMATION|wx.OK, self)
@@ -485,6 +492,7 @@ class MainWindow(wx.Frame):
             logfile=file(self.logname, 'at')
             logfile.write('\nInternal error\n')
             print_exc(None, logfile)
+            logfile.write('\n%s' % sysdesc)
             logfile.close()
             viewer(self.logname)
             myMessageBox('Please report error in log\n"%s"'%(self.logname),
