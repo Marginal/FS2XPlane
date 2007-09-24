@@ -233,11 +233,14 @@ class Matrix:
         # Derive heading from matrix, assuming no pitch or bank
         #if self.m[1][1]!=1:
         #    raise ValueError
-        h=round(self.m[0][0], 4)	# arbitrary - handle rounding errors
-        if self.m[2][0]>=0:
-            return degrees(acos(h))
-        else:
-            return 360-degrees(acos(h))
+        h=round(self.m[0][0], 3)	# arbitrary - handle rounding errors
+        try:
+            if self.m[2][0]>=0:
+                return degrees(acos(h))
+            else:
+                return 360-degrees(acos(h))
+        except:	# wtf?
+            return 0
 
     def offset(self, x, y, z):
         n=Matrix(self.m)
