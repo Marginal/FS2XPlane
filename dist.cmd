@@ -46,24 +46,22 @@ copy linux\fs2xplane "%RPMRT%\usr\local\bin" |findstr -v "file(s) copied"
 for %%I in (%DATA%) do (copy %%I "%RPMRT%\usr\local\lib\fs2xplane" |findstr -v "file(s) copied")
 for %%I in (%PY%) do (copy %%I "%RPMRT%\usr\local\lib\fs2xplane" |findstr -v "file(s) copied")
 for %%I in (%RSRC%) do (copy "Resources\%%~nxI" "%RPMRT%\usr\local\lib\fs2xplane\Resources" |findstr -v "file(s) copied")
-for %%I in (linux\bglunzip linux\bglxml linux\bmp2png linux\DSFTool linux\fake2004) do (copy %%I "%RPMRT%\usr\local\lib\fs2xplane\linux" |findstr -v "file(s) copied")
+for %%I in (linux\bglunzip linux\bglxml linux\bmp2png linux\DSFTool linux\fake2004 linux\winever) do (copy %%I "%RPMRT%\usr\local\lib\fs2xplane\linux" |findstr -v "file(s) copied")
 for %%I in (win32\bglunzip.exe win32\DSFTool.exe win32\fake2004.exe) do (copy %%I "%RPMRT%\usr\local\lib\fs2xplane\win32" |findstr -v "file(s) copied")
 "C:\Program Files\cygwin\lib\rpm\rpmb.exe" --quiet -bb --target i386-pc-linux --define '_topdir /tmp/fs2xplane' /tmp/fs2xplane/fs2xplane.spec
 move "%RPM%\RPMS\i386\fs2xplane-%VERSION%-%RELEASE%.cygwin.i386.rpm" fs2xplane-%VERSION%-%RELEASE%.i386.rpm
 REM Debian/Ubuntu
 mkdir "%RPMRT%\DEBIAN"
-mkdir "%RPMRT%\usr\share\applications"
-mkdir "%RPMRT%\usr\share\icons\hicolor\48x48\apps"
-copy linux\fs2xplane.desktop "%RPMRT%\usr\share\applications" |findstr -v "file(s) copied"
-copy Resources\Fs2xplane.png "%RPMRT%\usr\share\icons\hicolor\48x48\apps\fs2xplane.png" |findstr -v "file(s) copied"
+mkdir "%RPMRT%\usr\local\share\applications"
+mkdir "%RPMRT%\usr\local\share\icons\hicolor\48x48\apps"
+copy linux\fs2xplane.desktop "%RPMRT%\usr\local\share\applications" |findstr -v "file(s) copied"
+copy Resources\Fs2xplane.png "%RPMRT%\usr\local\share\icons\hicolor\48x48\apps\fs2xplane.png" |findstr -v "file(s) copied"
 echo Version: %VERSION%-%RELEASE% > "%RPMRT%\DEBIAN\control"
 type linux\control >> "%RPMRT%\DEBIAN\control"
 copy linux\postinst "%RPMRT%\DEBIAN" |findstr -v "file(s) copied"
-REM copy linux\postrm   "%RPMRT%\DEBIAN" |findstr -v "file(s) copied"
 chmod -R 755 "%RPMRT%"
 for /r "%RPMRT%" %%I in (*) do chmod 644 "%%I"
 chmod -R 755 "%RPMRT%\DEBIAN\postinst"
-REM chmod -R 755 "%RPMRT%\DEBIAN\postrm"
 chmod -R 755 "%RPMRT%\usr\local\bin\fs2xp"
 chmod -R 755 "%RPMRT%\usr\local\bin\fs2xplane"
 chmod -R 755 "%RPMRT%\usr\local\lib\fs2xplane\linux"

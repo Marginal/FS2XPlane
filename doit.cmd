@@ -93,6 +93,9 @@ REM set SOURCE="%FS9%\ESMS_v2"
 REM set TARGET="%XP%\ESMS"
 REM set LB=
 
+REM set SOURCE="%FS9%\..\Scenery\SAScenerySM"
+REM set TARGET="%XP%\FADN"
+
 REM set SOURCE="%FS9%\Granada"
 REM set TARGET="%XP%\Granada"
 REM set LB=
@@ -130,6 +133,9 @@ REM set TARGET="%XP%\Copenhagen"
 REM set SOURCE="%FS9%\dia2k4v1"
 REM set TARGET="%XP%\KDEN"
 
+REM set SOURCE="%FS9%\HonoluluV5"
+REM set TARGET="%XP%\Honolulu"
+
 REM set SOURCE="%FS9%\Newcastle"
 REM set TARGET="%XP%\EGNT"
 
@@ -166,6 +172,9 @@ REM set TARGET="%XP%\KORD"
 REM set SOURCE="%FS9%\..\FsFrance\RealCDG"
 REM set TARGET="%XP%\LFPG"
 
+set SOURCE="%FS9%\LFRK2005"
+set TARGET="%XP%\LFRK"
+
 REM set SOURCE="%FS9%\Essa_2k2"
 REM set TARGET="%XP%\ESSA"
 
@@ -197,8 +206,8 @@ REM set SOURCE="%FS9%\cagliari_2004_FS9\LIEE_2004_FS9\Cagliari PhotoReal"
 REM set TARGET="%XP%\Cagliari PhotoReal"
 REM set LB=
 
-set SOURCE="%FS9%\ISDproject - LIEO2004 v2 forFS2004\addon scenery\ISDproject - LIEO2004v2"
-set TARGET="%XP%\LIEO"
+REM set SOURCE="%FS9%\ISDproject - LIEO2004 v2 forFS2004\addon scenery\ISDproject - LIEO2004v2"
+REM set TARGET="%XP%\LIEO"
 
 REM set SOURCE="%FS9%\ltba2005"
 REM set TARGET="%XP%\LTBA"
@@ -283,6 +292,10 @@ REM set LB=
 
 REM set SOURCE="%FS9%\EGLL"
 REM set TARGET="%XP%\MS-EGLL"
+REM set LB=
+
+REM set SOURCE="%FS9%\..\Aerosoft\London Heathrow 2008\Scenery"
+REM set TARGET="%XP%\Aerosoft EGLL"
 REM set LB=
 
 REM set SOURCE="%FS9%\Test"

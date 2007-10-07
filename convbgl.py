@@ -431,9 +431,10 @@ class ProcScen:
               0x6d:self.IfSizeV,
               0x6e:self.TaxiwayStart,
               0x6f:self.RoadCont,
-              0x76:self.NOP,
+              0x70:self.AreaSense,
               0x73:self.Jump,
               0x74:self.AddCat,
+              0x76:self.NOP,
               0x77:self.ScaleAGL,
               0x7a:self.FaceTTMap,
               0x7d:self.NOP,
@@ -1269,6 +1270,8 @@ class ProcScen:
         name="%08x%08x%08x%08x" % (a,b,c,d)
         if name in self.output.friendly:
             friendly=self.output.friendly[name]
+        elif name in self.output.stock:
+            friendly=self.output.stock[name]
         else:
             friendly=name
         if self.libname:
@@ -1323,6 +1326,11 @@ class ProcScen:
         (width,x,y,z)=unpack('<hhhh', self.bgl.read(8))
         self.linktype=('TAXI', width*self.scale*2, 'FALSE')
         self.nodes.append(TaxiwayPoint(self.loc.biased(x*self.scale, z*self.scale)))
+
+    def AreaSense(self):	# 70
+        # Assume inside
+        (off,n)=unpack('<hH', self.bgl.read(4))
+        self.bgl.seek(4*n,1)	# skip
 
     def AddCat(self):		# 74
         (off,cat)=unpack('<2h', self.bgl.read(4))
@@ -1951,7 +1959,7 @@ class ProcScen:
             # Altitude test
             (x,y,z)=matrix.transform(*vtx[idx[0]][:3])
             yval=y*self.scale
-            if not self.altmsl and yval+self.alt>groundfudge:
+            if self.altmsl or yval+self.alt>groundfudge:
                 if self.debug: self.debug.write("Above ground %s\n" % (yval+self.alt))
                 return False
 
@@ -2025,7 +2033,7 @@ class ProcScen:
             # Altitude test
             (x,y,z)=matrix.transform(*vtx[0][:3])
             yval=y*self.scale
-            if not self.altmsl and yval+self.alt>planarfudge:
+            if self.altmsl or yval+self.alt>groundfudge:
                 if self.debug: self.debug.write("Above ground %s\n" % (yval+self.alt))
                 return False
 
@@ -2040,7 +2048,7 @@ class ProcScen:
             count=len(vtx)
             area2=0
             for i in range(count):
-                if abs(vtx[i][1]-yval)>groundfudge:
+                if abs(vtx[i][1]-yval)>planarfudge:
                     if self.debug: self.debug.write("Not coplanar\n")
                     return False
                 area2+=(vtx[i][0]*vtx[(i+1)%count][2] - vtx[(i+1)%count][0]*vtx[i][2])

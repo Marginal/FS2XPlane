@@ -137,8 +137,6 @@ class Output:
                         join(curdir,'win32','bglunzip.exe')]:
                 if not exists(exe):
                     raise FS2XError("Can't find \"%s\"" % exe)
-            # Let Wine initialise font cache etc on first run
-            #helper("wine", "--version")
 
         path=join('Resources', 'library objects.txt')
         try:
@@ -454,7 +452,7 @@ class Output:
             for bglname in xmls:
                 tmp=join(gettempdir(), basename(bglname[:-3])+'xml')
                 x=helper(self.xmlexe, '-t', bglname, tmp)
-                if not x and exists(tmp):
+                if exists(tmp):
                     try:
                         xmlfile=file(tmp, 'rU')
                         convxml.Parse(xmlfile, bglname, self)
@@ -463,7 +461,7 @@ class Output:
                     except:
                         self.log("Can't parse file %s" % basename(bglname))
                 else:
-                    self.log("Can't parse file %s (%s)" % (basename(bglname), x))
+                    self.log("Can't parse file %s\n%s" % (basename(bglname), x))
             if self.doexcfac or not self.needfull: break
             # Do them again, this time with exclusions
             self.aptfull=self.apt
@@ -1022,8 +1020,8 @@ class Output:
             dst.close()
             dsfname=join(path, tilename+'.dsf')
             x=helper(self.dsfexe, '-text2dsf', dstname, dsfname)
-            if (x or not exists(dsfname)):
-                raise FS2XError("Can't write DSF %s.dsf (%s)" % (tilename, x))
+            if not exists(dsfname):
+                raise FS2XError("Can't write DSF %s.dsf\n%s" % (tilename, x))
             if not self.debug: unlink(dstname)
 
 

@@ -645,7 +645,7 @@ def maketex(src, dst, output, palno):
         if tmp: unlink(tmp)
         if not exists(dst):
             output.dufftex[src]=True
-            output.log("Can't convert texture %s (%s)" % (basename(src),x))
+            output.log("Can't convert texture %s\n%s" % (basename(src),x))
             return False
         return True
 
@@ -678,20 +678,27 @@ def rgb2uv(rgb):
 # Run helper app and return stderr
 def helper(*cmds):
     if platform=='win32':
-        escquote='"'
+        # Bug - how to suppress environment variable expansion?
+        cmdstr=cmds[0]+' '+' '.join(['"%s"' % cmd for cmd in cmds[1:]])
+        if type(cmdstr)==types.UnicodeType:
+            # commands must be MBCS encoded
+            cmdstr=cmdstr.encode("mbcs")
     else:
-        escquote="'"
-    cmdstr=cmds[0]+" " + " ".join([escquote+cmd+escquote for cmd in cmds[1:]])
-    if platform=='win32' and type(cmdstr)==types.UnicodeType:
-        # commands must be MBCS encoded
-        cmdstr=cmdstr.encode("mbcs")
+        # See "QUOTING" in bash(1).
+        cmdstr=' '.join(['"%s"' % cmd.replace('\\','\\\\').replace('"','\\"').replace("$", "\\$").replace("`", "\\`") for cmd in cmds])
     (i,o,e)=popen3(cmdstr)
     i.close()
-    o.read()
-    txt=e.read()
+    err=o.read()
+    err+=e.read()
     o.close()
     e.close()
-    return txt.strip().replace('\n', ', ')
+    if __debug__: print err
+    err=err.strip().split('\n')
+    if len(err)>1 and err[-1].startswith('('):
+        err=err[-2].strip()	# DSF errors appear on penultimate line
+    else:
+        err=', '.join(err)
+    return err
 
 
 # View contents of file

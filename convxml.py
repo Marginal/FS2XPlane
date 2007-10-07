@@ -224,6 +224,8 @@ class SceneryObject:
             name=l.name.lower()
             if name in output.friendly:
                 friendly=output.friendly[name]
+            elif name in output.stock:
+                friendly=output.stock[name]
             else:
                 friendly=name
             if D(self, 'altitudeIsAgl') and not T(self, 'altitudeIsAgl'):

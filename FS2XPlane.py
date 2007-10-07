@@ -66,6 +66,9 @@ from convutil import FS2XError, asciify, unicodeify, sortfolded, viewer, helper
 from MessageBox import myMessageBox, AboutBox
 from version import appname, appversion
 
+sysdesc="%s %s\n" % (appname, appversion)
+
+
 if platform=='darwin':
     from Carbon import Menu
     # Hack: wxMac 2.5 requires the following to get shadows to look OK:
@@ -117,7 +120,9 @@ def status(percent, msg):
 def log(msg):
     if not isdir(dirname(frame.logname)):
         mkdir(dirname(frame.logname))
+    newlog=not exists(frame.logname)
     logfile=file(frame.logname, 'at')
+    if newlog: logfile.write(sysdesc)
     logfile.write('%s\n' % msg.encode("utf-8"))
     logfile.close()
     
@@ -126,7 +131,7 @@ def log(msg):
 newfsroot=None
 if platform=='win32':
     from sys import getwindowsversion
-    sysdesc="System:\tWindows %s.%s %s\n" % (getwindowsversion()[0], getwindowsversion()[1], getwindowsversion()[4])
+    sysdesc+="System:\tWindows %s.%s %s\n\n" % (getwindowsversion()[0], getwindowsversion()[1], getwindowsversion()[4])
     from _winreg import OpenKey, CreateKey, QueryValueEx, SetValueEx, HKEY_LOCAL_MACHINE, HKEY_CURRENT_USER, REG_SZ, REG_EXPAND_SZ
     if isdir('C:\\X-Plane\\Custom Scenery'):
         xppath='C:\\X-Plane\\Custom Scenery'
@@ -187,7 +192,7 @@ if platform=='win32':
 
 else:
     from os import uname	# not defined in win32 builds
-    sysdesc="System:\t%s %s %s\n" % (uname()[0], uname()[2], uname()[4])
+    sysdesc+="System:\t%s %s %s\n" % (uname()[0], uname()[2], uname()[4])
     home=unicodeify(expanduser('~'))	# Unicode so paths listed as unicode
     for xppath in [join(home, 'Desktop', 'X-Plane', 'Custom Scenery'),
                    join(home, 'X-Plane', 'Custom Scenery')]:
@@ -198,10 +203,10 @@ else:
     try:
         if platform.lower().startswith('linux'):
             helper(join(curdir,'linux','fake2004'))
-            sysdesc+="Wine:\t%s\n" % helper(join(curdir,'linux','winever'))
+            sysdesc+="Wine:\t%s\n\n" % helper(join(curdir,'linux','winever'))
         else:
             helper(join(curdir,'MacOS','fake2004'))
-            sysdesc+="Wine:\t%s\n" % helper(join(curdir,'MacOS','winever'))
+            sysdesc+="Wine:\t%s\n\n" % helper(join(curdir,'MacOS','winever'))
         newfsroot=fsroot
     except:
         pass
@@ -475,7 +480,6 @@ class MainWindow(wx.Frame):
                 self.progress=None
             if exists(self.logname):
                 logfile=file(self.logname, 'at')
-                logfile.write(sysdesc)
                 logfile.close()
                 viewer(self.logname)
                 myMessageBox('Displaying summary "%s"' %(
@@ -489,10 +493,11 @@ class MainWindow(wx.Frame):
         except:
             if not isdir(dirname(self.logname)):
                 mkdir(dirname(self.logname))
+            newlog=not exists(self.logname)
             logfile=file(self.logname, 'at')
+            if newlog: logfile.write(sysdesc)
             logfile.write('\nInternal error\n')
             print_exc(None, logfile)
-            logfile.write('\n%s' % sysdesc)
             logfile.close()
             viewer(self.logname)
             myMessageBox('Please report error in log\n"%s"'%(self.logname),

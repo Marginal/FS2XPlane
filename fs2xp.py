@@ -109,7 +109,7 @@ try:
     output.proclibs()
     output.export()
     if exists(logname):
-        status(-1, 'Displaying error log "%s"' % logname)
+        status(-1, 'Displaying summary "%s"' % logname)
         viewer(logname)
     status(-1, 'Done.')
 
