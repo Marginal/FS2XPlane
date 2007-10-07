@@ -31,22 +31,27 @@ This application converts MS Flight Simulator 2004 add-on scenery packages to X-
 
 
 %post
-# see http://lists.freedesktop.org/archives/xdg/2006-February/007757.html
+# see http://standards.freedesktop.org/basedir-spec/latest/ar01s03.html
 DESKDIR=`echo $XDG_DATA_DIRS|sed -e s/:.*//`
 if [ ! "$DESKDIR" ]; then
     if [ -d /usr/local/share/applications ]; then
         DESKDIR=/usr/local/share;
-    else
+    elif [ -d /usr/share/applications ]; then
         DESKDIR=/usr/share;
+    elif [ -d /opt/kde3/share/applications ]; then
+        DESKDIR=/opt/kde3/share;
+    else
+        DESKDIR=$RPM_INSTALL_PREFIX/share;
     fi;
 fi
 mkdir -p "$DESKDIR/applications"
 cp -f "$RPM_INSTALL_PREFIX/lib/fs2xplane/fs2xplane.desktop" "$DESKDIR/applications/fs2xplane.desktop"
 
+# KDE<3.5.5 ignores XDG_DATA_DIRS - http://bugs.kde.org/show_bug.cgi?id=97776
 if [ -d /opt/kde3/share/icons/hicolor ]; then
     ICONDIR=/opt/kde3/share/icons/hicolor;	# suse
 else
-    ICONDIR=/usr/share/icons/hicolor;
+    ICONDIR=$DESKDIR/icons/hicolor;
 fi
 mkdir -p "$ICONDIR/48x48/apps"
 cp -f "$RPM_INSTALL_PREFIX/lib/fs2xplane/Resources/FS2XPlane.png" "$ICONDIR/48x48/apps/fs2xplane.png"
@@ -59,13 +64,8 @@ DESKDIR=`echo $XDG_DATA_DIRS|sed -e s/:.*//`
 rm -f "$DESKDIR/applications/fs2xplane.desktop"
 rm -f /usr/local/share/applications/fs2xplane.desktop
 rm -f /usr/share/applications/fs2xplane.desktop
-
-if [ -f /opt/kde3/share/icons/hicolor/48x48/apps/fs2xplane.png ]; then
-    rm -f /opt/kde3/share/icons/hicolor/48x48/apps/fs2xplane.png
-#    gtk-update-icon-cache -q -t /opt/kde3/share/icons/hicolor &>/dev/null;
-fi
-if [ -f /usr/share/icons/hicolor/48x48/apps/fs2xplane.png ]; then
-    rm -f /usr/share/icons/hicolor/48x48/apps/fs2xplane.png
-#    gtk-update-icon-cache -q -t /usr/share/icons/hicolor &>/dev/null;
-fi
+rm -f /usr/share/applications/fs2xplane.desktop
+rm -f /usr/local/share/icons/hicolor/48x48/apps/fs2xplane.png
+rm -f /usr/share/icons/hicolor/48x48/apps/fs2xplane.png
+rm -f /opt/kde3/share/icons/hicolor/48x48/apps/fs2xplane.png
 exit 0	# ignore errors from updating icon cache
