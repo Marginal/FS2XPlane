@@ -8,7 +8,7 @@ if [ ! -x $LS ] ;then
 fi
 
 # Candidate application locations
-WINES=$($LS -dump | awk 'match($0, "/.*/Wine.bundle") { print substr($0, RSTART) "/Contents/bin/wine" }' | sort -u)
+WINES=$($LS -dump | awk 'match($0, "/.*/CrossOver.*\.app$") { print substr($0, RSTART) "/Contents/SharedSupport/CrossOver/bin/wine" }' | sort -u)
 for I in $WINES; do
     if [ -x "$I" ]; then
 	export WINELOADER="$I"
@@ -16,8 +16,17 @@ for I in $WINES; do
     fi;
 done
 if [ ! "$WINELOADER" ]; then
-    echo Can\'t find wine!
-    exit 1;
+    WINES=$($LS -dump | awk 'match($0, "/.*/Wine\.bundle") { print substr($0, RSTART) "/Contents/bin/wine" }' | sort -u)
+    for I in $WINES; do
+	if [ -x "$I" ]; then
+	    export WINELOADER="$I"
+	    break;
+	fi;
+    done
+    if [ ! "$WINELOADER" ]; then
+	echo Not installed
+	exit 1;
+    fi;
 fi
 
 unset DISPLAY
