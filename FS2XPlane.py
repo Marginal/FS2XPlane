@@ -36,30 +36,30 @@ from traceback import print_exc
 if platform.lower().startswith('linux') and not getenv("DISPLAY"):
     print "Can't run: DISPLAY is not set"
     exit(1)
+elif platform=='darwin':
+    sys.path.insert(0, join(sys.path[0], version[:3]))
     
-if platform=='win32':
+try:
     import wx
-else:
-    try:
-        import wx
-    except:
-        if platform=='darwin':
-            from EasyDialogs import Message
-            Message("wxPython is not installed. This application\nrequires wxPython2.5.3-py%s or later." % version[:3])
-        else:	# linux
-            import tkMessageBox
-            tkMessageBox._show("Error", "wxPython is not installed. This application\nrequires python wxgtk2.5.3 or later.", icon="error", type="ok")
-        exit(1)
-    try:
-        import OpenGL
-    except:
-        if platform=='darwin':
-            from EasyDialogs import Message
-            Message("PyOpenGL is not installed. This application\nrequires PyOpenGL2 or later.")
-        else:	# linux
-            import tkMessageBox
-            tkMessageBox._show("Error", "PyOpenGL is not installed. This application\nrequires PyOpenGL2 or later.", icon="error", type="ok")
-        exit(1)
+except:
+    if platform=='darwin':
+        from EasyDialogs import Message
+        Message("wxPython is not installed. This application\nrequires wxPython2.5.3-py%s or later." % version[:3])
+    else:	# linux
+        import tkMessageBox
+        tkMessageBox._show("Error", "wxPython is not installed. This application\nrequires python wxgtk2.5.3 or later.", icon="error", type="ok")
+    exit(1)
+
+try:
+    import OpenGL
+except:
+    if platform=='darwin':
+        from EasyDialogs import Message
+        Message("PyOpenGL is not installed. This application\nrequires PyOpenGL 2 or later.")
+    else:	# linux
+        import tkMessageBox
+        tkMessageBox._show("Error", "PyOpenGL is not installed. This application\nrequires PyOpenGL 2 or later.", icon="error", type="ok")
+    exit(1)
 
 from convmain import Output
 from convutil import FS2XError, asciify, unicodeify, sortfolded, viewer, helper
