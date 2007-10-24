@@ -1,7 +1,18 @@
 #!/bin/sh
 
 wine ./win32/fake2004.exe
-if [ ! -e ~/.wine/dosdevices/c:/Program\ Files/Microsoft\ Games ]; then
-    mkdir -p ~/.wine/dosdevices/c:/Program\ Files/Microsoft\ Games
-    ln -s ~/FS2004  ~/.wine/dosdevices/c:/Program\ Files/Microsoft\ Games/Flight\ Simulator\ 9;
+if [ -e ~/.wine/dosdevices/c:/Program\ Files ]; then
+    if [ ! -e ~/.wine/dosdevices/c:/Program\ Files/Microsoft\ Games/Flight\ Simulator\ 9 ]; then
+	mkdir -p ~/.wine/dosdevices/c:/Program\ Files/Microsoft\ Games
+	ln -s ~/FS2004  ~/.wine/dosdevices/c:/Program\ Files/Microsoft\ Games/Flight\ Simulator\ 9;
+    fi
+    if [ ! -e ~/.wine/dosdevices/c:/Program\ Files/Microsoft\ Games/Microsoft\ Flight\ Simulator\ X ]; then
+	mkdir -p ~/.wine/dosdevices/c:/Program\ Files/Microsoft\ Games
+	ln -s ~/FS2004  ~/.wine/dosdevices/c:/Program\ Files/Microsoft\ Games/Microsoft\ Flight\ Simulator\ X
+	touch ~/FS2004/fsx.exe;	# may not exist if upgrading
+    fi;
+fi
+if [ -e ~/.wine/dosdevices/c:/windows/profiles/All\ Users/Application\ Data ] && [ ! -e ~/.wine/dosdevices/c:/windows/profiles/All\ Users/Application\ Data/Microsoft/FSX ]; then
+    mkdir -p ~/.wine/dosdevices/c:/windows/profiles/All\ Users/Application\ Data/Microsoft
+    ln -s ~/FS2004 ~/.wine/dosdevices/c:/windows/profiles/All\ Users/Application\ Data/Microsoft/FSX;
 fi
