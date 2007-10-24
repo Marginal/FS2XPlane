@@ -31,6 +31,7 @@ UninstallIcon "win32\installer.ico"
 Section "Install"
   SetOutPath "$INSTDIR"
   File /r dist\*
+  Delete "$INSTDIR\FS2XPlane.exe.log"
   CreateShortCut "$SMPROGRAMS\FS2XPlane.lnk" "$INSTDIR\FS2XPlane.exe"
 
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\FS2XPlane" "DisplayIcon" "$INSTDIR\FS2XPlane.exe,0"
@@ -44,7 +45,7 @@ Section "Install"
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\OverlayEditor" "URLInfoAbout" "mailto:Jonathan Harris <x-plane@marginal.org.uk>?subject=FS2XPlane $%VERSION%"
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\FS2XPlane" "URLUpdateInfo" "http://marginal.org.uk/x-planescenery"
 
-WriteUninstaller "$INSTDIR\uninstall.exe"
+  WriteUninstaller "$INSTDIR\uninstall.exe"
 SectionEnd
 
 
@@ -54,6 +55,7 @@ Section "Uninstall"
   Delete "$INSTDIR\FakeFS2004.cmd"
   Delete "$INSTDIR\fs2x.exe"
   Delete "$INSTDIR\FS2XPlane.exe"
+  Delete "$INSTDIR\FS2XPlane.exe.log"
   Delete "$INSTDIR\FS2XPlane.html"
   Delete "$INSTDIR\library.zip"
   Delete "$INSTDIR\MSVCR71.dll"
