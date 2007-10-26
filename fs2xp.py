@@ -30,6 +30,7 @@
 from getopt import getopt, GetoptError
 from os import chdir, mkdir
 from os.path import abspath, normpath, basename, dirname, pardir, exists, isdir, join
+from profile import run
 from sys import exit, argv
 from traceback import print_exc
 
@@ -67,8 +68,9 @@ lbpath=None
 season=0
 debug=False
 dumplib=False
+prof=False
 try:
-    (opts, args) = getopt(argv[1:], 'l:s:d?hx')
+    (opts, args) = getopt(argv[1:], 'l:s:dpx?h')
 except GetoptError, e:
     print '\nError:\t'+e.msg
     usage()
@@ -79,6 +81,8 @@ for (opt, arg) in opts:
         lbpath=abspath(arg)
     elif opt=='-d':
         debug=True
+    elif opt=='-p':
+        prof=True
     elif opt=='-x':
         dumplib=True
     elif opt=='-s':
@@ -105,7 +109,10 @@ logname=abspath(join(xppath, 'summary.txt'))
 try:
     output=Output(fspath,lbpath,xppath,season,status,log,dumplib,debug)
     output.scanlibs()
-    output.process()
+    if prof:
+        run('output.process()', join(xppath,'profile.txt'))
+    else:
+        output.process()
     output.proclibs()
     output.export()
     if exists(logname):
