@@ -361,9 +361,6 @@ class ProcScen:
             0xc74: 0,	# ground wind direction [units?]
             0xc76: 0,	# ground wind turbulence [units?]
             }
-        if self.debug:
-            self.vars[0x318]=5
-            self.vars[0x31a]=4
         self.setseason()
 
         cmds={0x02:self.NOP,
@@ -821,7 +818,10 @@ class ProcScen:
             self.complexity=complexity(vmin)
             if vmax==4: vmax=5	# bug in eg EGNT
         val=self.getvar(var)
-        if self.debug: self.debug.write("%x: %d<=%d<=%d\n" % (var, vmin, val, vmax))
+        if self.debug:
+            self.debug.write("%x: %d<=%d<=%d\n" % (var, vmin, val, vmax))
+            if var==0: return	# cloud9
+        if var in [0x312,0x314,0x316,0x318,0x31a]: return	# user-defined
         if val<vmin or val>vmax:
             self.bgl.seek(off-10,1)
 
@@ -1280,16 +1280,18 @@ class ProcScen:
             return
         if self.matrix[-1]:
             heading=self.matrix[-1].heading()	# not really
+            scale=self.matrix[-1].scale()*self.scale
             # handle translation
-            loc=self.loc.biased(self.matrix[-1].m[3][0]*self.scale,
-                                -self.matrix[-1].m[3][2]*self.scale)
+            loc=self.loc.biased(self.matrix[-1].m[3][0]*scale,
+                                -self.matrix[-1].m[3][2]*scale)
         else:
             heading=0
+            scale=self.scale
             loc=self.loc
         if self.debug:
-            self.debug.write("LibraryCall %s %s\n%s\n" % (name,friendly,self.matrix[-1]))
+            self.debug.write("LibraryCall %s %s %.2f %.2f\n%s\n" % (name,friendly,heading,scale,self.matrix[-1]))
         self.output.objplc.append((loc, heading, self.complexity,
-                                   name, round(self.scale,2)))
+                                   name, round(scale,2)))
         if self.altmsl:
             self.output.log('Absolute altitude (%sm) for object %s at (%10.6f, %11.6f) in %s' % (round(self.altmsl,2), friendly, self.loc.lat, self.loc.lon, self.comment))
         elif self.alt:
@@ -1953,11 +1955,12 @@ class ProcScen:
         if not self.loc: return False	# Not for library objects
         if self.debug: self.debug.write("Poly: %s %s %s %d " % (basename(self.tex[self.t]), self.alt, self.layer, self.zbias))
 
-        matrix=self.matrix[-1] or Matrix()
-
         if idx:
             # Altitude test
-            (x,y,z)=matrix.transform(*vtx[idx[0]][:3])
+            if self.matrix[-1]:
+                (x,y,z)=self.matrix[-1].transform(*vtx[idx[0]][:3])
+            else:
+                (x,y,z)=vtx[idx[0]][:3]
             yval=y*self.scale
             if self.altmsl or yval+self.alt>groundfudge:
                 if self.debug: self.debug.write("Above ground %s\n" % (yval+self.alt))
@@ -1966,7 +1969,8 @@ class ProcScen:
             # Transform
             newvtx=[]
             for (x,y,z, nx,ny,nz, tu,tv) in vtx:
-                (x,y,z)=matrix.transform(x,y,z)
+                if self.matrix[-1]:
+                    (x,y,z)=self.matrix[-1].transform(x,y,z)
                 newvtx.append((x*self.scale,y*self.scale,z*self.scale, nx,ny,nz, tu,tv))
             vtx=newvtx
 
@@ -2031,7 +2035,10 @@ class ProcScen:
             return False	# Eh?
         else:
             # Altitude test
-            (x,y,z)=matrix.transform(*vtx[0][:3])
+            if self.matrix[-1]:
+                (x,y,z)=self.matrix[-1].transform(*vtx[0][:3])
+            else:
+                (x,y,z)=vtx[0][:3]
             yval=y*self.scale
             if self.altmsl or yval+self.alt>groundfudge:
                 if self.debug: self.debug.write("Above ground %s\n" % (yval+self.alt))
@@ -2040,7 +2047,8 @@ class ProcScen:
             # Transform
             newvtx=[]
             for (x,y,z, nx,ny,nz, tu,tv) in vtx:
-                (x,y,z)=matrix.transform(x,y,z)
+                if self.matrix[-1]:
+                    (x,y,z)=self.matrix[-1].transform(x,y,z)
                 newvtx.append((x*self.scale,y*self.scale,z*self.scale, nx,ny,nz, tu,tv))
             vtx=newvtx
 
@@ -2968,6 +2976,15 @@ def findtex(name, thistexdir, addtexdir, dropmissing=False):
             for i in f:
                 if i.lower()==s+ext or (crappy83 and i.lower()[:-4].startswith(s) and i.lower()[-4:]==ext):
                     return join(texdir, i)
+
+        # Look for textures that differ only in accents - eg PRAM2005
+        if not crappy83:
+            sa=asciify(s).lower()
+            for ext in [e, '.dds', '.bmp', '.r8']:
+                for i in f:
+                    if asciify(i).lower()==sa+ext:
+                        return join(texdir, i)
+    
     # Not found
     if dropmissing:
         return None
