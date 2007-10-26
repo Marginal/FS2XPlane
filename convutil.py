@@ -231,9 +231,7 @@ class Matrix:
 
     def heading(self):
         # Derive heading from matrix, assuming no pitch or bank
-        #if self.m[1][1]!=1:
-        #    raise ValueError
-        h=round(self.m[0][0], 3)	# arbitrary - handle rounding errors
+        h=round(self.m[0][0]/self.m[1][1], 3)	# arbitrary - handle rounding errors
         try:
             if self.m[2][0]>=0:
                 return degrees(acos(h))
@@ -241,6 +239,10 @@ class Matrix:
                 return 360-degrees(acos(h))
         except:	# wtf?
             return 0
+
+    def scale(self):
+        # Assumes no pitch or bank
+        return self.m[1][1]
 
     def offset(self, x, y, z):
         n=Matrix(self.m)
@@ -563,7 +565,7 @@ def maketexs(fstex, fslit, output):
     if fstex or fslit:
         if not fstex: fstex='Resources/transparent.png'
         (tex,ext)=splitext(basename(fstex))
-        if not ext.lower() in ['.bmp', '.png']:
+        if not ext.lower() in ['.dds', '.bmp', '.png']:
             tex+=ext	# For *.xAF etc
         # Spaces not allowed in textures. Avoid Mac/PC interop problems
         tex=asciify(tex).replace(' ','_')+'.png'
@@ -692,7 +694,7 @@ def helper(*cmds):
     err+=e.read()
     o.close()
     e.close()
-    if __debug__: print err
+    #if __debug__: print err
     err=err.strip().split('\n')
     if len(err)>1 and err[-1].startswith('('):
         err=err[-2].strip()	# DSF errors appear on penultimate line
