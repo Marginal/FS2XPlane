@@ -883,7 +883,7 @@ def taxilayout(allnodes, alllinks, surfaceheading, output, aptdat=None, ident="u
         else:
             output.misc.append((120, n.loc, out))
 
-        if False:	# XXX debug
+        if False:	# debug
             stuff[0].text=stuff[0].text[:31]+'B'+stuff[0].text[32:]
             stuff[-1].text=stuff[-1].text[:31]+'L'+stuff[-1].text[32:]
             if aptdat:
@@ -942,7 +942,7 @@ def taxilayout(allnodes, alllinks, surfaceheading, output, aptdat=None, ident="u
                 else:
                     output.misc.append((120, n.loc, out))
 
-                if False:	# XXX debug
+                if False:	# debug
                     if aptdat:
                         aptdat.extend(stuff)
                     else:

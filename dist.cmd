@@ -18,14 +18,14 @@ if exist dist rd /s /q dist >nul:  2>&1
 REM del /s /q *.bak >nul: 2>&1
 del /s /q *.pyc >nul: 2>&1
 
-@set PY=fs2xp.py FS2XPlane.py convbgl.py convmain.py convobjs.py convtaxi.py convutil.py convxml.py MessageBox.py version.py
+@set PY=fs2xp.py FS2XPlane.py convbgl.py convmain.py convmdl.py convobjs.py convtaxi.py convutil.py convxml.py MessageBox.py version.py
 @set DATA=FS2XPlane.html bglxml.copying.txt
 @set RSRC=Resources/*.bgl Resources/*.obj Resources/*.png "Resources/library objects.txt"
 
-@REM source
+:source
 REM zip -r FS2XPlane_%VER%_src.zip dist.cmd %PY% %DATA% %RSRC% linux MacOS win32 |findstr -vc:"adding:"
 
-@REM linux
+:linux
 REM tar -zcf FS2XPlane_%VER%_linux.tar.gz %PY% %DATA% %RSRC% linux win32/bglunzip.exe win32/DSFTool.exe
 set RPMRT=%TMP%\fs2xplane\root
 mkdir "%RPM%\BUILD"
@@ -70,7 +70,7 @@ chown -R root:root "%RPMRT%"
 dpkg-deb -b /tmp/fs2xplane/root .
 chown -R %USERNAME% "%RPMRT%"
 
-@REM mac
+:mac
 mkdir FS2XPlane.app\Contents\MacOS
 xcopy /q /e MacOS FS2XPlane.app\Contents\MacOS\ |findstr -v "file(s) copied"
 for /r FS2XPlane.app %%I in (CVS) do rd /s /q "%%I" >nul: 2>&1
@@ -88,7 +88,7 @@ move FS2XPlane.app\Contents\MacOS\FS2XPlane.icns FS2XPlane.app\Contents\Resource
 move /y FS2XPlane.app\Contents\MacOS\*.png FS2XPlane.app\Contents\Resources\ |findstr -vc:".png"
 zip -r FS2XPlane_%VER%_mac.zip FS2XPlane.app |findstr -vc:"adding:"
 
-@REM win32
+:win32
 "C:\Program Files\Python24\python.exe" -OO win32\setup.py -q py2exe
 REM @set cwd="%CD%"
 REM cd dist

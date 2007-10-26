@@ -19,6 +19,10 @@ REM set SOURCE="C:\Program Files\Microsoft Games\Flight Simulator 9\Scenery"
 REM set TARGET="%XP%\Misc"
 REM set LB=-x
 
+REM set SOURCE="C:\Program Files\Microsoft Games\Microsoft Flight Simulator X SDK\SDK\Environment Kit\Modeling SDK\3DSM7\samples\OilRig"
+REM set TARGET="%XP%\OilRig"
+REM set LB=-x
+
 REM set SOURCE="%FS9%\Sheffield City Airport EGSY - def"
 REM set TARGET="%XP%\EGSY"
 
@@ -46,6 +50,14 @@ REM set TARGET="%XP%\EDDN"
 
 REM set SOURCE="%FS9%\DS_EDDL_v1"
 REM set TARGET="%XP%\EDDL"
+
+REM set SOURCE="%FS9%\Mega EDDF"
+REM set TARGET="%XP%\EDDF"
+REM set LB=
+
+set SOURCE="%FS9%\EDDV"
+set TARGET="%XP%\EDDV"
+set LB=
 
 REM set SOURCE="%FS9%\EFHK"
 REM set TARGET="%XP%\EFHK"
@@ -172,14 +184,17 @@ REM set TARGET="%XP%\KORD"
 REM set SOURCE="%FS9%\..\FsFrance\RealCDG"
 REM set TARGET="%XP%\LFPG"
 
-set SOURCE="%FS9%\LFRK2005"
-set TARGET="%XP%\LFRK"
+REM set SOURCE="%FS9%\LFRK2005"
+REM set TARGET="%XP%\LFRK"
 
 REM set SOURCE="%FS9%\Essa_2k2"
 REM set TARGET="%XP%\ESSA"
 
 REM set SOURCE="%FS9%\UK2000 scenery\UK2000 Glasgow xtreme"
 REM set TARGET="%XP%\EGPF"
+
+REM set SOURCE="%FSX%\EGBJ"
+REM set TARGET="%XP%\EGBJ"
 
 REM set SOURCE="%FS9%\..\uk2000 scenery\UK2000 Part 2"
 REM set TARGET="%XP%\UK2000pt2"
@@ -196,8 +211,8 @@ REM set TARGET="%XP%\Mumbai"
 REM set SOURCE="%FS9%\Ascension"
 REM set TARGET="%XP%\Ascension"
 
-REM set SOURCE="%FS9%\coffs"
-REM set TARGET="%XP%\YSCH Coffs Harbour"
+REM set SOURCE="%FSX%\Coffs Harbour V3"
+REM set TARGET="%XP%\YSCH"
 
 REM set SOURCE="%FS9%\cagliari_2004_FS9"
 REM set TARGET="%XP%\LIEE"
@@ -223,6 +238,22 @@ REM set TARGET="%XP%\LIRF"
 
 REM set SOURCE="%FS9%\..\cloud9\PISA"
 REM set TARGET="%XP%\LIRP"
+REM set LB=
+
+REM set SOURCE="%FS9%\..\cloud9\LOSANGELES"
+REM set TARGET="%XP%\KLAX-cloud9"
+REM set LB=
+
+REM set SOURCE="%FS9%\..\cloud9\AMSTERDAM"
+REM set TARGET="%XP%\EHAM-cloud9"
+REM set LB=
+
+REM set SOURCE="%FSX%\..\cloud9\Orlando"
+REM set TARGET="%XP%\Orlando-cloud9"
+REM set LB=
+
+REM set SOURCE="%FSX%\..\cloud9\Xcity-ROME"
+REM set TARGET="%XP%\Rome-cloud9"
 REM set LB=
 
 REM set SOURCE="%FS9%\NorAP2004_2"
@@ -257,6 +288,12 @@ REM set TARGET="%XP%\LAX"
 
 REM set SOURCE="%FS9%\Miami"
 REM set TARGET="%XP%\Miami"
+
+REM set SOURCE="%FS9%\Juneau"
+REM set TARGET="%XP%\PAJN"
+
+REM set SOURCE="%FS9%\PRAM 2005\PRAM VFR"
+REM set TARGET="%XP%\PRAM"
 
 REM set SOURCE="%FS9%\EYPA2007"
 REM set TARGET="%XP%\Palanga"
@@ -320,7 +357,7 @@ if exist %TARGET% (
 echo on
 cls
 fs2xp.py -d %LB% %SN% %SOURCE% %TARGET%
-@for %%I in (%TARGET%) do @if exist "%%~fI\Earth nav data\apt.dat" postproc.py "%%~fI\Earth nav data\apt.dat"
+@REM for %%I in (%TARGET%) do @if exist "%%~fI\Earth nav data\apt.dat" postproc.py "%%~fI\Earth nav data\apt.dat"
 @goto end
 
 :bad

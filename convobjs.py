@@ -306,7 +306,7 @@ def makestock(output, uid, name):
                         int(tokens[7]), int(tokens[8]), int(tokens[9]),
                         int(tokens[10])])
     obj.close()
-    return Object(objname, "(c) Jonathan Harris 2007. http://creativecommons.org/licenses/by-sa/2.5/",
+    return Object(objname, "(c) Jonathan Harris 2007. http://creativecommons.org/licenses/by-nc-sa/3.0/",
                   tex, None, None, [], [], [], [], vt, idx,
                   [([(1,1,1),(0,0,0),(0,0,0),0.5], 0, len(idx), False)], 0)
 

@@ -38,15 +38,18 @@ section below before using this application.</p>
 <p> The following scenery features are converted:</p>
 <ul>
   <li>FS2004 and FSX style runways and taxiways.</li>
-  <li>Procedural scenery.</li>
+  <li>FS2004 photoscenery (but not FSX photoscenery).</li>
+  <li>Procedural scenery (<i>eg</i> buildings).</li>
   <li>Exclusion of default/generic objects.</li>
 </ul>
 <p>See the <a href="#limitations">limitations</a>
 section for details of features that are not converted.</p>
 <p>This application works best with scenery packages that have been
 specifically designed for FS2004 or FSX - <i>ie</i> containing airports
-authored in AFCAD2 and objects authored in
-Gmax<small><sup>&reg;</sup></small> or 3ds Max<small><sup>&reg;</sup></small>.
+authored in AFCAD2, 
+<a target="_blank" href="http://www.airportdesigneditor.co.uk/">ADE</a>
+or similar and objects authored in Gmax<small><sup>&reg;</sup></small>,
+3ds&nbsp;Max<small><sup>&reg;</sup></small> or similar.
 The application also works with FS2002 and older scenery packages that
 contain old-style BGL procedural scenery, but produces poorer and less
 efficient X-Plane scenery <small>(this is mostly due to the fact that older
@@ -64,11 +67,12 @@ then you should install X11 from the your Mac OS
 <a target="_blank" href="http://docs.info.apple.com/article.html?artnum=301229">DVD</a> or
 <a target="_blank" href="http://docs.info.apple.com/article.html?artnum=25735">CD 3</a>,
 and also 
-<a target="_blank" href="http://downloads.sourceforge.net/darwine/Darwine-x86-0.9.12.dmg">download</a> Darwine (x86) -
+<a target="_blank" href="http://downloads.sourceforge.net/darwine/Darwine-x86-0.9.12.dmg">download Darwine (x86)</a> -
 drag the folder <code>Darwine</code> to your Applications folder to install it.
 This will allow you to run MSFS scenery package installer programs
 and will also in some cases allow FS2XPlane to produce more complete
-X-Plane scenery.</dd>
+X-Plane scenery.<br>
+Restart FS2XPlane after installing Darwine or CrossOver.</dd>
   <dt>&nbsp;</dt>
   <dt><b>Linux</b></dt>
   <dd>Requires "Wine". Wine is shipped with most distros, or you can
@@ -85,18 +89,16 @@ a binary (or just stick with the command-line program).</dd>
   <dt><b>Windows</b></dt>
   <dd>If you don't have FS2004 or FSX installed then FS2XPlane creates a
 fake FS2004 installation
-in<code> Program&nbsp;Files\Microsoft&nbsp;Games\Flight&nbsp;Simulator&nbsp;9 </code>and
-sets up the subfolders and registry entries that some MSFS scenery package
-installer programs require.</dd>
+in<code> Program&nbsp;Files\Microsoft&nbsp;Games\Flight&nbsp;Simulator&nbsp;9</code>, a fake FSX installation
+in<code> Program&nbsp;Files\Microsoft&nbsp;Games\Microsoft&nbsp;Flight&nbsp;Simulator&nbsp;X</code>, and sets up the subfolders and registry entries that
+some MSFS scenery package installer programs require.</dd>
   <dt>&nbsp;</dt>
   <dt><b>Mac OS</b> and <b>Linux</b></dt>
-  <dd>FS2XPlane creates a fake FS2004 installation in the folder
-<code>FS2004</code> inside of your home folder, and sets up the folders and
+  <dd>FS2XPlane creates a combined fake FS2004 & FSX installation in the folder
+<code>FS2004</code> inside of your home folder, and sets up the subfolders and
 Wine registry entries that some MSFS scenery package installer programs
-require.<br>
-(If you want to move or rename the <code>FS2004</code> folder then you must
-update the UNIX symbolic link<code> ~/.wine/dosdevices/c:/Program Files/Microsoft Games/Flight Simulator 9 </code>to point to the new location).</dd>
-</dl>      
+require.</dd>
+</dl>
 
 <h3><a name="usage"></a>Usage</h3>
 <p>FS2XPlane can operate in one of two ways - it can convert a MSFS scenery
@@ -229,7 +231,7 @@ You need not include this file in your scenery package.</td>
     </tr>
     <tr>
       <td style="vertical-align: top; background-color: white;"><code>Earth&nbsp;nav&nbsp;data\fullapt.dat</code></td>
-      <td style="background-color: white;">Alternative version of the above. See <a href="#taxiways">below</a>.</td>
+      <td style="background-color: white;">Alternative version of the above. See <a href="#pavement">below</a>.</td>
     </tr>
     <tr>
       <td style="vertical-align: top; background-color: white;"><code>Earth&nbsp;nav&nbsp;data\nav.dat</code></td>
@@ -279,36 +281,35 @@ converted as static objects.</li>
   <li>Partially transparent colours are converted as fully
 transparent or opaque. (But transparent textures work fine).</li>
   <li>Many MSFS scenery packages supply ground-level textures
-(eg taxiways) as scenery objects on top of flattened terrain.
+(eg aprons and taxiways) as scenery objects on top of flattened terrain.
 This can lead to these textures "floating" above the ground in X-Plane.
-See <a href="#taxiways">below</a> for one method of dealing with this.</li>
+See <a href="#pavement">below</a> for one method of dealing with this.</li>
   <li>"Generic" MSFS buildings are not textured.</li>
 </ul>
 <p>The following MSFS scenery data are discarded:</p>
 <ul>
   <li>FSX photoscenery.</li>
-  <li>Scenery made by FSX MDL design tools.</li>
   <li>Data that X-Plane does not understand, <i>eg</i> airspace boundaries.</li>
   <li>Terrain and landclass data.</li>
   <li>"Hard" surfaces above ground-level.</li>
   <li>Areas that make use of some of the more obscure pre-FS2002 BGL opcodes.</li>
 </ul>
 
-<h3><a name="taxiways">Taxiways</a></h3>
+<h3><a name="pavement">Pavement</a></h3>
 <p>Sometimes the designer of a MSFS scenery package chooses or is forced to
-hide some or all of the taxiways (and associated lights and lines);
-the designer creates "fake" taxiways using scenery objects and polygons
-instead.</p>
-<p>If the designer has hidden any taxiways then these hidden taxiways
+hide some or all of the pavement (aprons and taxiways) and associated lights
+and lines; the designer creates "fake" pavement using scenery objects and
+polygons instead.</p>
+<p>If the designer has hidden any pavement then the hidden pavement
 will not be listed in <code>apt.dat</code>. FS2XPlane creates an
 alternative file called <code>fullapt.dat</code> which contains all of the
-contents of <code>apt.dat</code> plus the hidden taxiways.</p>
-<p>You can see what the hidden taxiway look like by renaming
+contents of <code>apt.dat</code> plus the hidden pavement.</p>
+<p>You can see what the hidden pavement look like by renaming
 <code>fullapt.dat</code> as <code>apt.dat</code> - sometimes they look
-better in X-Plane than the designers' "fake" taxiways. But if you do this
-then you will probably need to edit the converted package to remove the scenery
-objects and polygons that make up the "fake" taxiways, otherwise you will
-see duplicated taxiways, lights and/or lines.</p>
+better in X-Plane than the designers' "fake" pavement. But if you do this
+then you may need to edit the converted package to remove the scenery
+objects and polygons that make up the "fake" pavement, otherwise you may
+see duplicated aprons, taxiways, lights and/or lines.</p>
 
 <h3><a name="license"></a>License and terms</h3>
 <h4>License</h4>
@@ -656,7 +657,7 @@ You may be asked whether to overwrite some files; say yes.</li>
 <table style="width: 100%;" border="0" cellpadding="2">
   <tbody>
     <tr>
-      <td class="banner">Version 2.26 &copy; 2007 <a href="mailto:x-plane@marginal.org.uk">Jonathan Harris</a>
+      <td class="banner">Version 2.27 &copy; 2007 <a href="mailto:x-plane@marginal.org.uk">Jonathan Harris</a>
 <a rel="license" href="http://creativecommons.org/licenses/by-nc-sa/3.0/">
 <img alt="Creative Commons License" style="border: 0px solid ; width: 88px; height: 31px; vertical-align: text-bottom;" src="http://creativecommons.org/images/public/somerights20.png"></a></td>
     </tr>
