@@ -30,6 +30,7 @@
 import os	# for startfile
 from os import chdir, getenv, listdir, mkdir, makedirs
 from os.path import abspath, basename, curdir, dirname, expanduser, exists, isdir, join, normpath, pardir, sep
+import sys	# for path
 from sys import argv, executable, exit, platform, version
 from traceback import print_exc
 
@@ -130,6 +131,7 @@ def log(msg):
 # Set up paths
 newfsroot=None
 if platform=='win32':
+    # XXX make FS9 and FSX folders
     from sys import getwindowsversion
     sysdesc+="System:\tWindows %s.%s %s\n\n" % (getwindowsversion()[0], getwindowsversion()[1], getwindowsversion()[4])
     from _winreg import OpenKey, CreateKey, QueryValueEx, SetValueEx, HKEY_LOCAL_MACHINE, HKEY_CURRENT_USER, REG_SZ, REG_EXPAND_SZ
@@ -138,59 +140,30 @@ if platform=='win32':
     elif isdir(join(getenv("USERPROFILE", ""), "Desktop", "X-Plane", "Custom Scenery")):
         xppath=join(getenv("USERPROFILE", ""), "Desktop", "X-Plane", "Custom Scenery")
 
-    for (ver,value) in [('10.0', 'AppPath'), ('10.0', 'SetupPath'), ('9.0', 'EXE Path')]:
-        for key in [HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE]:
-            try:
-                handle=OpenKey(key, join('SOFTWARE\\Microsoft\\Microsoft Games\\Flight Simulator', ver))
-                (v,t)=QueryValueEx(handle, value)
-                handle.Close()
-                if t==REG_EXPAND_SZ:
-                    dirs=v.rstrip('\0').strip().split('\\')
-                    for i in range(len(dirs)):
-                        if dirs[i][0]==dirs[i][-1]=='%':
-                            dirs[i]=getenv(dirs[i][1:-1],dirs[i])
-                    v='\\'.join(dirs)
-                if t in [REG_SZ,REG_EXPAND_SZ] and isdir(v):
-                    v=join(v.rstrip('\0').strip(), 'Addon Scenery')
-                    dirs=[i for i in listdir(v) if isdir(join(v,i))]
-                    sortfolded(dirs)
-                    if dirs:
-                        fspath=join(v, dirs[0])
-                    else:
-                        fspath=v
-                    lbpath=v	#join(v, 'Scenery')
-                    break
-            except:
-                pass
-        else:
-            continue
-        break
-    else:
-        if getenv("ProgramFiles"):
-            fsroot=join(getenv("ProgramFiles"),"Microsoft Games","Flight Simulator 9")
-            try:
-                handle=CreateKey(HKEY_LOCAL_MACHINE, 'SOFTWARE\\Microsoft\\Microsoft Games\\Flight Simulator\\9.0')
-                SetValueEx(handle, 'EXE Path', 0, REG_SZ, fsroot)
-                handle.Close()
-                handle=CreateKey(HKEY_LOCAL_MACHINE, "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Flight Simulator 9.0")
-                #SetValueEx(handle, 'DisplayName', 0, REG_SZ, 'Fake FS2004')
-                SetValueEx(handle, 'InstallLocation', 0, REG_SZ, fsroot)
-                handle.Close()
-            except:
-                pass
-            v=join(fsroot, "Addon Scenery")
-            if isdir(v):
-                dirs=[i for i in listdir(v) if isdir(join(v,i))]
-                sortfolded(dirs)
-                if dirs:
-                    fspath=join(v, dirs[0])
-                else:
-                    fspath=v
-                lbpath=v
+    fspath=lbpath=join(getenv("ProgramFiles") or "C:\\Program Files","Microsoft Games","Microsoft Flight Simulator X","Addon Scenery")	# fallback
+    try:
+        handle=OpenKey(HKEY_LOCAL_MACHINE, 'SOFTWARE\\Microsoft\\Microsoft Games\\Flight Simulator\\10.0')
+        (v,t)=QueryValueEx(handle, 'SetupPath')
+        handle.Close()
+        if t==REG_EXPAND_SZ:
+            dirs=v.rstrip('\0').strip().split('\\')
+            for i in range(len(dirs)):
+                if dirs[i][0]==dirs[i][-1]=='%':
+                    dirs[i]=getenv(dirs[i][1:-1],dirs[i])
+            v='\\'.join(dirs)
+        if t in [REG_SZ,REG_EXPAND_SZ] and isdir(v):
+            v=join(v.rstrip('\0').strip(), 'Addon Scenery')
+            dirs=[i for i in listdir(v) if isdir(join(v,i))]
+            sortfolded(dirs)
+            if dirs:
+                fspath=join(v, dirs[0])
             else:
-                newfsroot=fsroot
+                fspath=v
+            lbpath=v
+    except:
+        pass
 
-else:
+else:	# Mac & linux
     from os import uname	# not defined in win32 builds
     sysdesc+="System:\t%s %s %s\n" % (uname()[0], uname()[2], uname()[4])
     home=unicodeify(expanduser('~'))	# Unicode so paths listed as unicode
@@ -207,7 +180,6 @@ else:
         else:
             helper(join(curdir,'MacOS','fake2004'))
             sysdesc+="Wine:\t%s\n\n" % helper(join(curdir,'MacOS','winever'))
-        newfsroot=fsroot
     except:
         pass
     v=join(fsroot, "Addon Scenery")
@@ -220,28 +192,28 @@ else:
             fspath=v
         lbpath=v
     else:
+        # Create fake FS2004 installation if no Addon Scenery folder
         newfsroot=fsroot
-
-# Create fake FS2004 installation
-if newfsroot:
-    try:
-        makedirs(newfsroot)
-        v=join(newfsroot,"Addon Scenery")
-        mkdir(v)
-        mkdir(join(v,"scenery"))
-        mkdir(join(v,"texture"))
-        mkdir(join(newfsroot,"Effects"))
-        mkdir(join(newfsroot,"Flights"))
-        mkdir(join(newfsroot,"Scenery"))
-        mkdir(join(newfsroot,"Texture"))
-        open(join(newfsroot,"fs9.exe"), 'ab').close()
-        open(join(newfsroot,"fs2002.exe"), 'ab').close()
-        cfg=open(join(newfsroot,"scenery.cfg"), 'at')
-        cfg.write("[General]\nTitle=FS9 World Scenery\nDescription=FS9 Scenery Data\n\n[Area.001]\nTitle=Addon Scenery\nLocal=Addon Scenery\nRemote=\nActive=TRUE\nRequired=FALSE\nLayer=1\n\n")
-        cfg.close()
-        fspath=lbpath=v
-    except:
-        newfsroot=None
+        lbpath=join(newfsroot,"Addon Scenery")
+        fspath=join(lbpath,"scenery")
+        try:
+            if not isdir(newfsroot): makedirs(newfsroot)
+            mkdir(lbpath)
+            mkdir(fspath)
+            mkdir(join(lbpath,"texture"))
+            mkdir(join(newfsroot,"Effects"))
+            mkdir(join(newfsroot,"Flights"))
+            mkdir(join(newfsroot,"SimObjects"))
+            mkdir(join(newfsroot,"Scenery"))
+            mkdir(join(newfsroot,"Texture"))
+            open(join(newfsroot,"fs2002.exe"), 'ab').close()
+            open(join(newfsroot,"fs9.exe"), 'ab').close()
+            open(join(newfsroot,"fsx.exe"), 'ab').close()
+            cfg=open(join(newfsroot,"scenery.cfg"), 'at')
+            cfg.write("[General]\nTitle=FS9 World Scenery\nDescription=FS9 Scenery Data\n\n[Area.001]\nTitle=Addon Scenery\nLocal=Addon Scenery\nRemote=\nActive=TRUE\nRequired=FALSE\nLayer=1\n\n")
+            cfg.close()
+        except:
+            pass
 
 
 class MainWindow(wx.Frame):
@@ -387,8 +359,7 @@ class MainWindow(wx.Frame):
             except:
                 pass
 
-        if newfsroot:
-            myMessageBox('Install your MSFS sceneries under\n%s' % fspath, 'Created a fake FS2004 installation.', wx.ICON_INFORMATION|wx.OK, None)
+        if newfsroot: myMessageBox('Install MSFS sceneries under: \n%s ' % newfsroot, 'Created a fake MSFS installation.', wx.ICON_INFORMATION|wx.OK, self)
 
 
     def onDump(self, evt):
