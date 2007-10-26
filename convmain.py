@@ -39,6 +39,7 @@ from convutil import asciify, banner, helper, complexities, AptNav, Object, Poly
 from convobjs import makestock, ignorestock
 from convbgl import ProcEx
 import convbgl
+import convmdl
 import convxml
 
 class Output:
@@ -329,7 +330,7 @@ class Output:
                             bgl.seek(pos+20)
 
                     elif c==0x201:
-                        # newstyle
+                        # FS9 or FSX
                         islib=False
                         bgl.seek(4)
                         (sectiontbl,)=unpack('<I',bgl.read(4))
@@ -351,21 +352,43 @@ class Output:
                                 (id,records,recordtbl)=unpack('<IIi',
                                                               bgl.read(12))
                                 #print "%x %d" % (id,records)
-                                bgl.seek(recordtbl)
                                 for record in range(records):
+                                    bgl.seek(recordtbl+record*24)
                                     (a,b,c,d,off,rcsize)=unpack('<IIIIiI',
                                                                 bgl.read(24))
                                     uid = "%08x%08x%08x%08x" % (a,b,c,d)
-                                    if uid in self.stock:
-                                        name=self.stock[uid]
-                                    elif uid in self.friendly:
-                                        name=self.friendly[uid]
-                                    else:
-                                        # No friendly name - use id
-                                        name=uid
+                                    name=None
+
+                                    # Check for FSX friendly name
+                                    bgl.seek(recordtbl+off)
+                                    if bgl.read(4)=='RIFF':
+                                        (mdlsize,)=unpack('<I', bgl.read(4))
+                                        if bgl.read(4)=='MDLX':
+                                            mdlformat=10	# FSX format
+                                            while bgl.tell()<recordtbl+off+mdlsize:
+                                                c=bgl.read(4)
+                                                (size,)=unpack('<I', bgl.read(4))
+                                                if c=='MDLN':
+                                                    name=bgl.read(size).strip('\0').strip()
+                                                    break
+                                                elif c=='MDLD':
+                                                    break	# stop at data
+                                                else:
+                                                    bgl.seek(size,1)
+                                        else:
+                                            mdlformat=9	# FS9 format
+
+                                    if not name:
+                                        if uid in self.stock:
+                                            name=self.stock[uid]
+                                        elif uid in self.friendly:
+                                            name=self.friendly[uid]
+                                        else:
+                                            name=uid
+
                                     if not uid in self.libobj:
                                         if self.debug and toppath==self.fspath: debug.write("%s:\t%s %s\n" % (uid, name, bglname[len(toppath)+1:]))
-                                        self.libobj[uid]=(True,
+                                        self.libobj[uid]=(mdlformat,
                                                           bglname, bglname,
                                                           recordtbl+off,rcsize,
                                                           name, 1.0)
@@ -493,7 +516,7 @@ class Output:
                 i+=1
                 continue	# Missing object error will be reported later
             else:
-                (mdl, bglname, realfile, offset, size, name, libscale)=self.libobj[uid]
+                (mdlformat, bglname, realfile, offset, size, name, libscale)=self.libobj[uid]
                 
             # Replace uid with name
             self.objplc[i]=(loc, heading, complexity, name, scale)
@@ -518,7 +541,7 @@ class Output:
             tran=None
             bgl=file(realfile, 'rb')
             bgl.seek(offset)
-            if mdl:
+            if mdlformat==9:
                 # New-style MDL file
                 data=''
                 bgldata=''
@@ -526,11 +549,11 @@ class Output:
                 try:
                     if bgl.read(4)!='RIFF': raise IOError
                     (mdlsize,)=unpack('<I', bgl.read(4))
-                    if bgl.read(4) not in ['MDL9','MDLX']: raise IOError
+                    if bgl.read(4)!='MDL9': raise IOError
                     while bgl.tell()<offset+mdlsize:
                         c=bgl.read(4)
                         (size,)=unpack('<I', bgl.read(4))
-                        if c in ['EXTE','MDLD']:
+                        if c=='EXTE':
                             end=size+bgl.tell()
                             while bgl.tell()<end:
                                 c=bgl.read(4)
@@ -570,11 +593,15 @@ class Output:
                 offset=0
                 size=len(data)
 
-            if self.debug: debug.write('%s\n' % bglname)
+            if self.debug: debug.write('%s %s\n' % (bglname, name))
             try:
                 # Add library object to self.objdat
-                p=convbgl.ProcScen(bgl, offset+size, libscale, name, bglname,
-                                   self, scen, tran, debug)
+                if mdlformat==10:
+                    p=convmdl.ProcScen(bgl, offset+size, libscale, name,
+                                       bglname, self, scen, tran, debug)
+                else:
+                    p=convbgl.ProcScen(bgl, offset+size, libscale, name,
+                                       bglname, self, scen, tran, debug)
                 if p.anim:
                     self.log("Skipping animation in object %s in file %s" % (
                         name, filename))
