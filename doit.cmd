@@ -292,6 +292,10 @@ REM set TARGET="%XP%\Miami"
 REM set SOURCE="%FS9%\Juneau"
 REM set TARGET="%XP%\PAJN"
 
+set SOURCE="%FS9%\Lebor_OLBA2k2"
+set TARGET="%XP%\OLBA"
+set LB=
+
 REM set SOURCE="%FS9%\PRAM 2005\PRAM VFR"
 REM set TARGET="%XP%\PRAM"
 
@@ -335,9 +339,9 @@ REM set SOURCE="%FS9%\..\Aerosoft\London Heathrow 2008\Scenery"
 REM set TARGET="%XP%\Aerosoft EGLL"
 REM set LB=
 
-set SOURCE="%FS9%\PHX2007_HR_1"
-set TARGET="%XP%\Phoenix"
-set LB=
+REM set SOURCE="%FS9%\PHX2007_HR_1"
+REM set TARGET="%XP%\Phoenix"
+REM set LB=
 
 REM set SOURCE="%FS9%\Test"
 REM set TARGET="%XP%\Test"
