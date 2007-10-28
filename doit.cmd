@@ -55,9 +55,9 @@ REM set SOURCE="%FS9%\Mega EDDF"
 REM set TARGET="%XP%\EDDF"
 REM set LB=
 
-set SOURCE="%FS9%\EDDV"
-set TARGET="%XP%\EDDV"
-set LB=
+REM set SOURCE="%FS9%\EDDV"
+REM set TARGET="%XP%\EDDV"
+REM set LB=
 
 REM set SOURCE="%FS9%\EFHK"
 REM set TARGET="%XP%\EFHK"
@@ -334,6 +334,10 @@ REM set LB=
 REM set SOURCE="%FS9%\..\Aerosoft\London Heathrow 2008\Scenery"
 REM set TARGET="%XP%\Aerosoft EGLL"
 REM set LB=
+
+set SOURCE="%FS9%\PHX2007_HR_1"
+set TARGET="%XP%\Phoenix"
+set LB=
 
 REM set SOURCE="%FS9%\Test"
 REM set TARGET="%XP%\Test"

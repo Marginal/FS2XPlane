@@ -88,6 +88,7 @@ if not isdir(mypath):
     exit(1)
 if basename(mypath)=='MacOS':
     chdir(normpath(join(mypath,pardir)))	# Starts in MacOS folder
+    argv[0]=basename(argv[0])	# wx doesn't like non-ascii chars in argv[0]
 else:
     chdir(mypath)
 
