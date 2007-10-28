@@ -573,7 +573,7 @@ def maketexs(fstex, fslit, output):
 
         if dirname(fstex)=='Resources':
             # texture is supplied with this program (eg FS2X-palette.png)
-            copyfile(fstex, dst)
+            copyfile(join(os.getcwdu(),fstex), dst)
         else:
             if fstex in output.haze: palno=output.haze[fstex]
             maketex(fstex, dst, output, palno)
@@ -617,7 +617,7 @@ def maketex(src, dst, output, palno):
         (s,e)=splitext(basename(src.lower()))
         for f in listdir('Resources'):
             if f.lower().startswith(s) and f.endswith('.png'):
-                copyfile(join('Resources', f), dst)
+                copyfile(join(os.getcwdu(), 'Resources', f), dst)
                 return True
         output.dufftex[src]=True
         output.log("Texture %s not found" % basename(src))
