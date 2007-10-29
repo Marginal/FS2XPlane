@@ -37,7 +37,8 @@ from tempfile import gettempdir
 
 from convutil import asciify, banner, helper, complexities, AptNav, Object, Polygon, Point, FS2XError, sortfolded
 from convobjs import makestock, ignorestock
-from convbgl import ProcEx
+from convbgl import ProcEx, maketexdict
+from convphoto import ProcPhoto
 import convbgl
 import convmdl
 import convxml
@@ -86,7 +87,6 @@ class Output:
         self.friendly={}	# GUID->friendly name map
         self.haze={}	# Textures that have palette-based transparency
         self.dufftex={}	# Textures we couldn't convert (avoid multiple reports)
-        self.photos=[]	# Directories that we've imported photos from
         self.visrunways=False	# Runways on top of scenery - should be per apt
         
         if platform=='win32':
@@ -114,7 +114,7 @@ class Output:
         try:
             for f in listdir(lbpath):
                 if f.lower()=='texture':
-                    self.addtexdir=join(lbpath, f)
+                    self.addtexdir=maketexdict(join(lbpath, f))
                     break
         except:
             self.addtexdir=None
@@ -400,9 +400,26 @@ class Output:
 
 
     # Fill out self.objplc, self.objdat, self.polyplc, self.polydat
+    def procphotos(self):
+        if self.dumplib: return
+        self.status(-1, 'Reading Photoscenery')
+        if self.debug:
+            debug=file(join(self.xppath,'debug.txt'),'at')
+            debug.write('Photoscenery\n')
+        else:
+            debug=None
+        for path, dirs, files in walk(self.fspath):
+            if basename(path).lower()=='texture':
+                try:
+                    ProcPhoto(path, self, debug)	# Only look at BMPs in 'texture' directory
+                except:
+                    self.log("Can't parse this photoscenery")
+        if self.debug: debug.close()
+
+
+    # Fill out self.objplc, self.objdat, self.polyplc, self.polydat
     def process(self):
         if self.dumplib: return
-        
         self.status(-1, 'Reading BGLs')
         xmls=[]
         for path, dirs, files in walk(self.fspath):
@@ -504,6 +521,7 @@ class Output:
 
         if self.objplc:
             self.status(-1, 'Reading library objects')
+        lasttexdir=None
         i=0
         while i<len(self.objplc):
             (loc, heading, complexity, uid, scale)=self.objplc[i]
@@ -596,12 +614,21 @@ class Output:
             if self.debug: debug.write('%s %s\n' % (bglname, name))
             try:
                 # Add library object to self.objdat
+                texdir=normpath(join(dirname(bglname), pardir))
+                # For case-sensitive filesystems
+                for d in listdir(texdir):
+                    if d.lower()=='texture':
+                        if not lasttexdir or lasttexdir[0]!=texdir:
+                            lasttexdir=maketexdict(join(texdir, d))
+                        break
+                else:
+                    lasttexdir=None
                 if mdlformat==10:
                     p=convmdl.ProcScen(bgl, offset+size, libscale, name,
-                                       bglname, self, scen, tran, debug)
+                                       bglname, lasttexdir, self, scen, tran, debug)
                 else:
                     p=convbgl.ProcScen(bgl, offset+size, libscale, name,
-                                       bglname, self, scen, tran, debug)
+                                       bglname, lasttexdir, self, scen, tran, debug)
                 if p.anim:
                     self.log("Skipping animation in object %s in file %s" % (
                         name, filename))

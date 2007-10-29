@@ -18,7 +18,7 @@ if exist dist rd /s /q dist >nul:  2>&1
 REM del /s /q *.bak >nul: 2>&1
 del /s /q *.pyc >nul: 2>&1
 
-@set PY=fs2xp.py FS2XPlane.py convbgl.py convmain.py convmdl.py convobjs.py convtaxi.py convutil.py convxml.py MessageBox.py version.py
+@set PY=fs2xp.py FS2XPlane.py convbgl.py convmain.py convmdl.py convobjs.py convphoto.py convtaxi.py convutil.py convxml.py MessageBox.py version.py
 @set DATA=FS2XPlane.html bglxml.copying.txt
 @set RSRC=Resources/*.bgl Resources/*.obj Resources/*.png "Resources/library objects.txt"
 
