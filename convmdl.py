@@ -29,13 +29,13 @@ from os import listdir
 from os.path import basename, dirname, join, normpath, pardir, splitext
 from struct import unpack
 
-from convbgl import findtex
+from convbgl import findtex, maketexdict
 from convutil import asciify, palettetex, rgb2uv,  Matrix, Object
 
 
 # handle FSX format library MDL file
 class ProcScen:
-    def __init__(self, bgl, enda, scale, libname, srcfile, output,
+    def __init__(self, bgl, enda, scale, libname, srcfile, texdir, output, 
                  scen, tran, debug):
 
         self.old=False	# Old style scenery found and skipped
@@ -46,13 +46,6 @@ class ProcScen:
         assert(scale==1)	# new-style objects are scaled when placed
 
         comment="object %s in file %s" % (libname,asciify(basename(srcfile)))
-
-        texdir=normpath(join(dirname(srcfile), pardir))
-        # For case-sensitive filesystems
-        for d in listdir(texdir):
-            if d.lower()=='texture':
-                texdir=join(texdir, d)
-                break
 
         tex=[]
         mat=[]

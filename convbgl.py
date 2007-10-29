@@ -25,7 +25,6 @@
 #   http://creativecommons.org/licenses/by-sa/2.5/legalcode
 #
 
-from glob import glob
 from math import acos, atan, atan2, cos, fmod, floor, pow, sin, pi, radians, degrees
 from os import listdir
 from os.path import basename, dirname, exists, join, normpath, pardir, splitext
@@ -46,6 +45,8 @@ except NameError:
 from convutil import cirp, m2f, NM2m, complexity, asciify, unicodeify, normalize, rgb2uv, cross, dot, AptNav, Object, Polygon, Point, Matrix, FS2XError, unique, palettetex, groundfudge, planarfudge, effects
 from convobjs import makegenquad, makegenmulti
 from convtaxi import taxilayout, Node, Link
+from convphoto import photore
+
 
 # Subset of XML TaxiwayPoint
 class TaxiwayPoint:
@@ -115,6 +116,7 @@ class Parse:
         output.gencache={}	# cache of generic buildings
         output.anccount=0	# Not used for library objects
         name=basename(srcfile)
+        texdir=None
         for section in [42,54,58,102,114]:
             bgl.seek(section)
             (secbase,)=unpack('<I',bgl.read(4))
@@ -133,6 +135,15 @@ class Parse:
                     old=False
                     rrt=False
                     anim=False
+                    if not texdir:
+                        texdir=normpath(join(dirname(srcfile), pardir))
+                        # For case-sensitive filesystems
+                        for d in listdir(texdir):
+                            if d.lower()=='texture':
+                                texdir=maketexdict(join(texdir, d))
+                                break
+                        else:
+                            texdir=None
                     while True:
                         # LatBand
                         posl=bgl.tell()
@@ -164,7 +175,7 @@ class Parse:
                                 raise struct.error	# wtf?
                             try:
                                 p=ProcScen(bgl, posa+l, 1.0, None, srcfile,
-                                           output, None, None, debug)
+                                           texdir, output, None, None, debug)
                                 if p.old:
                                     old=True
                                     if debug: debug.write("Pre-FS2002\n")
@@ -209,7 +220,7 @@ class Parse:
 
 # handle section 9 area and 10 library. libname!=None if this is a library
 class ProcScen:
-    def __init__(self, bgl, enda, scale, libname, srcfile, output,
+    def __init__(self, bgl, enda, scale, libname, srcfile, texdir, output,
                  scen, tran, debug):
 
         self.old=False	# Old style scenery found and skipped
@@ -221,21 +232,14 @@ class ProcScen:
         self.bgl=bgl
         self.libname=libname
         self.srcfile=basename(srcfile)
+        self.texdir=texdir
         if libname:
             self.comment="object %s in file %s" % (
                 libname,asciify(self.srcfile))
         else:
             self.comment="file %s" % asciify(self.srcfile)	# Used for reporting
         self.output=output
-        self.texdir=normpath(join(dirname(srcfile), pardir))
-        # For case-sensitive filesystems
-        for d in listdir(self.texdir):
-            if d.lower()=='texture':
-                self.texdir=join(self.texdir, d)
-                break
-        #else:
-        # Ignore
-        #    raise FS2XError('"%s" does not exist' %join(self.texdir,'Texture'))
+
         self.start=bgl.tell()
         if tran: self.tran=self.start+tran	# Location of TRAN table
         if scen:
@@ -571,14 +575,14 @@ class ProcScen:
                 lit=self.tex[self.t]
                 # Look for _lm version, eg LIEE cittadella universitaria-dm_liee_44
                 (src,ext)=splitext(basename(lit))
-                litlit=findtex(src+'_lm', dirname(lit), self.output.addtexdir, True)
+                litlit=findtex(src+'_lm', self.texdir, self.output.addtexdir, True)
                 if litlit: lit=litlit
                 if self.haze: self.output.haze[lit]=self.haze
             else:
                 tex=self.tex[self.t]
                 if self.haze: self.output.haze[tex]=self.haze
                 (src,ext)=splitext(basename(tex))
-                lit=findtex(src+'_lm', dirname(tex), self.output.addtexdir, True)
+                lit=findtex(src+'_lm', self.texdir, self.output.addtexdir, True)
                 if lit and self.haze: self.output.haze[lit]=self.haze
         layer=self.layer
         if layer>=40:	# ground element
@@ -756,6 +760,9 @@ class ProcScen:
             (idx,tu,tv)=unpack('<H2h', self.bgl.read(6))
             (x,y,z,c,c,c,c,c)=self.vtx[idx]
             vtx.append((x,y,z, nx,ny,nz, tu/255.0,tv/255.0))
+        if not self.objdat and photore.match(basename(self.tex[self.t])):
+            if self.debug: self.debug.write("Photoscenery\n")
+            return	# handled in ProcPhoto
         if self.makepoly(True, vtx):
             return
         if self.concave:
@@ -2033,7 +2040,7 @@ class ProcScen:
         elif not vtx:
             if self.debug: self.debug.write("No vertices!\n")
             return False	# Eh?
-        else:
+        else:            
             # Altitude test
             if self.matrix[-1]:
                 (x,y,z)=self.matrix[-1].transform(*vtx[0][:3])
@@ -2209,14 +2216,14 @@ class ProcScen:
             lit=self.tex[self.t]
             # Look for _lm version, eg LIEE cittadella universitaria-dm_liee_44
             (src,ext)=splitext(basename(lit))
-            litlit=findtex(src+'_lm', dirname(lit), self.output.addtexdir, True)
+            litlit=findtex(src+'_lm', self.texdir, self.output.addtexdir, True)
             if litlit: lit=litlit
             if self.haze: self.output.haze[lit]=self.haze
         else:
             tex=self.tex[self.t]
             if self.haze: self.output.haze[tex]=self.haze
             (src,ext)=splitext(basename(tex))
-            lit=findtex(src+'_lm', dirname(tex), self.output.addtexdir, True)
+            lit=findtex(src+'_lm', self.texdir, self.output.addtexdir, True)
             if lit and self.haze: self.output.haze[lit]=self.haze
         layer=self.layer
         if layer>=40:	# ground element
@@ -2846,78 +2853,12 @@ def ProcEx(bgl, output, debug):
 
 # Handle terrain section 8
 def ProcTerrain(bgl, srcfile, output, debug):
-    LATRES=360.0/32768
-    LONRES=480.0/32768
-    
     (size,ver)=unpack('<2I', bgl.read(8))
     if size!=0x64: raise struct.error
     (reserved1,)=unpack('<I', bgl.read(4))	# No idea how to decode this
     bgl.seek(11*4,1)
     (lwm,vtp)=unpack('<2I', bgl.read(8))
     if lwm or vtp: output.log('Skipping terrain data in file %s' % asciify(basename(srcfile)))
-    if not reserved1: return
-
-    texdir=normpath(join(dirname(srcfile), pardir))
-    # For case-sensitive filesystems
-    for d in listdir(texdir):
-        if d.lower()=='texture':
-            texdir=join(texdir, d)
-            if texdir in output.photos: return
-            break
-    else:
-        return
-    output.photos.append(texdir)
-
-    for tex in glob(join(texdir, '[0123][0123][0123][0123][0123][0123][0123][0123][0123][0123][0123][0123][0123][0123][0123][sS][uU].[bBdD][mMdD][pPsS]')):
-        seasonal=glob(tex[:-6]+["[sS][pP]","[sS][uU]","[fF][aA]","[wW][iI]"][output.season]+".[bBdD][mMdD][pPsS]")
-        if seasonal: tex=seasonal[0]
-        # find NW point
-        lat=lon=0
-        for i in tex[-21:-6]:
-            lat=lat+lat
-            lon=lon+lon
-            if i=='1': lon=lon+1
-            elif i=='2': lat=lat+1
-            elif i=='3':
-                lat=lat+1
-                lon=lon+1
-        lat=90-lat*LATRES
-        lon=lon*LONRES-180
-        if debug: debug.write("%s: %s,%s " % (basename(tex), lat, lon))
-        if lon+LONRES>floor(lon)+1:
-            # Split EW
-            if debug: debug.write("EW ")
-            points=[[(Point(lat-LATRES,lon),0,0),
-                     (Point(lat-LATRES,floor(lon)+1),(floor(lon)+1-lon)/LONRES,0),
-                     (Point(lat,floor(lon)+1),(floor(lon)+1-lon)/LONRES,1),
-                     (Point(lat,lon),0,1)],
-                    [(Point(lat-LATRES,floor(lon)+1),(floor(lon)+1-lon)/LONRES,0),
-                     (Point(lat-LATRES,lon+LONRES),1,0),
-                     (Point(lat,lon+LONRES),1,1),
-                     (Point(lat,floor(lon)+1),(floor(lon)+1-lon)/LONRES,1)]]
-        else:
-            if debug: debug.write("OK ")
-            points=[[(Point(lat-LATRES,lon),0,0),	# SW
-                     (Point(lat-LATRES,lon+LONRES),1,0),
-                     (Point(lat,lon+LONRES),1,1),	# NE
-                     (Point(lat,lon),0,1)]]
-        if lat>floor(lat-LATRES)+1:
-            if debug: debug.write("NS\n")
-            # Split NS
-            for i in range(len(points)):
-                points.append([(Point(floor(lat-LATRES)+1,points[i][3][0].lon),points[i][3][1],(floor(lat-LATRES)+1-lat+LATRES)/LATRES),
-                               (Point(floor(lat-LATRES)+1,points[i][2][0].lon),points[i][2][1],(floor(lat-LATRES)+1-lat+LATRES)/LATRES),
-                               points[i][2], points[i][3]])
-                points[i][2]=points[-1][1]
-                points[i][3]=points[-1][0]
-        elif debug: debug.write("OK\n")
-
-        name=basename(tex)[:-6]
-        lit=findtex(basename(tex)[:-6]+'lm', texdir, output.addtexdir, True)
-        poly=Polygon(name+'.pol', tex, lit, True, 1216, 0)
-        output.polydat[name]=poly
-        for p in points:
-            output.polyplc.append((name, 65535, p))
 
 
 def subdivide(vtx):
@@ -2953,40 +2894,52 @@ def tessvertex(vertex, (points, idx)):
         points.append(vertex)
 
 
+# Helper makes dict of form lowercasename: realname
+def maketexdict(texdir):
+    if not texdir: return None
+    f=listdir(texdir)
+    d={}
+    # Handle unicode
+    if type(texdir)==types.UnicodeType:
+        for name in f:
+            name=normalize(name)
+            d[name.lower()]=name
+    else:
+        for name in f:
+            d[name.lower()]=name
+    return (texdir, d)
+    
 # Helper to return fully-qualified case-sensitive texture filename
 def findtex(name, thistexdir, addtexdir, dropmissing=False):
-    for texdir in [thistexdir, addtexdir]:
-        if not texdir: continue
-        f=listdir(texdir)
-        # Handle unicode
-        if type(texdir)==types.UnicodeType:
-            name=unicodeify(name)
-            for i in range(len(f)):
-                f[i]=normalize(f[i])
+    for texdict in [thistexdir, addtexdir]:
+        if not texdict: continue
+        (texdir, d)=texdict
         # Extension is ignored by MSFS?
         (s,e)=splitext(name.lower())
+        for ext in [e, '.dds', '.bmp', '.r8']:
+            if s+ext in d:
+                return join(texdir, d[s+ext])
+            
         if len(s)==8 and s[-2]=='~' and s[-1].isdigit():
             # Crappy 8.3 name - pick first match
             s=s[:-2]
-            crappy83=True
-        else:
-            crappy83=False
-        for ext in [e, '.dds', '.bmp', '.r8']:
-            # Fix case for case sensitive filesystems
-            for i in f:
-                if i.lower()==s+ext or (crappy83 and i.lower()[:-4].startswith(s) and i.lower()[-4:]==ext):
-                    return join(texdir, i)
-
-        # Look for textures that differ only in accents - eg PRAM2005
-        if not crappy83:
-            sa=asciify(s).lower()
             for ext in [e, '.dds', '.bmp', '.r8']:
-                for i in f:
-                    if asciify(i).lower()==sa+ext:
-                        return join(texdir, i)
+                for i in d.keys():
+                    if i.startswith(s) and i[-4:]==ext:
+                        return join(texdir, d[i])
+
+    if not thistexdir: return None
+    (texdir, d)=thistexdir
+
+    # Look for textures that differ only in accents - eg PRAM2005
+    sa=asciify(s).lower()
+    for ext in [e, '.dds', '.bmp', '.r8']:
+        for i in d.keys():
+            if asciify(i).lower()==sa+ext:
+                return join(texdir, d[i])
     
     # Not found
     if dropmissing:
         return None
     else:
-        return join(thistexdir, s+e)	# make lower-case to prevent dupes
+        return join(texdir, s+e)	# make lower-case to prevent dupes
