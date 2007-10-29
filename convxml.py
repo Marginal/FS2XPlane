@@ -655,9 +655,9 @@ class Airport:
                         float(dme.lat), float(dme.lon), m2f*float(dme.alt), float(ils.frequency)*100, rng,
                         0, ils.ident, name)))
 
-            #if length<=1 or width<=1:
-            #    continue	# X-Plane considers size<1m to be an error.
-            #        
+            if length<=1 or width<=1:
+                continue	# X-Plane considers size<1m to be an error.
+                    
             #if len(number)<3: number+='x'
             # XXX
             #for a in aptdat:
@@ -776,31 +776,6 @@ class Airport:
         else:
             surfaceheading=0
         
-        # Old taxiways
-        if False:
-            for t in self.taxiwaypath:
-                if T(t, 'drawSurface') and t.type not in ["PARKING","RUNWAY","PATH"]:
-                    snode=self.taxiwaypoint[int(t.start)]
-                    enode=self.taxiwaypoint[int(t.end)]
-                    start=Point(float(snode.lat),
-                                float(snode.lon))
-                    end=Point(float(enode.lat),
-                              float(enode.lon))
-                    if output.excluded(start) or output.excluded(end): continue
-                    loc=Point((start.lat+end.lat)/2, (start.lon+end.lon)/2)
-                    heading=start.headingto(end)
-                    width=round(m2f*float(t.width),0)
-                    length=0.5*width + m2f*start.distanceto(end)
-                    surface=surfaces[t.surface]
-                    surface=3	# grass
-                    
-                    if length<=1 or width<=1:
-                        continue	# X-Plane considers size<1m to be an error.
-                    lights=1
-                    aptdat.append(AptNav(10, "%10.6f %11.6f %s %6.2f %6d %04d.%04d %04d.%04d %4d 1%d11%d1 %02d %d %d %4.2f %d %04d.%04d" % (
-                        loc.lat, loc.lon, 'xxx', heading, length, 0, 0, 0, 0,width,
-                        lights, lights, surface, 0, 0, 0.25, 0, 0, 0)))
-
         # Taxiways - build arrays for easier access
         allnodes = [Node(t) for t in self.taxiwaypoint]
         parkingoffset=len(allnodes)
