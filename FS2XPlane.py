@@ -444,6 +444,7 @@ class MainWindow(wx.Frame):
         try:
             output=Output(fspath,lbpath,xppath,season,status,log,dumplib,False)
             output.scanlibs()
+            output.procphotos()
             output.process()
             output.proclibs()
             output.export()

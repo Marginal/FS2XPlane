@@ -1,5 +1,3 @@
-rebuild bmp2png on Mac
-
 FSX new custom terrain textures
 safedock (LIMC, LIRF?)
 Real, not overlay orthophotos

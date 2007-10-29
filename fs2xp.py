@@ -109,6 +109,7 @@ logname=abspath(join(xppath, 'summary.txt'))
 try:
     output=Output(fspath,lbpath,xppath,season,status,log,dumplib,debug)
     output.scanlibs()
+    output.procphotos()
     if prof:
         run('output.process()', join(xppath,'profile.txt'))
     else:
