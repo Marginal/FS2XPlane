@@ -336,7 +336,7 @@ class Object:
         self.lit=lit
         if poly:
             self.layer=layer
-            self.surface=(layer!=None and layer>=8)
+            self.surface=(layer!=None and layer>4)
         else:
             self.layer=None
             self.surface=False
@@ -508,7 +508,7 @@ class Polygon:
         self.nowrap=nowrap
         self.scale=scale
         self.layer=layer
-        self.surface=(layer!=None and layer>=8)
+        self.surface=(layer!=None and layer>4)
 
     def __eq__(self, o):
         return (self.filename==o.filename and

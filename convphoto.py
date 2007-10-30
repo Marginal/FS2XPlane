@@ -69,8 +69,8 @@ def ProcPhoto(texdir, output, debug):
 
         lat=(lat-int(match[4])*res)*LATRES
         lon=(lon+int(match[5])*res)*LONRES
-        layer=8-layer
-        if layer<5: layer=5
+        layer=4-layer
+        if layer<1: layer=1
         makephoto(name, join(texdir,tex), lit, lat, lon, res, layer, output, debug)
 
     # FS2004 style
