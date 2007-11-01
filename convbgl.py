@@ -145,8 +145,7 @@ class Parse:
                         posl=bgl.tell()
                         (c,)=unpack('<B', bgl.read(1))
                         if not c in [0, 21]:
-                            if __debug__:
-                                if output.debug: output.debug.write("!Bogus LatBand %2x\n" % c)
+                            if output.debug: output.debug.write("!Bogus LatBand %2x\n" % c)
                             raise struct.error	# wtf?
                         if c==0:
                             break
@@ -169,8 +168,7 @@ class Parse:
                             elif c in [4,7,10]:
                                 (l,)=unpack('<B',bgl.read(1))
                             else:
-                                if __debug__:
-                                    if output.debug: output.debug.write("!Bogus area type %x\n"%c)
+                                if output.debug: output.debug.write("!Bogus area type %x\n"%c)
                                 raise struct.error	# wtf?
                             try:
                                 p=ProcScen(bgl, posa+l, 1.0, None, srcfile,
@@ -190,8 +188,7 @@ class Parse:
                             except:
                                 output.log("Can't parse area #%d in %s" % (
                                     areano, name))
-                                if __debug__:
-                                    if output.debug: output.debug.write("!Can't parse area %x\n" % posa)
+                                if output.debug: output.debug.write("!Can't parse area %x\n" % posa)
                             bgl.seek(posa+l)
                         bgl.seek(posl+9)
                     if anim:
@@ -207,8 +204,7 @@ class Parse:
                         posl=bgl.tell()
                         (c,)=unpack('<B', bgl.read(1))
                         if not c in [0, 21]:
-                            if __debug__:
-                                if output.debug: output.debug.write("!Bogus LatBand %2x\n" % c)
+                            if output.debug: output.debug.write("!Bogus LatBand %2x\n" % c)
                             raise struct.error	# wtf?
                         if c==0:
                             break
@@ -482,13 +478,11 @@ class ProcScen:
             pos=bgl.tell()
             if pos>=enda:
                 self.cmd=0
-                if __debug__:
-                    if pos>enda and self.debug: self.debug.write("!Overrun at %x enda=%x\n" % (pos, enda))
+                if pos>enda and self.debug: self.debug.write("!Overrun at %x enda=%x\n" % (pos, enda))
             elif pos<self.start:
                 # Underrun - just return if in a call eg ESGJ2K2
                 self.cmd=0x22
-                if __debug__:
-                    if self.debug: self.debug.write("!Underrun at %x start=%x\n" % (pos, self.start))
+                if self.debug: self.debug.write("!Underrun at %x start=%x\n" % (pos, self.start))
             else:
                 (self.cmd,)=unpack('<H',bgl.read(2))
             if self.cmd==0 or (self.cmd==0x22 and not self.stack):
@@ -496,12 +490,12 @@ class ProcScen:
                     bgl.seek(self.start)
                     continue
                 self.makeobjs()
-                if __debug__:
-                    if self.debug:
+                if self.debug:
+                    if __debug__:
                         self.debug.write("%x: cmd %02x\n" % (pos, self.cmd))
-                        for i in range(1, len(self.matrix)):
-                            self.debug.write("!Unbalanced matrix:\n%s\n" % (
-                                self.matrix[i]))
+                    for i in range(1, len(self.matrix)):
+                        self.debug.write("!Unbalanced matrix:\n%s\n" % (
+                            self.matrix[i]))
                 return
             elif self.cmd in cmds:
                 if __debug__:
@@ -513,8 +507,7 @@ class ProcScen:
                 continue
             else:
                 self.makeobjs()	# Try to go with what we've got so far
-                if __debug__:
-                    if self.debug: self.debug.write("!Unknown cmd %x at %x\n" % (self.cmd, pos))
+                if self.debug: self.debug.write("!Unknown cmd %x at %x\n" % (self.cmd, pos))
                 raise struct.error
 
 
@@ -2410,8 +2403,7 @@ class ProcScen:
         elif self.libname:
             bname=self.libname
             if self.loc:
-                if __debug__:
-                    if self.debug: self.debug.write("!Location given for library object\n")
+                if self.debug: self.debug.write("!Location given for library object\n")
                 raise struct.error	# Code assumes no spurious location
         elif self.loc or self.dayloc:
             if not self.loc: self.loc=self.dayloc
@@ -2420,8 +2412,7 @@ class ProcScen:
                 bname=bname[:-4]
         else:
             # Must have a location for placement
-            if __debug__:
-                if self.debug: self.debug.write("!No location\n")
+            if self.debug: self.debug.write("!No location\n")
             raise struct.error
 
         # Do taxiways & roads
