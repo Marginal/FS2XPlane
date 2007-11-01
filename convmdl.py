@@ -36,12 +36,11 @@ from convutil import asciify, palettetex, rgb2uv,  Matrix, Object
 # handle FSX format library MDL file
 class ProcScen:
     def __init__(self, bgl, enda, scale, libname, srcfile, texdir, output, 
-                 scen, tran, debug):
+                 scen, tran):
 
         self.old=False	# Old style scenery found and skipped
         self.rrt=False	# Old style runways/roads found and skipped
         self.anim=False	# Animations found and skipped
-        self.debug=debug
 
         assert(scale==1)	# new-style objects are scaled when placed
 

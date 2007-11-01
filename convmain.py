@@ -48,7 +48,6 @@ class Output:
                  dumplib, debug):
 
         self.dumplib=dumplib
-        self.debug=debug
         self.docomplexity=False
 
         if dumplib:
@@ -156,17 +155,18 @@ class Output:
                 self.stock[guid[:8]+guid[14:18]+guid[9:13]+guid[26:28]+guid[24:26]+guid[21:23]+guid[19:21]+guid[34:36]+guid[32:34]+guid[30:32]+guid[28:30]]=line[:l].strip().lower()
             
         stock.close()
-        if self.debug and not isdir(self.xppath): mkdir(self.xppath)
+        if debug:
+            # note full debugging also requires non-optimised execution
+            if not isdir(self.xppath): mkdir(self.xppath)
+            self.debug=file(join(self.xppath,'debug.txt'),'at')
+        else:
+            self.debug=None
 
 
     # Fill out self.libobj
     def scanlibs(self):
         self.status(-1, 'Scanning libraries')
-        if self.debug:
-            debug=file(join(self.xppath,'debug.txt'),'at')
-            debug.write('Library objects\n')
-        else:
-            debug=None
+        if self.debug: self.debug.write('Library objects\n')
 
         for toppath in [self.fspath, self.lbpath]:	# do local first
             if not toppath:
@@ -286,9 +286,9 @@ class Output:
                         # Exclusions
                         if excbase:
                             bgl.seek(excbase)
-                            if debug: debug.write('%s\n' % filename)
+                            if self.debug: self.debug.write('%s\n' % filename)
                             try:
-                                ProcEx(bgl, self, debug)
+                                ProcEx(bgl, self)
                             except:
                                 self.log("Can't parse Exclusion section in file %s" % filename)
                         if not libbase: continue
@@ -323,8 +323,8 @@ class Output:
                             else:
                                 self.friendly[uid]=name
                             if not uid in self.libobj:	# 1st wins
-                                if self.debug and toppath==self.fspath: debug.write("%s:\t%s\t%s\n" % (uid, name, bglname[len(toppath)+1:]))
-                                self.libobj[uid]=(False, bglname, tmp,
+                                if self.debug and toppath==self.fspath: self.debug.write("%s:\t%s\t%s\tFS8\n" % (uid, name, bglname[len(toppath)+1:]))
+                                self.libobj[uid]=(8, bglname, tmp,
                                                   libbase+off+hdsize, rcsize,
                                                   name, scale)
                             bgl.seek(pos+20)
@@ -387,7 +387,7 @@ class Output:
                                             name=uid
 
                                     if not uid in self.libobj:
-                                        if self.debug and toppath==self.fspath: debug.write("%s:\t%s %s\n" % (uid, name, bglname[len(toppath)+1:]))
+                                        if self.debug and toppath==self.fspath: self.debug.write("%s:\t%s\t%s\tFS%d\n" % (uid, name, bglname[len(toppath)+1:], mdlformat))
                                         self.libobj[uid]=(mdlformat,
                                                           bglname, bglname,
                                                           recordtbl+off,rcsize,
@@ -396,25 +396,19 @@ class Output:
                         self.log("Can't parse file \"%s\". Is this a BGL file?" % filename)
                     bgl.close()
                     if done: self.done[bglname]=True
-        if self.debug: debug.close()
 
 
     # Fill out self.objplc, self.objdat, self.polyplc, self.polydat
     def procphotos(self):
         if self.dumplib: return
         self.status(-1, 'Reading Photoscenery')
-        if self.debug:
-            debug=file(join(self.xppath,'debug.txt'),'at')
-            debug.write('Photoscenery\n')
-        else:
-            debug=None
+        if self.debug: self.debug.write('Photoscenery\n')
         for path, dirs, files in walk(self.fspath):
             if basename(path).lower()=='texture':
                 try:
-                    ProcPhoto(path, self, debug)	# Only look at BMPs in 'texture' directory
+                    ProcPhoto(path, self)	# Only look at BMPs in 'texture' directory
                 except:
                     self.log("Can't parse this photoscenery")
-        if self.debug: debug.close()
 
 
     # Fill out self.objplc, self.objdat, self.polyplc, self.polydat
@@ -511,10 +505,6 @@ class Output:
 
     # Process referenced library into self.objplc and self.objdat
     def proclibs(self):
-        if self.debug:
-            debug=file(join(self.xppath,'debug.txt'),'at')
-        else:
-            debug=None
         if self.dumplib:	# Fake up references
             for uid in self.libobj:
                 self.objplc.append((None, 0, 1, uid, 1))
@@ -611,7 +601,7 @@ class Output:
                 offset=0
                 size=len(data)
 
-            if self.debug: debug.write('%s %s\n' % (bglname, name))
+            if self.debug: self.debug.write('%s %s FS%s\n' % (bglname, name, mdlformat))
             try:
                 # Add library object to self.objdat
                 texdir=normpath(join(dirname(bglname), pardir))
@@ -625,26 +615,25 @@ class Output:
                     lasttexdir=None
                 if mdlformat==10:
                     p=convmdl.ProcScen(bgl, offset+size, libscale, name,
-                                       bglname, lasttexdir, self, scen, tran, debug)
+                                       bglname, lasttexdir, self, scen, tran)
                 else:
                     p=convbgl.ProcScen(bgl, offset+size, libscale, name,
-                                       bglname, lasttexdir, self, scen, tran, debug)
+                                       bglname, lasttexdir, self, scen, tran)
                 if p.anim:
                     self.log("Skipping animation in object %s in file %s" % (
                         name, filename))
-                    if self.debug: debug.write("Animation\n")
+                    if self.debug: self.debug.write("Animation\n")
                 if p.old:
                     self.log("Skipping pre-FS2002 scenery in object %s in file %s" % (name, filename))
 
-                    if self.debug: debug.write("Pre-FS2002\n")
+                    if self.debug: self.debug.write("Pre-FS2002\n")
                 if p.rrt:
                     self.log("Skipping pre-FS2004 runways and/or roads in object %s in file %s" % (name, filename))
-                    if self.debug: debug.write("Old-style rr\n")
+                    if self.debug: self.debug.write("Old-style rr\n")
             except:
                 self.log("Can't parse object %s in file %s" % (name, filename))
-                if self.debug: debug.write("!Parse error\n")
+                if self.debug: self.debug.write("!Parse error\n")
             bgl.close()
-        if self.debug: debug.close()
 
 
     def export(self):
@@ -745,7 +734,7 @@ class Output:
                             if self.aptfull: self.aptfull[airport][1].insert(1,data[0])
                         else:
                             self.log("Can't find an airport for %s at (%10.6f, %11.6f)" % (name, loc.lat, loc.lon))
-                            #if self.debug: self.debug.write('Can\'t place runway %s""\n' % data[0])
+                            if self.debug: self.debug.write('Can\'t place runway "%s"\n' % data[0])
                 elif code==110:
                     # Add taxiways and roads before aprons so overlay them
                     for i in range(len(self.apt[airport][1])):
@@ -1084,7 +1073,7 @@ class Output:
         for (typ, sw, ne) in self.excfac:
             if p.lat>=sw.lat and p.lat<=ne.lat and p.lon>=sw.lon and p.lon<=ne.lon:
                 self.needfull=True
-                #if self.debug: self.debug.write("Excluded: %s\n" % p)
+                if self.debug: self.debug.write("Excluded: %s\n" % p)
                 return self.doexcfac
         return False
 

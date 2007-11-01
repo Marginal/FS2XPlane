@@ -106,11 +106,7 @@ class TaxiwayName:
 # Read BGL header
 class Parse:
     def __init__(self, bgl, srcfile, output):
-        if output.debug:
-            debug=file(join(output.xppath,'debug.txt'),'at')
-            debug.write('%s\n' % srcfile)
-        else:
-            debug=None
+        if output.debug: output.debug.write('%s\n' % srcfile)
         # Per-BGL counts
         output.gencount=1	# next generic building number
         output.gencache={}	# cache of generic buildings
@@ -126,7 +122,7 @@ class Parse:
                     output.log('Skipping traffic data in file %s' % name)
                 elif section==54:
                     try:
-                        ProcTerrain(bgl, srcfile, output, debug)
+                        ProcTerrain(bgl, srcfile, output)
                     except:
                         output.log("Can't parse Terrain section in file %s" % name)
                 elif section==58:
@@ -149,7 +145,8 @@ class Parse:
                         posl=bgl.tell()
                         (c,)=unpack('<B', bgl.read(1))
                         if not c in [0, 21]:
-                            if debug: debug.write("!Bogus LatBand %2x\n" % c)
+                            if __debug__:
+                                if output.debug: output.debug.write("!Bogus LatBand %2x\n" % c)
                             raise struct.error	# wtf?
                         if c==0:
                             break
@@ -159,7 +156,8 @@ class Parse:
                             # Header
                             areano+=1                        
                             posa=bgl.tell()
-                            if debug: debug.write("----\nArea %x\n" % posa)
+                            if __debug__:
+                                if output.debug: output.debug.write("----\nArea %x\n" % posa)
                             (c,)=unpack('<B', bgl.read(1))
                             bgl.read(9)
                             if c==0:
@@ -171,24 +169,29 @@ class Parse:
                             elif c in [4,7,10]:
                                 (l,)=unpack('<B',bgl.read(1))
                             else:
-                                if debug:debug.write("!Bogus area type %x\n"%c)
+                                if __debug__:
+                                    if output.debug: output.debug.write("!Bogus area type %x\n"%c)
                                 raise struct.error	# wtf?
                             try:
                                 p=ProcScen(bgl, posa+l, 1.0, None, srcfile,
-                                           texdir, output, None, None, debug)
+                                           texdir, output, None, None)
                                 if p.old:
                                     old=True
-                                    if debug: debug.write("Pre-FS2002\n")
+                                    if __debug__:
+                                        if output.debug: output.debug.write("Pre-FS2002\n")
                                 if p.rrt:
                                     rrt=True
-                                    if debug: debug.write("Old-style rr\n")
+                                    if __debug__:
+                                        if output.debug: output.debug.write("Old-style rr\n")
                                 if p.anim:
                                     anim=True
-                                    if debug: debug.write("Animation\n")
+                                    if __debug__:
+                                        if output.debug: output.debug.write("Animation\n")
                             except:
                                 output.log("Can't parse area #%d in %s" % (
                                     areano, name))
-                                if debug: debug.write("!Can't parse area %x\n" % posa)
+                                if __debug__:
+                                    if output.debug: output.debug.write("!Can't parse area %x\n" % posa)
                             bgl.seek(posa+l)
                         bgl.seek(posl+9)
                     if anim:
@@ -204,29 +207,29 @@ class Parse:
                         posl=bgl.tell()
                         (c,)=unpack('<B', bgl.read(1))
                         if not c in [0, 21]:
-                            if debug: debug.write("!Bogus LatBand %2x\n" % c)
+                            if __debug__:
+                                if output.debug: output.debug.write("!Bogus LatBand %2x\n" % c)
                             raise struct.error	# wtf?
                         if c==0:
                             break
                         (foo,off)=unpack('<Ii', bgl.read(8))
                         bgl.seek(secbase+off)
                         try:
-                            ProcMisc(bgl, srcfile, output, debug)
+                            ProcMisc(bgl, srcfile, output)
                         except:
                             output.log("Can't parse Miscellaneous section in file %s" % name)
                         bgl.seek(posl+9)
-        if debug: debug.close()
 
 
 # handle section 9 area and 10 library. libname!=None if this is a library
 class ProcScen:
     def __init__(self, bgl, enda, scale, libname, srcfile, texdir, output,
-                 scen, tran, debug):
+                 scen, tran):
 
         self.old=False	# Old style scenery found and skipped
         self.rrt=False	# Old style runways/roads found and skipped
         self.anim=False	# Animations found and skipped
-        self.debug=debug
+        self.debug=output.debug
         self.cmd=0
 
         self.bgl=bgl
@@ -479,11 +482,13 @@ class ProcScen:
             pos=bgl.tell()
             if pos>=enda:
                 self.cmd=0
-                if pos>enda and self.debug: self.debug.write("!Overrun at %x enda=%x\n" % (pos, enda))
+                if __debug__:
+                    if pos>enda and self.debug: self.debug.write("!Overrun at %x enda=%x\n" % (pos, enda))
             elif pos<self.start:
                 # Underrun - just return if in a call eg ESGJ2K2
                 self.cmd=0x22
-                if self.debug: self.debug.write("!Underrun at %x start=%x\n" % (pos, self.start))
+                if __debug__:
+                    if self.debug: self.debug.write("!Underrun at %x start=%x\n" % (pos, self.start))
             else:
                 (self.cmd,)=unpack('<H',bgl.read(2))
             if self.cmd==0 or (self.cmd==0x22 and not self.stack):
@@ -491,28 +496,32 @@ class ProcScen:
                     bgl.seek(self.start)
                     continue
                 self.makeobjs()
-                if self.debug:
-                    self.debug.write("%x: cmd %02x\n" % (pos, self.cmd))
-                    for i in range(1, len(self.matrix)):
-                        self.debug.write("!Unbalanced matrix:\n%s\n" % (
-                            self.matrix[i]))
+                if __debug__:
+                    if self.debug:
+                        self.debug.write("%x: cmd %02x\n" % (pos, self.cmd))
+                        for i in range(1, len(self.matrix)):
+                            self.debug.write("!Unbalanced matrix:\n%s\n" % (
+                                self.matrix[i]))
                 return
             elif self.cmd in cmds:
-                if self.debug: self.debug.write("%x: cmd %02x %s\n" % (
-                    pos, self.cmd, cmds[self.cmd].__name__))
+                if __debug__:
+                    if self.debug: self.debug.write("%x: cmd %02x %s\n" % (
+                        pos, self.cmd, cmds[self.cmd].__name__))
                 cmds[self.cmd]()
             elif self.donight():
                 bgl.seek(self.start)
                 continue
             else:
                 self.makeobjs()	# Try to go with what we've got so far
-                if self.debug: self.debug.write("!Unknown cmd %x at %x\n" % (self.cmd, pos))
+                if __debug__:
+                    if self.debug: self.debug.write("!Unknown cmd %x at %x\n" % (self.cmd, pos))
                 raise struct.error
 
 
     def donight(self):
         if self.neednight and self.vars[0x28c]==1:
-            if self.debug: self.debug.write("Night\n")
+            if __debug__:
+                if self.debug: self.debug.write("Night\n")
             self.vars[0x28c]=4
             self.dayloc=self.loc
             self.dayobjdat=self.objdat
@@ -563,7 +572,8 @@ class ProcScen:
                 mat=[(1.0,1.0,1.0),(0,0,0),(0,0,0),0]
         elif self.t==None:
             tex=palettetex
-            if self.debug and not mat: self.debug.write("Transparent\n")
+            if __debug__:
+                if self.debug and not mat: self.debug.write("Transparent\n")
         else:
             # we don't use ambient colour
             if not mat:	# SColor24 alpha value only applies to untextured
@@ -703,9 +713,11 @@ class ProcScen:
             tex=tex[:l].rstrip(' \0')+tex[l:]
         self.tex=[findtex(tex, self.texdir, self.output.addtexdir)]
         self.t=0
-        if self.debug: self.debug.write("%s\n" % basename(self.tex[0]))
-        if x or y:
-            if self.debug: self.debug.write("!Tex offsets %d,%d\n" % (x,y))
+        if __debug__:
+            if self.debug:
+                self.debug.write("%s\n" % basename(self.tex[0]))
+                if x or y:
+                    self.debug.write("!Tex offsets %d,%d\n" % (x,y))
         
     def ResList(self):		# 1a
         (index,count)=unpack('<2H', self.bgl.read(4))
@@ -761,7 +773,8 @@ class ProcScen:
             (x,y,z,c,c,c,c,c)=self.vtx[idx]
             vtx.append((x,y,z, nx,ny,nz, tu/255.0,tv/255.0))
         if not self.objdat and photore.match(basename(self.tex[self.t])):
-            if self.debug: self.debug.write("Photoscenery\n")
+            if __debug__:
+                if self.debug: self.debug.write("Photoscenery\n")
             return	# handled in ProcPhoto
         if self.makepoly(True, vtx):
             return
@@ -806,7 +819,8 @@ class ProcScen:
         (off,self.layer,pop)=self.stack.pop()
         if pop:
             self.matrix.pop()
-            if self.debug: self.debug.write("Now\n%s\n" % self.matrix[-1])
+            if __debug__:
+                if self.debug: self.debug.write("Now\n%s\n" % self.matrix[-1])
         self.bgl.seek(off)
 
     def Call(self):		# 23:Call, 32:PerspectiveCall
@@ -825,9 +839,10 @@ class ProcScen:
             self.complexity=complexity(vmin)
             if vmax==4: vmax=5	# bug in eg EGNT
         val=self.getvar(var)
-        if self.debug:
-            self.debug.write("%x: %d<=%d<=%d\n" % (var, vmin, val, vmax))
-            if var==0: return	# cloud9
+        if __debug__:
+            if self.debug:
+                self.debug.write("%x: %d<=%d<=%d\n" % (var, vmin, val, vmax))
+                if var==0: return	# cloud9
         if var in [0x312,0x314,0x316,0x318,0x31a]: return	# user-defined
         if val<vmin or val>vmax:
             self.bgl.seek(off-10,1)
@@ -922,15 +937,16 @@ class ProcScen:
         self.scale=65536.0/scale
         (lat,lon,self.altmsl)=self.LLA()
         self.alt=0
-        if self.debug: self.debug.write("AltMSL %s\n" % self.altmsl)
+        if __debug__:
+            if self.debug: self.debug.write("AltMSL %s\n" % self.altmsl)
         if lat>=-90 and lat<=90 and lon>=-180 and lon<=180:
             self.loc=Point(lat,lon)
             if lat<0 and not self.output.hemi:
                 self.output.hemi=1
                 self.setseason()
         else:	# bogus
-            if self.debug:
-                self.debug.write("!Bogus Location %s\n" % Point(lat,lon))
+            if __debug__:
+                if self.debug: self.debug.write("!Bogus Location %s\n" % Point(lat,lon))
             self.loc=None
 
     def Instance(self):		# 33
@@ -943,16 +959,17 @@ class ProcScen:
         newmatrix=newmatrix.headed(h)
         newmatrix=newmatrix.pitched(p)
         newmatrix=newmatrix.banked(b)
-        if self.debug:
-            self.debug.write("Instance\n")
-            if self.matrix[-1]:
-                self.debug.write("Old\n%s\n" % self.matrix[-1])
-                self.debug.write("New\n%s\n" % newmatrix)
+        if __debug__:
+            if self.debug:
+                self.debug.write("Instance\n")
+                if self.matrix[-1]:
+                    self.debug.write("Old\n%s\n" % self.matrix[-1])
+                    self.debug.write("New\n%s\n" % newmatrix)
         if self.matrix[-1]:
             newmatrix=newmatrix*self.matrix[-1]
         self.matrix.append(newmatrix)
-        if self.debug:
-            self.debug.write("Now\n%s\n" % self.matrix[-1])
+        if __debug__:
+            if self.debug: self.debug.write("Now\n%s\n" % self.matrix[-1])
         self.bgl.seek(off-10,1)
 
     def SuperScale(self):	# 34
@@ -1016,8 +1033,8 @@ class ProcScen:
                 self.debug.write("New\n%s\n" % newmatrix)
         if self.matrix[-1]:
             newmatrix=newmatrix*self.matrix[-1]
-        if self.debug:
-            self.debug.write("Now\n%s\n" % self.matrix[-1])
+        if __debug__:
+            if self.debug: self.debug.write("Now\n%s\n" % self.matrix[-1])
         self.matrix.append(newmatrix)
         self.bgl.seek(off-6,1)
 
@@ -1025,23 +1042,26 @@ class ProcScen:
         self.bgl.read(8)	# jump,range (LOD) (may be 0),size,reserved
         (lat,lon,self.altmsl)=self.LLA()
         self.alt=0
-        if self.debug: self.debug.write("Position %s\n" % self.altmsl)
+        if __debug__:
+            if self.debug: self.debug.write("Position %s\n" % self.altmsl)
         if lat>=-90 and lat<=90 and lon>=-180 and lon<=180:
             pt=Point(lat,lon)
             if self.loc:
                 (x,y,z)=Matrix().headed(self.loc.headingto(pt)).rotate(0,0,self.loc.distanceto(pt))
                 if self.matrix[-1]:
-                    if self.debug: self.debug.write("Old\n%s\n" % self.matrix[-1])
+                    if __debug__:
+                        if self.debug: self.debug.write("Old\n%s\n" % self.matrix[-1])
                     self.matrix[-1]=self.matrix[-1].offset(x,0,z)
                 else:
                     self.matrix[-1]=Matrix().offset(x,0,z)
-                if self.debug:
-                    self.debug.write("New\n%s\n" % self.matrix[-1])
-                    self.debug.write("Now\n%s\n" % Matrix().offset(x,0,z))
+                if __debug__:
+                    if self.debug:
+                        self.debug.write("New\n%s\n" % self.matrix[-1])
+                        self.debug.write("Now\n%s\n" % Matrix().offset(x,0,z))
             else:
                 self.loc=pt
-        elif self.debug:
-            self.debug.write("!Bogus Location %s\n" % Point(lat,lon))
+        elif __debug__:
+            if self.debug: self.debug.write("!Bogus Location %s\n" % Point(lat,lon))
         self.checkmsl()
 
     def TextureRunway(self):	# 42: PolygonRunway, 44:TextureRunway
@@ -1054,7 +1074,8 @@ class ProcScen:
         (lat,lon,alt)=self.LLA()
         cloc=Point(lat,lon)
         if not (lat>=-90 and lat<=90 and lon>=-180 and lon<=180):
-            if self.debug: self.debug.write("!Bogus Runway location %s\n"%cloc)
+            if __debug__:
+                if self.debug: self.debug.write("!Bogus Runway location %s\n"%cloc)
             raise struct.error
         (heading, length, width, markers, identifiers, surface_lights, specials, surface_type, threshold_flags, base_threshold, base_blast_pad, recip_threshold, recip_blast_pad)=unpack('<HHHBBBBBBHHHH', self.bgl.read(20))
         heading=heading*(360.0/65536)
@@ -1150,13 +1171,15 @@ class ProcScen:
             tex=tex+c
             size=size-1
         self.tex=[findtex(tex.rstrip(), self.texdir, self.output.addtexdir)]
-        if self.debug: self.debug.write("%s\n" % basename(self.tex[0]))
+        if __debug__:
+            if self.debug: self.debug.write("%s\n" % basename(self.tex[0]))
         self.t=0
         
     def PointVICall(self):	# 46
         (off,x,y,z,p,vp,b,vb,h,vh)=unpack('<4h6H', self.bgl.read(20))
         if not off: raise struct.error	# infloop
-        #if self.debug: self.debug.write("PointVICall %d %d %d %d %d %d %d %d %d\n" % (x,y,z,p,vp,b,vb,h,vh))
+        #if __debug__:
+        #    if self.debug: self.debug.write("PointVICall %d %d %d %d %d %d %d %d %d\n" % (x,y,z,p,vp,b,vb,h,vh))
         self.stack.append((self.bgl.tell(),self.layer,True))
         p=p*360/65536.0
         b=b*360/65536.0
@@ -1166,16 +1189,17 @@ class ProcScen:
         newmatrix=newmatrix.headed(h+self.getvar(vh))
         newmatrix=newmatrix.pitched(p+self.getvar(vp))
         newmatrix=newmatrix.banked(b+self.getvar(vb))
-        if self.debug:
-            self.debug.write("PointVICall\n")
-            if self.matrix[-1]:
-                self.debug.write("Old\n%s\n" % self.matrix[-1])
-                self.debug.write("New\n%s\n" % newmatrix)
+        if __debug__:
+            if self.debug:
+                self.debug.write("PointVICall\n")
+                if self.matrix[-1]:
+                    self.debug.write("Old\n%s\n" % self.matrix[-1])
+                    self.debug.write("New\n%s\n" % newmatrix)
         if self.matrix[-1]:
             newmatrix=newmatrix*self.matrix[-1]
         self.matrix.append(newmatrix)
-        if self.debug:
-            self.debug.write("Now\n%s\n" % self.matrix[-1])
+        if __debug__:
+            if self.debug: self.debug.write("Now\n%s\n" % self.matrix[-1])
         if self.libname and h:
             self.billboard=(x,y,z)
             # XXX Implement me!
@@ -1243,7 +1267,8 @@ class ProcScen:
         (to, fr)=unpack('<2H', self.bgl.read(4))
         val=self.getvar(fr)
         self.vars[to]=val
-        if self.debug: self.debug.write("%x<-%x = %d\n" % (to, fr, val))
+        if __debug__:
+            if self.debug: self.debug.write("%x<-%x = %d\n" % (to, fr, val))
         
     def SurfaceType(self):	# 55
         (sfc, x, z, alt)=unpack('<Hhhh', self.bgl.read(8))
@@ -1255,13 +1280,14 @@ class ProcScen:
             heading=0
         length=m2f*x*self.scale
         width=m2f*z*self.scale
-        if self.debug: self.debug.write("SurfaceType %d (%dx%d) %d\n" % (
-            sfc, length, width, alt))
+        if __debug__:
+            if self.debug: self.debug.write("SurfaceType %d (%dx%d) %d\n" % (
+                sfc, length, width, alt))
 
     def TextureRepeat(self):	# 5d
         (x,c,y)=unpack('<3h', self.bgl.read(6))
-        if x or y:
-            if self.debug: self.debug.write("!Tex offsets %d,%d\n" % (x,y))
+        if __debug__:
+            if self.debug and (x or y): self.debug.write("!Tex offsets %d,%d\n" % (x,y))
         
     def IfSizeV(self):		# 5f:IfSizeV, 6d:IfSizeH
         # Go for max detail and let X-Plane remove based on it's own heuristics
@@ -1295,8 +1321,8 @@ class ProcScen:
             heading=0
             scale=self.scale
             loc=self.loc
-        if self.debug:
-            self.debug.write("LibraryCall %s %s %.2f %.2f\n%s\n" % (name,friendly,heading,scale,self.matrix[-1]))
+        if __debug__:
+            if self.debug: self.debug.write("LibraryCall %s %s %.2f %.2f\n%s\n" % (name,friendly,heading,scale,self.matrix[-1]))
         self.output.objplc.append((loc, heading, self.complexity,
                                    name, round(scale,2)))
         if self.altmsl:
@@ -1344,7 +1370,8 @@ class ProcScen:
     def AddCat(self):		# 74
         (off,cat)=unpack('<2h', self.bgl.read(4))
         self.stack.append((self.bgl.tell(),self.layer,False))
-        if self.debug: self.debug.write("Layer %d\n" % cat)
+        if __debug__:
+            if self.debug: self.debug.write("Layer %d\n" % cat)
         self.layer=cat
         self.bgl.seek(off-6,1)
 
@@ -1360,8 +1387,8 @@ class ProcScen:
                 self.output.hemi=1
                 self.setseason()
         else:
-            if self.debug:
-                self.debug.write("!Bogus Location %s\n" % Point(lat,lon))
+            if __debug__:
+                if self.debug: self.debug.write("!Bogus Location %s\n" % Point(lat,lon))
             self.loc=None
         
     def ResPnt(self):		# 80
@@ -1384,7 +1411,8 @@ class ProcScen:
         (off,cat)=unpack('<ih', self.bgl.read(6))
         if not off: raise struct.error	# infloop
         self.stack.append((self.bgl.tell(),self.layer,False))
-        if self.debug: self.debug.write("Layer %d\n" % cat)
+        if __debug__:
+            if self.debug: self.debug.write("Layer %d\n" % cat)
         self.layer=cat
         self.bgl.seek(off-8,1)
 
@@ -1565,16 +1593,17 @@ class ProcScen:
         self.stack.append((self.bgl.tell(),self.layer,self.matrix[-1]))
         newmatrix=Matrix()
         newmatrix=newmatrix.offset(x,y,z)
-        if self.debug:
-            self.debug.write("SpriteVICall\n")
-            if self.matrix[-1]:
-                self.debug.write("Old\n%s\n" % self.matrix[-1])
-                self.debug.write("New\n%s\n" % newmatrix)
+        if __debug__:
+            if self.debug:
+                self.debug.write("SpriteVICall\n")
+                if self.matrix[-1]:
+                    self.debug.write("Old\n%s\n" % self.matrix[-1])
+                    self.debug.write("New\n%s\n" % newmatrix)
         if self.matrix[-1]:
             newmatrix=newmatrix*self.matrix[-1]
         self.matrix.append(newmatrix)
-        if self.debug:
-            self.debug.write("Now\n%s\n" % self.matrix[-1])
+        if __debug__:
+            if self.debug: self.debug.write("Now\n%s\n" % self.matrix[-1])
         if self.libname and h:
             self.billboard=(x,y,z)
             # XXX Implement me!
@@ -1608,7 +1637,8 @@ class ProcScen:
         (lat,lon,alt)=self.LLA()
         cloc=Point(lat,lon)
         if not (lat>=-90 and lat<=90 and lon>=-180 and lon<=180):
-            if self.debug: self.debug.write("!Bogus Runway location %s\n"%cloc)
+            if __debug__:
+                if self.debug: self.debug.write("!Bogus Runway location %s\n"%cloc)
             raise struct.error
         (heading, length, width, markers, surface_type, surface_lights, identifiers)=unpack('<HHHHBBB', self.bgl.read(11))
         heading=heading*(360.0/65536)
@@ -1695,7 +1725,8 @@ class ProcScen:
                     lights[op-6]=[0,11,9,8,6,5,1,1,12,3,4][system]
             else:
                 self.bgl.seek(endop)
-                if self.debug: self.debug.write("!Unknown NewRunway opcode %x\n" % op)
+                if __debug__:
+                    if self.debug: self.debug.write("!Unknown NewRunway opcode %x\n" % op)
         # UK-style markings if Calvert approach lights
         for end in [0,1]:
             if lights[end] in [3,4] and markings[end] in [2,3]:
@@ -1721,15 +1752,16 @@ class ProcScen:
         (c,c,c,c,x,y,z)=unpack('<4i3f', self.bgl.read(28))
         newmatrix=Matrix()
         newmatrix=newmatrix.offset(x,y,z)
-        if self.debug:
-            self.debug.write("Animate\n")
-            if self.matrix[-1]:
-                self.debug.write("Old\n%s\n" % self.matrix[-1])
-                self.debug.write("New\n%s\n" % newmatrix)
+        if __debug__:
+            if self.debug:
+                self.debug.write("Animate\n")
+                if self.matrix[-1]:
+                    self.debug.write("Old\n%s\n" % self.matrix[-1])
+                    self.debug.write("New\n%s\n" % newmatrix)
         if self.matrix[-1]:
             newmatrix=newmatrix*self.matrix[-1]
-        if self.debug:
-            self.debug.write("Now\n%s\n" % self.matrix[-1])
+        if __debug__:
+            if self.debug: self.debug.write("Now\n%s\n" % self.matrix[-1])
         self.matrix.append(newmatrix)
 
     def TransformEnd(self):	# ae
@@ -1742,16 +1774,17 @@ class ProcScen:
                           [q10,q11,q12,0],
                           [q20,q21,q22,0],
                           [x,y,z,1]])
-        if self.debug:
-            self.debug.write("TransformMatrix\n")
-            if self.matrix[-1]:
-                self.debug.write("Old\n%s\n" % self.matrix[-1])
-                self.debug.write("New\n%s\n" % newmatrix)
+        if __debug__:
+            if self.debug:
+                self.debug.write("TransformMatrix\n")
+                if self.matrix[-1]:
+                    self.debug.write("Old\n%s\n" % self.matrix[-1])
+                    self.debug.write("New\n%s\n" % newmatrix)
         if self.matrix[-1]:
             newmatrix=newmatrix*self.matrix[-1]
         self.matrix.append(newmatrix)
-        if self.debug:
-            self.debug.write("Now\n%s\n" % self.matrix[-1])
+        if __debug__:
+            if self.debug: self.debug.write("Now\n%s\n" % self.matrix[-1])
 
     def Tag(self):	# b1
         self.bgl.read(20).rstrip(' \0')	# what's this for?
@@ -1827,17 +1860,17 @@ class ProcScen:
     def SetMaterial(self):	# b8
         (self.m,self.t)=unpack('<2h', self.bgl.read(4))
         if self.m>=len(self.mat):
-            if self.debug:
-                self.debug.write("Bad material %d/%d\n"%(self.m,len(self.mat)))
+            if __debug__:
+                if self.debug: self.debug.write("Bad material %d/%d\n"%(self.m,len(self.mat)))
             self.m=0
         if self.t<0:
             self.t=None
         elif self.t>=len(self.tex):
-            if self.debug:
-                self.debug.write("Bad texture %d/%d\n" %(self.t,len(self.tex)))
+            if __debug__:
+                if self.debug: self.debug.write("Bad texture %d/%d\n" %(self.t,len(self.tex)))
             self.t=None
-        if self.debug and self.t!=None:
-            self.debug.write("%s\n" % basename(self.tex[self.t]))
+        if __debug__:
+            if self.debug and self.t!=None: self.debug.write("%s\n" % basename(self.tex[self.t]))
         
     def DrawTriList(self):	# b9
         idx=[]
@@ -1898,19 +1931,17 @@ class ProcScen:
                     m.append([a,b,c,d])
                 # Matrices don't appear to nest - hence [-1]
                 self.matrix[-1]=self.matrix[-1]*Matrix(m)
-                if self.debug:
-                    self.debug.write("Scene %d, %d %d:\n%s\n" % (
-                        scene, src,dst, Matrix(m)))
+                if __debug__:
+                    if self.debug: self.debug.write("Scene %d, %d %d:\n%s\n" % (scene, src,dst, Matrix(m)))
             else:
-                if self.debug:
-                    self.debug.write("!Unsupported ANIC cmd %x, size %d\n" % (
-                        cmd, size))
+                if __debug__:
+                    if self.debug: self.debug.write("!Unsupported ANIC cmd %x, size %d\n" % (cmd, size))
                 self.anim=True
                 break
             scene=parent
 
-        if self.debug:
-            self.debug.write("TransformIndirect:\n%s\n" % self.matrix[-1])
+        if __debug__:
+            if self.debug: self.debug.write("TransformIndirect:\n%s\n" % self.matrix[-1])
         self.bgl.seek(pos)
 
 
@@ -1960,7 +1991,8 @@ class ProcScen:
     def makepoly(self, haveuv, vtx, idx=None):
         if self.t==None: return False	# Only care about textured polygons
         if not self.loc: return False	# Not for library objects
-        if self.debug: self.debug.write("Poly: %s %s %s %d " % (basename(self.tex[self.t]), self.alt, self.layer, self.zbias))
+        if __debug__:
+            if self.debug: self.debug.write("Poly: %s %s %s %d " % (basename(self.tex[self.t]), self.alt, self.layer, self.zbias))
 
         if idx:
             # Altitude test
@@ -1970,7 +2002,8 @@ class ProcScen:
                 (x,y,z)=vtx[idx[0]][:3]
             yval=y*self.scale
             if self.altmsl or yval+self.alt>groundfudge:
-                if self.debug: self.debug.write("Above ground %s\n" % (yval+self.alt))
+                if __debug__:
+                    if self.debug: self.debug.write("Above ground %s\n" % (yval+self.alt))
                 return False
 
             # Transform
@@ -1998,7 +2031,8 @@ class ProcScen:
                     e=idx[i+j]
                     #self.debug.write("%s\n" % vtx[e][1])
                     if abs(vtx[e][1]-yval)>planarfudge:
-                        if self.debug: self.debug.write("Not coplanar\n")
+                        if __debug__:
+                            if self.debug: self.debug.write("Not coplanar\n")
                         return False
                     if not e in edges: edges[e]=[]
                     if not idx[i+(j-1)%3] in edges[e]:
@@ -2031,14 +2065,16 @@ class ProcScen:
                         bestidx=i
                         bestheading=h
                 if bestidx==None:
-                    if self.debug: self.debug.write("Disjoint\n")
+                    if __debug__:
+                        if self.debug: self.debug.write("Disjoint\n")
                     return False
                 myidx.append(bestidx)
                 allidx.remove(bestidx)
                 thisheading=(bestheading-180)%360-360
             vtx=[vtx[i] for i in myidx]
         elif not vtx:
-            if self.debug: self.debug.write("No vertices!\n")
+            if __debug__:
+                if self.debug: self.debug.write("No vertices!\n")
             return False	# Eh?
         else:            
             # Altitude test
@@ -2048,7 +2084,8 @@ class ProcScen:
                 (x,y,z)=vtx[0][:3]
             yval=y*self.scale
             if self.altmsl or yval+self.alt>groundfudge:
-                if self.debug: self.debug.write("Above ground %s\n" % (yval+self.alt))
+                if __debug__:
+                    if self.debug: self.debug.write("Above ground %s\n" % (yval+self.alt))
                 return False
 
             # Transform
@@ -2064,7 +2101,8 @@ class ProcScen:
             area2=0
             for i in range(count):
                 if abs(vtx[i][1]-yval)>planarfudge:
-                    if self.debug: self.debug.write("Not coplanar\n")
+                    if __debug__:
+                        if self.debug: self.debug.write("Not coplanar\n")
                     return False
                 area2+=(vtx[i][0]*vtx[(i+1)%count][2] - vtx[(i+1)%count][0]*vtx[i][2])
             if area2<0:	# Tested on SAEZ, LIRF
@@ -2095,7 +2133,8 @@ class ProcScen:
             minz=min(minz,z)
             maxz=max(maxz,z)
             if len(vtx)>4 and (tu-minu > 1+TEXFUDGE or tv-minv > 1+TEXFUDGE):
-                if self.debug and haveuv: self.debug.write("Dropping textures - %s,%s\n" % (tu-minu,tv-minv))
+                if __debug__:
+                    if self.debug and haveuv: self.debug.write("Dropping textures - %s,%s\n" % (tu-minu,tv-minv))
                 haveuv=False
             loc=self.loc.biased(x,z)
             points[0].append((loc,max(0,min(1,tu-minu)),max(0,min(1,tv-minv))))
@@ -2103,7 +2142,8 @@ class ProcScen:
         if haveuv:
             # Really small - better dealt with as an object
             if (maxx-minx)<10 and (maxz-minz)<10:	# arbitrary
-                if self.debug: self.debug.write("Too small %s %s\n" % (maxx-minx, maxz-minz))
+                if __debug__:
+                    if self.debug: self.debug.write("Too small %s %s\n" % (maxx-minx, maxz-minz))
                 return False	# probably detail
         else:
             # 8.60 has a bug with polygons at different layers sharing
@@ -2111,7 +2151,8 @@ class ProcScen:
             # if it's small enough to be unlikely to cause Z-buffer issues.
             # Assume that polys with explicit UV coords won't be shared.
             if (maxx-minx)<NM2m/8 and (maxz-minz)<NM2m/8:	# arbitrary
-                if self.debug: self.debug.write("Too small %s %s\n" % (maxx-minx, maxz-minz))
+                if __debug__:
+                    if self.debug: self.debug.write("Too small %s %s\n" % (maxx-minx, maxz-minz))
                 return False	# probably detail
 
         # Split EW
@@ -2129,7 +2170,8 @@ class ProcScen:
                     maxlon=loc.lon
             if maxlon<=floor(minlon)+1: break
             # Crosses tile boundary
-            if self.debug: self.debug.write("Boundary EW: %s,%s " % (minlon,maxlon))
+            if __debug__:
+                if self.debug: self.debug.write("Boundary EW: %s,%s " % (minlon,maxlon))
             for p1 in range(west,west+n):
                 (loc,tu,tv)=p[p1%n]
                 if loc.lon>floor(minlon)+1:
@@ -2180,7 +2222,8 @@ class ProcScen:
                 #print basename(self.tex[self.t]), minlat, maxlat, floor(minlat)+1
                 #print n
                 #for i in p: print "%s,%s" % (i[0].lat,i[0].lon)
-                if self.debug: self.debug.write("Boundary NS: %s,%s " % (minlat,maxlat))
+                if __debug__:
+                    if self.debug: self.debug.write("Boundary NS: %s,%s " % (minlat,maxlat))
                 for p1 in range(south,south+n):
                     (loc,tu,tv)=p[p1%n]
                     if loc.lat>floor(minlat)+1:
@@ -2234,7 +2277,8 @@ class ProcScen:
             layer=24
         for p in points:
             self.polydat.append((p, layer, heading, max(1,int(self.scale*256)), tex, lit))
-        if self.debug: self.debug.write("OK %s %s\n" % (maxx-minx, maxz-minz))
+        if __debug__:
+            if self.debug: self.debug.write("OK %s %s\n" % (maxx-minx, maxz-minz))
         return True
 
 
@@ -2366,7 +2410,8 @@ class ProcScen:
         elif self.libname:
             bname=self.libname
             if self.loc:
-                if self.debug: self.debug.write("!Location given for library object\n")
+                if __debug__:
+                    if self.debug: self.debug.write("!Location given for library object\n")
                 raise struct.error	# Code assumes no spurious location
         elif self.loc or self.dayloc:
             if not self.loc: self.loc=self.dayloc
@@ -2375,7 +2420,8 @@ class ProcScen:
                 bname=bname[:-4]
         else:
             # Must have a location for placement
-            if self.debug: self.debug.write("!No location\n")
+            if __debug__:
+                if self.debug: self.debug.write("!No location\n")
             raise struct.error
 
         # Do taxiways & roads
@@ -2416,11 +2462,13 @@ class ProcScen:
                     if poly==self.output.polydat[fname]:
                         # 8.60 has a bug with polygons at different layers
                         # sharing textures, so use lowest layer
-                        if self.debug and poly.layer!=self.output.polydat[fname].layer: self.debug.write("!Flattened polygon %s layers %s and %s\n" % (fname, poly.layer, self.output.polydat[fname].layer))
+                        if __debug__:
+                            if self.debug and poly.layer!=self.output.polydat[fname].layer: self.debug.write("!Flattened polygon %s layers %s and %s\n" % (fname, poly.layer, self.output.polydat[fname].layer))
                         self.output.polydat[fname].layer=min(poly.layer,self.output.polydat[fname].layer)
                         break	# matched - re-use this object
                     i+=1
-                if self.debug and lit and not tex: self.debug.write("Night-only polygon %s\n" % fname)
+                if __debug__:
+                    if self.debug and lit and not tex: self.debug.write("Night-only polygon %s\n" % fname)
                     
             self.output.polydat[fname]=poly
             self.output.polyplc.append((fname, heading, points))
@@ -2450,11 +2498,12 @@ class ProcScen:
                     matrix.m[3][0], matrix.m[3][1], matrix.m[3][2])
                 scale2=scale/2.0
                 newmatrix=Matrix().offset(round(x+scale2-(x+scale2)%scale,3), round(y+scale2-(y+scale2)%scale,3), round(z+scale2-(z+scale2)%scale,3))	# round to nearest unit to encourage a match
-                if self.debug:
-                    if tex: thing=basename(tex)
-                    elif lit: thing=basename(lit)
-                    else: thing=None
-                    self.debug.write("New heading %6.2f, offset (%7.3f,%7.3f,%7.3f) for %s\n" % (heading, newmatrix.m[3][0], newmatrix.m[3][1], newmatrix.m[3][2], thing))
+                if __debug__:
+                    if self.debug:
+                        if tex: thing=basename(tex)
+                        elif lit: thing=basename(lit)
+                        else: thing=None
+                        self.debug.write("New heading %6.2f, offset (%7.3f,%7.3f,%7.3f) for %s\n" % (heading, newmatrix.m[3][0], newmatrix.m[3][1], newmatrix.m[3][2], thing))
             if loc:
                 okey=(loc.lat, loc.lon, layer, altmsl, heading)
             else:
@@ -2620,13 +2669,14 @@ class ProcScen:
                                 fname="%s-%d" % (iname, i)
                                 obj.filename=fname+'.obj'
                             if not fname in self.output.objdat:
-                                if self.debug:
-                                    if not tex and not lit:
-                                        self.debug.write("Textureless object %s\n" % fname)
-                                    elif not tex and lit:
-                                        self.debug.write("Night-only object %s\n" % fname)
-                                    if maxy>250:	# arbitrary
-                                        self.debug.write("!Ludicrous size for object %s\n" % fname)
+                                if __debug__:
+                                    if self.debug:
+                                        if not tex and not lit:
+                                            self.debug.write("Textureless object %s\n" % fname)
+                                        elif not tex and lit:
+                                            self.debug.write("Night-only object %s\n" % fname)
+                                        if maxy>300:	# arbitrary
+                                            self.debug.write("!Ludicrous size for object %s\n" % fname)
                                 break	# no match - new object
                             if obj==self.output.objdat[fname][0]:
                                 break	# matched - re-use this object
@@ -2657,7 +2707,8 @@ class ProcScen:
             if var==0x28c: self.neednight=True
             return val
         else:
-            if self.debug: self.debug.write('!Undefined variable 0x%04x\n'%var)
+            if __debug__:
+                if self.debug: self.debug.write('!Undefined variable 0x%04x\n'%var)
             return 0
 
 
@@ -2734,10 +2785,10 @@ class ProcScen:
 
 # Handle miscellaneous section 16
 class ProcMisc:
-    def __init__(self, bgl, srcfile, output, debug):
+    def __init__(self, bgl, srcfile, output):
         self.bgl=bgl
         self.output=output
-        self.debug=debug
+        self.debug=output.debug
 
         cmds={0x04:self.Marker,
               0x05:self.Marker,
@@ -2756,11 +2807,12 @@ class ProcMisc:
             if cmd==0 or cmd==0x22:
                 return
             elif cmd in cmds:
-                if self.debug: self.debug.write("%x: cmd %02x %s\n" % (
-                    pos, cmd, cmds[cmd].__name__))
+                if __debug__:
+                    if self.debug: self.debug.write("%x: cmd %02x %s\n" % (pos, cmd, cmds[cmd].__name__))
                 cmds[cmd]()
             else:
-                if self.debug: self.debug.write("!Unknown s16 cmd %x at %x\n" %(cmd,pos))
+                if __debug__:
+                    if self.debug: self.debug.write("!Unknown s16 cmd %x at %x\n" %(cmd,pos))
                 raise struct.error
 
     def Marker(self):		# 04,05,06
@@ -2814,12 +2866,12 @@ class ProcMisc:
         a[-1].code=113
         if op==5:	# Flatten
             self.output.misc.append((130, l[0], a))
-        elif self.debug:
-            self.debug.write("!Unknown Terrain opcode %x\n" % op)
+        elif __debug__:
+            if self.debug: self.debug.write("!Unknown Terrain opcode %x\n" % op)
 
 
 # Handle exception section 19
-def ProcEx(bgl, output, debug):
+def ProcEx(bgl, output):
     while True:
         (c,)=unpack('<B',bgl.read(1))
         if c==0:
@@ -2827,7 +2879,8 @@ def ProcEx(bgl, output, debug):
         elif c==3:
             # Exclusion
             (mask,n,s,e,w)=unpack('<H4I',bgl.read(18))
-            if debug: debug.write("Exclude: %d\n" % mask)
+            if __debug__:
+                if output.debug: output.debug.write("Exclude: %d\n" % mask)
             if mask&1:
                 # objects
                 n=n*360.0/cirp
@@ -2845,14 +2898,16 @@ def ProcEx(bgl, output, debug):
             lat=lat*360.0/cirp
             lon=lon*360.0/0x100000000
             if lat>180: lat-=360
-            if debug: debug.write("Exception: %d %x %x %x\n" % (typ,sn,sf,snf))
+            if __debug__:
+                if output.debug: output.debug.write("Exception: %d %x %x %x\n" % (typ,sn,sf,snf))
         else:
-            if debug: debug.write("!Unknown s19 cmd: %x\n" % c)
+            if __debug__:
+                if output.debug: output.debug.write("!Unknown s19 cmd: %x\n" % c)
             raise struct.error
 
 
 # Handle terrain section 8
-def ProcTerrain(bgl, srcfile, output, debug):
+def ProcTerrain(bgl, srcfile, output):
     (size,ver)=unpack('<2I', bgl.read(8))
     if size!=0x64: raise struct.error
     (reserved1,)=unpack('<I', bgl.read(4))	# No idea how to decode this

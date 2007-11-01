@@ -132,7 +132,6 @@ def log(msg):
 # Set up paths
 newfsroot=None
 if platform=='win32':
-    # XXX make FS9 and FSX folders
     from sys import getwindowsversion
     sysdesc+="System:\tWindows %s.%s %s\n\n" % (getwindowsversion()[0], getwindowsversion()[1], getwindowsversion()[4])
     from _winreg import OpenKey, CreateKey, QueryValueEx, SetValueEx, HKEY_LOCAL_MACHINE, HKEY_CURRENT_USER, REG_SZ, REG_EXPAND_SZ

@@ -40,9 +40,9 @@ photore=re.compile(r"S(\d)\$([+-]*\d+)-([+-]*\d+)_(\d)_(\d)\.[bB][mM][pP]$")
 
 
 # Handle FS2004 and www.blueskyscenery.com photoscenery
-def ProcPhoto(texdir, output, debug):
+def ProcPhoto(texdir, output):
 
-    if debug: debug.write("%s\n" % texdir)
+    if output.debug: output.debug.write("%s\n" % texdir)
 
     texs=listdir(texdir)
     texdict=dict([[i,True] for i in texs])
@@ -57,7 +57,7 @@ def ProcPhoto(texdir, output, debug):
         res=0.125*layer
         name=tex[:-4]
 
-        if ishigher(name, layer, lat,lon, texdict, debug): continue
+        if ishigher(name, layer, lat,lon, texdict, output): continue
 
         # findtex is too slow
         for ext in ['_lm.bmp', '_lm.BMP', '_LM.bmp', '_LM.BMP']:
@@ -71,7 +71,7 @@ def ProcPhoto(texdir, output, debug):
         lon=(lon+int(match[5])*res)*LONRES
         layer=4-layer
         if layer<1: layer=1
-        makephoto(name, join(texdir,tex), lit, lat, lon, res, layer, output, debug)
+        makephoto(name, join(texdir,tex), lit, lat, lon, res, layer, output)
 
     # FS2004 style
     for tex in glob(join(texdir, '[0123][0123][0123][0123][0123][0123][0123][0123][0123][0123][0123][0123][0123][0123][0123][sS][uU].[bBdD][mMdD][pPsS]')):
@@ -91,7 +91,7 @@ def ProcPhoto(texdir, output, debug):
         lon=lon-12288	# = -180
         name=basename(tex)[:-6]
 
-        if ishigher(name, 0, lat,lon, texdict, debug): continue
+        if ishigher(name, 0, lat,lon, texdict, output): continue
 
         # findtex is too slow
         for ext in ['lm.bmp', 'lm.BMP', 'LM.bmp', 'LM.BMP']:
@@ -103,11 +103,11 @@ def ProcPhoto(texdir, output, debug):
 
         lat=lat*LATRES
         lon=lon*LONRES
-        makephoto(name, tex, lit, lat, lon, 1, 0, output, debug)
+        makephoto(name, tex, lit, lat, lon, 1, 0, output)
 
 
 # Check for higher-res Blue Sky Scenery scenery
-def ishigher(name, layer, lat,lon, texdict, debug):
+def ishigher(name, layer, lat,lon, texdict, output):
     bstr="%d-%d" % (lat,lon)
     for (res,n) in [(1,8),(2,4),(4,2)]:
         if res==layer: return False
@@ -123,17 +123,17 @@ def ishigher(name, layer, lat,lon, texdict, debug):
             break
 
         if hires:
-            if debug: debug.write("Photo: %s higher res is %s\n" % (name, basename(resstr)))
+            if output.debug: output.debug.write("Photo: %s higher res is %s\n" % (name, basename(resstr)))
             return True
     return False
                 
 
-def makephoto(name, tex, lit, lat, lon, scale, layer, output, debug):
+def makephoto(name, tex, lit, lat, lon, scale, layer, output):
     # lat and lon are the NW corner cos that's how MSFS does it
-    if debug: debug.write("Photo: %s %.6f,%.6f,%s " % (name, lat, lon, scale))
+    if output.debug: output.debug.write("Photo: %s %.6f,%.6f,%s " % (name, lat, lon, scale))
     if lon+LONRES*scale > floor(lon)+1:
         # Split EW
-        if debug: debug.write("EW ")
+        if output.debug: output.debug.write("EW ")
         points=[[(Point(lat-LATRES*scale,lon),0,0),
                  (Point(lat-LATRES*scale,floor(lon)+1),(floor(lon)+1-lon)/(LONRES*scale),0),
                  (Point(lat,floor(lon)+1),(floor(lon)+1-lon)/(LONRES*scale),1),
@@ -143,14 +143,14 @@ def makephoto(name, tex, lit, lat, lon, scale, layer, output, debug):
                  (Point(lat,lon+LONRES*scale),1,1),
                  (Point(lat,floor(lon)+1),(floor(lon)+1-lon)/(LONRES*scale),1)]]
     else:
-        if debug: debug.write("OK ")
+        if output.debug: output.debug.write("OK ")
         points=[[(Point(lat-LATRES*scale,lon),0,0),	# SW
                  (Point(lat-LATRES*scale,lon+LONRES*scale),1,0),
                  (Point(lat,lon+LONRES*scale),1,1),	# NE
                  (Point(lat,lon),0,1)]]
 
     if lat>floor(lat-LATRES*scale)+1:
-        if debug: debug.write("NS\n")
+        if output.debug: output.debug.write("NS\n")
         # Split NS
         for i in range(len(points)):
             points.append([(Point(floor(lat-LATRES*scale)+1,points[i][3][0].lon),points[i][3][1],(floor(lat-LATRES*scale)+1-lat+LATRES*scale)/(LATRES*scale)),
@@ -158,7 +158,7 @@ def makephoto(name, tex, lit, lat, lon, scale, layer, output, debug):
                            points[i][2], points[i][3]])
             points[i][2]=points[-1][1]
             points[i][3]=points[-1][0]
-    elif debug: debug.write("OK\n")
+    elif output.debug: output.debug.write("OK\n")
 
     poly=Polygon(name+'.pol', tex, lit, True, int(1216*scale), layer)
     output.polydat[name]=poly
