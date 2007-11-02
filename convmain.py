@@ -33,6 +33,7 @@ from StringIO import StringIO
 import struct	# for struct.error
 from struct import pack, unpack
 from sys import exit, platform, maxint
+from traceback import print_exc
 from tempfile import gettempdir
 
 from convutil import asciify, banner, helper, complexities, AptNav, Object, Polygon, Point, FS2XError, sortfolded
@@ -155,12 +156,40 @@ class Output:
                 self.stock[guid[:8]+guid[14:18]+guid[9:13]+guid[26:28]+guid[24:26]+guid[21:23]+guid[19:21]+guid[34:36]+guid[32:34]+guid[30:32]+guid[28:30]]=line[:l].strip().lower()
             
         stock.close()
+
         if debug:
             # note full debugging also requires non-optimised execution
             if not isdir(self.xppath): mkdir(self.xppath)
             self.debug=file(join(self.xppath,'debug.txt'),'at')
         else:
             self.debug=None
+
+        # See if scenery package is registered eg by Addon Manager.
+        # Otherwise try to emulate that the demo has expired.
+        self.registered=False
+        if platform=='win32':
+            from _winreg import OpenKey, EnumKey, QueryValueEx, HKEY_CURRENT_USER
+            handle=handle2=None
+            try:
+                c=self.fspath.split(sep)
+                company=c[-2].lower()
+                package=c[-1].replace(' ','').lower()
+                if company!='addon scenery':
+                    handle=OpenKey(HKEY_CURRENT_USER, 'Software\\'+company)
+                    i=0
+                    while True:
+                        v=EnumKey(handle, i)
+                        if v.replace(' ','').lower().startswith(package):
+                            handle2=OpenKey(handle,v)
+                            if QueryValueEx(handle2, 'SerialNumber'):
+                                self.registered=True
+                            break
+                        i+=1
+                        # EnvironmentError raised when no more values
+            except:
+                pass
+            if handle: handle.Close()
+            if handle2: handle2.Close()
 
 
     # Fill out self.libobj
@@ -601,7 +630,7 @@ class Output:
                 offset=0
                 size=len(data)
 
-            if self.debug: self.debug.write('%s %s FS%s\n' % (bglname, name, mdlformat))
+            if self.debug: self.debug.write('%s %s FS%s\n' % (bglname.encode("utf-8"), name, mdlformat))
             try:
                 # Add library object to self.objdat
                 texdir=normpath(join(dirname(bglname), pardir))
@@ -632,7 +661,7 @@ class Output:
                     if self.debug: self.debug.write("Old-style rr\n")
             except:
                 self.log("Can't parse object %s in file %s" % (name, filename))
-                if self.debug: self.debug.write("!Parse error\n")
+                if self.debug: print_exc(None, self.debug)
             bgl.close()
 
 

@@ -31,6 +31,7 @@ from os.path import basename, dirname, exists, join, normpath, pardir, splitext
 import struct
 from struct import unpack
 from sys import maxint
+from traceback import print_exc
 import types
 
 from OpenGL.GL import GL_TRIANGLES, GL_TRUE
@@ -106,7 +107,7 @@ class TaxiwayName:
 # Read BGL header
 class Parse:
     def __init__(self, bgl, srcfile, output):
-        if output.debug: output.debug.write('%s\n' % srcfile)
+        if output.debug: output.debug.write('%s\n' % srcfile.encode("utf-8"))
         # Per-BGL counts
         output.gencount=1	# next generic building number
         output.gencache={}	# cache of generic buildings
@@ -188,7 +189,8 @@ class Parse:
                             except:
                                 output.log("Can't parse area #%d in %s" % (
                                     areano, name))
-                                if output.debug: output.debug.write("!Can't parse area %x\n" % posa)
+                                if output.debug: print_exc(None, output.debug)
+                                    
                             bgl.seek(posa+l)
                         bgl.seek(posl+9)
                     if anim:
