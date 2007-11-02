@@ -835,8 +835,8 @@ class ProcScen:
         if __debug__:
             if self.debug:
                 self.debug.write("%x: %d<=%d<=%d\n" % (var, vmin, val, vmax))
-                if var==0: return	# cloud9
-        if var in [0x312,0x314,0x316,0x318,0x31a]: return	# user-defined
+        if (self.output.registered and var==0) or var in [0x312,0x314,0x316,0x318,0x31a]:
+            return	# user-defined - assume True
         if val<vmin or val>vmax:
             self.bgl.seek(off-10,1)
 
@@ -2943,18 +2943,24 @@ def tessvertex(vertex, (points, idx)):
 # Helper makes dict of form lowercasename: realname
 def maketexdict(texdir):
     if not texdir: return None
-    f=listdir(texdir)
-    d={}
+
     # Handle unicode
     if type(texdir)==types.UnicodeType:
-        for name in f:
-            name=normalize(name)
-            d[name.lower()]=name
+        f=[normalize(name) for name in listdir(texdir)]
     else:
-        for name in f:
-            d[name.lower()]=name
-    return (texdir, d)
+        f=listdir(texdir)
+
+    d=dict([(name.lower(),name) for name in f])
+
+    # Add ascii versions of filenames - eg PRAM2005
+    for name in f:
+        aname=asciify(name).lower()
+        if aname not in d:
+            d[aname]=name
     
+    return (texdir, d)
+
+
 # Helper to return fully-qualified case-sensitive texture filename
 def findtex(name, thistexdir, addtexdir, dropmissing=False):
     for texdict in [thistexdir, addtexdir]:
@@ -2980,10 +2986,9 @@ def findtex(name, thistexdir, addtexdir, dropmissing=False):
     # Look for textures that differ only in accents - eg PRAM2005
     sa=asciify(s).lower()
     for ext in [e, '.dds', '.bmp', '.r8']:
-        for i in d.keys():
-            if asciify(i).lower()==sa+ext:
-                return join(texdir, d[i])
-    
+        if sa+ext in d:
+            return join(texdir, d[sa+ext])
+
     # Not found
     if dropmissing:
         return None
