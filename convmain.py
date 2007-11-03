@@ -111,17 +111,17 @@ class Output:
             if path and not isdir(path):
                 raise FS2XError('"%s" is not a folder' % path)
 
+        self.addtexdir=None
         try:
             for f in listdir(lbpath):
                 if f.lower()=='texture':
                     self.addtexdir=maketexdict(join(lbpath, f))
                     break
         except:
-            self.addtexdir=None
+            pass
 
         if not self.dumplib and (basename(dirname(xppath)).lower()!='custom scenery' or not isdir(dirname(xppath))):
-            raise FS2XError('"%s" is not a sub-folder of "Custom Scenery"' % (
-                xppath))
+            raise FS2XError('The "X-Plane scenery location" must be a sub-folder\nof X-Plane\'s Custom Scenery folder.')
         for path, dirs, files in walk(xppath):
             for f in dirs+files:
                 if f!='summary.txt' and not f.startswith('.'):
@@ -444,6 +444,7 @@ class Output:
     def process(self):
         if self.dumplib: return
         self.status(-1, 'Reading BGLs')
+        if self.debug: self.debug.write('Procedural scenery\n')
         xmls=[]
         for path, dirs, files in walk(self.fspath):
             if basename(path).lower()!='scenery':
@@ -540,6 +541,7 @@ class Output:
 
         if self.objplc:
             self.status(-1, 'Reading library objects')
+            if self.debug: self.debug.write('Library objects\n')
         lasttexdir=None
         i=0
         while i<len(self.objplc):
