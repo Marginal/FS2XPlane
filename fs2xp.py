@@ -111,11 +111,11 @@ try:
     output.scanlibs()
     output.procphotos()
     if prof:
-        run('output.process()', join(xppath,'profile.txt'))
+        run('output.process()', join(xppath,'profile.dmp'))
     else:
         output.process()
-    output.proclibs()
-    output.export()
+        output.proclibs()
+        output.export()
     if exists(logname):
         status(-1, 'Displaying summary "%s"' % logname)
         viewer(logname)
