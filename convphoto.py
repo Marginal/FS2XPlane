@@ -42,7 +42,7 @@ photore=re.compile(r"S(\d)\$([+-]*\d+)-([+-]*\d+)_(\d)_(\d)\.[bB][mM][pP]$")
 # Handle FS2004 and www.blueskyscenery.com photoscenery
 def ProcPhoto(texdir, output):
 
-    if output.debug: output.debug.write("%s\n" % texdir)
+    if output.debug: output.debug.write("%s\n" % texdir.encode("utf-8"))
 
     texs=listdir(texdir)
     texdict=dict([[i,True] for i in texs])

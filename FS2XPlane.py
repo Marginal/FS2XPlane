@@ -67,7 +67,7 @@ from convutil import FS2XError, asciify, unicodeify, sortfolded, viewer, helper
 from MessageBox import myMessageBox, AboutBox
 from version import appname, appversion
 
-sysdesc="%s %s\n" % (appname, appversion)
+sysdesc="%s %.2f\n" % (appname, appversion)
 
 
 if platform=='darwin':
@@ -134,7 +134,7 @@ newfsroot=None
 if platform=='win32':
     from sys import getwindowsversion
     sysdesc+="System:\tWindows %s.%s %s\n\n" % (getwindowsversion()[0], getwindowsversion()[1], getwindowsversion()[4])
-    from _winreg import OpenKey, CreateKey, QueryValueEx, SetValueEx, HKEY_LOCAL_MACHINE, HKEY_CURRENT_USER, REG_SZ, REG_EXPAND_SZ
+    from _winreg import OpenKey, QueryValueEx, HKEY_LOCAL_MACHINE, REG_SZ, REG_EXPAND_SZ
     if isdir('C:\\X-Plane\\Custom Scenery'):
         xppath='C:\\X-Plane\\Custom Scenery'
     elif isdir(join(getenv("USERPROFILE", ""), "Desktop", "X-Plane", "Custom Scenery")):
@@ -450,9 +450,8 @@ class MainWindow(wx.Frame):
             if self.progress:
                 self.progress.Destroy()
                 self.progress=None
+            if output.debug: output.debug.close()
             if exists(self.logname):
-                logfile=file(self.logname, 'at')
-                logfile.close()
                 viewer(self.logname)
                 myMessageBox('Displaying summary "%s"' %(
                     self.logname), 'Done.', wx.ICON_INFORMATION|wx.OK, self)

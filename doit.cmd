@@ -195,6 +195,7 @@ REM set TARGET="%XP%\EGPF"
 
 REM set SOURCE="%FSX%\EGBJ"
 REM set TARGET="%XP%\EGBJ"
+REM set LB=
 
 REM set SOURCE="%FS9%\..\uk2000 scenery\UK2000 Part 2"
 REM set TARGET="%XP%\UK2000pt2"
@@ -257,6 +258,10 @@ REM set SOURCE="%FSX%\..\cloud9\Xcity-ROME"
 REM set TARGET="%XP%\Rome-cloud9"
 REM set LB=
 
+set SOURCE="%FS9%\..\FSDreamTeam\Zurich"
+set TARGET="%XP%\Zurich-fsdt"
+set LB=
+
 REM set SOURCE="%FS9%\NorAP2004_2"
 REM set TARGET="%XP%\NorAP"
 
@@ -272,6 +277,9 @@ REM set TARGET="%XP%\SAO"
 REM set SOURCE="%FS9%\SAEZ"
 REM set TARGET="%XP%\SAEZ"
 
+REM set SOURCE="%FS9%\RioDeJaneiro_SBRJ"
+REM set TARGET="%XP%\SBRJ"
+
 REM set SOURCE="%FS9%\KDCA"
 REM set TARGET="%XP%\KDCA"
 REM set LB=
@@ -284,9 +292,9 @@ REM set SOURCE="%FS9%\KLAX"
 REM set TARGET="%XP%\KLAX"
 REM set LB=
 
-set SOURCE="%FS9%\LAX_Central"
-set TARGET="%XP%\LAX"
-set LB=
+REM set SOURCE="%FS9%\LAX_Central"
+REM set TARGET="%XP%\LAX"
+REM set LB=
 
 REM set SOURCE="%FS9%\PHX2007_HR_1"
 REM set TARGET="%XP%\Phoenix"
@@ -304,7 +312,6 @@ REM set LB=
 
 REM set SOURCE="%FS9%\PRAM 2005\PRAM VFR"
 REM set TARGET="%XP%\PRAM"
-REM set LB=
 
 REM set SOURCE="%FS9%\EYPA2007"
 REM set TARGET="%XP%\Palanga"
@@ -368,7 +375,9 @@ if exist %TARGET% (
 echo on
 cls
 fs2xp.py -d %LB% %SN% %SOURCE% %TARGET%
-@REM for %%I in (%TARGET%) do @if exist "%%~fI\Earth nav data\apt.dat" postproc.py "%%~fI\Earth nav data\apt.dat"
+@REM "c:\Program Files\Python24\python.exe" -O fs2xp.py -p %LB% %SN% %SOURCE% %TARGET%
+@for %%I in (%TARGET%) do @if exist "%%~fI\profile.dmp" postprof.py "%%~fI\profile.dmp" > "%%~fI\profile.txt"
+@for %%I in (%TARGET%) do @if exist "%%~fI\Earth nav data\apt.dat" postproc.py "%%~fI\Earth nav data\apt.dat"
 @goto end
 
 :bad
