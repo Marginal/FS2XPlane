@@ -258,9 +258,9 @@ REM set SOURCE="%FSX%\..\cloud9\Xcity-ROME"
 REM set TARGET="%XP%\Rome-cloud9"
 REM set LB=
 
-set SOURCE="%FS9%\..\FSDreamTeam\Zurich"
-set TARGET="%XP%\Zurich-fsdt"
-set LB=
+REM set SOURCE="%FS9%\..\FSDreamTeam\Zurich"
+REM set TARGET="%XP%\Zurich-fsdt"
+REM set LB=
 
 REM set SOURCE="%FS9%\NorAP2004_2"
 REM set TARGET="%XP%\NorAP"
@@ -292,9 +292,9 @@ REM set SOURCE="%FS9%\KLAX"
 REM set TARGET="%XP%\KLAX"
 REM set LB=
 
-REM set SOURCE="%FS9%\LAX_Central"
-REM set TARGET="%XP%\LAX"
-REM set LB=
+set SOURCE="%FS9%\LAX_Central"
+set TARGET="%XP%\LAX"
+set LB=
 
 REM set SOURCE="%FS9%\PHX2007_HR_1"
 REM set TARGET="%XP%\Phoenix"
