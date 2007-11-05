@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 #
-# Copyright (c) 2005,2006,2007 Jonathan Harris
+# Copyright (c) 2006,2007 Jonathan Harris
 # 
 # Mail: <x-plane@marginal.org.uk>
 # Web:  http://marginal.org.uk/x-planescenery/
@@ -9,22 +9,26 @@
 # See FS2XPlane.html for usage.
 #
 # This software is licensed under a Creative Commons License
-#   Attribution-ShareAlike 2.5:
+#   Attribution-Noncommercial-Share Alike 3.0:
 #
 #   You are free:
-#     * to copy, distribute, display, and perform the work
-#     * to make derivative works
-#     * to make commercial use of the work
+#    * to Share - to copy, distribute and transmit the work
+#    * to Remix - to adapt the work
+#
 #   Under the following conditions:
-#     * Attribution: You must give the original author credit.
-#     * Share Alike: If you alter, transform, or build upon this work, you
-#       may distribute the resulting work only under a license identical to
-#       this one.
-#   For any reuse or distribution, you must make clear to others the license
-#   terms of this work.
+#    * Attribution. You must attribute the work in the manner specified
+#      by the author or licensor (but not in any way that suggests that
+#      they endorse you or your use of the work).
+#    * Noncommercial. You may not use this work for commercial purposes.
+#    * Share Alike. If you alter, transform, or build upon this work,
+#      you may distribute the resulting work only under the same or
+#      similar license to this one.
+#
+#   For any reuse or distribution, you must make clear to others the
+#   license terms of this work.
 #
 # This is a human-readable summary of the Legal Code (the full license):
-#   http://creativecommons.org/licenses/by-sa/2.5/legalcode
+#   http://creativecommons.org/licenses/by-nc-sa/3.0/
 #
 
 from getopt import getopt, GetoptError
@@ -48,6 +52,9 @@ def log(msg):
     logfile=file(logname, 'at')
     logfile.write('%s\n' % msg)
     logfile.close()
+
+def refresh():
+    pass
 
 def usage():
     exit('\nUsage:\tfs2xp [options] "MSFS scenery location" "X-Plane scenery location"\noptions:\t-l "Additional MSFS library location"\n\t\t-s Spring|Summer|Autumn|Winter\n\t\t-x\n')
@@ -107,7 +114,8 @@ logname=abspath(join(xppath, 'summary.txt'))
 
 # Main
 try:
-    output=Output(fspath,lbpath,xppath,season,status,log,dumplib,debug)
+    output=Output(fspath,lbpath,xppath,season, status,log,refresh,
+                  dumplib, debug and not prof)
     output.scanlibs()
     output.procphotos()
     if prof:
@@ -116,6 +124,7 @@ try:
         output.process()
         output.proclibs()
         output.export()
+        if output.debug: output.debug.close()
     if exists(logname):
         status(-1, 'Displaying summary "%s"' % logname)
         viewer(logname)

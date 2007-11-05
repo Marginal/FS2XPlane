@@ -9,22 +9,26 @@
 # See FS2XPlane.html for usage.
 #
 # This software is licensed under a Creative Commons License
-#   Attribution-ShareAlike 2.5:
+#   Attribution-Noncommercial-Share Alike 3.0:
 #
 #   You are free:
-#     * to copy, distribute, display, and perform the work
-#     * to make derivative works
-#     * to make commercial use of the work
+#    * to Share - to copy, distribute and transmit the work
+#    * to Remix - to adapt the work
+#
 #   Under the following conditions:
-#     * Attribution: You must give the original author credit.
-#     * Share Alike: If you alter, transform, or build upon this work, you
-#       may distribute the resulting work only under a license identical to
-#       this one.
-#   For any reuse or distribution, you must make clear to others the license
-#   terms of this work.
+#    * Attribution. You must attribute the work in the manner specified
+#      by the author or licensor (but not in any way that suggests that
+#      they endorse you or your use of the work).
+#    * Noncommercial. You may not use this work for commercial purposes.
+#    * Share Alike. If you alter, transform, or build upon this work,
+#      you may distribute the resulting work only under the same or
+#      similar license to this one.
+#
+#   For any reuse or distribution, you must make clear to others the
+#   license terms of this work.
 #
 # This is a human-readable summary of the Legal Code (the full license):
-#   http://creativecommons.org/licenses/by-sa/2.5/legalcode
+#   http://creativecommons.org/licenses/by-nc-sa/3.0/
 #
 
 import os	# for startfile
@@ -45,7 +49,7 @@ try:
 except:
     if platform=='darwin':
         from EasyDialogs import Message
-        Message("wxPython is not installed. This application\nrequires wxPython2.5.3-py%s or later." % version[:3])
+        Message("wxPython is not installed. This application requires\nwxPython 2.5.3 or later, built for Python %s." % version[:3])
     else:	# linux
         import tkMessageBox
         tkMessageBox._show("Error", "wxPython is not installed. This application\nrequires python wxgtk2.5.3 or later.", icon="error", type="ok")
@@ -127,7 +131,10 @@ def log(msg):
     if newlog: logfile.write(sysdesc)
     logfile.write('%s\n' % msg.encode("utf-8"))
     logfile.close()
-    
+
+def refresh():
+    app.Yield()
+
 
 # Set up paths
 newfsroot=None
@@ -441,7 +448,8 @@ class MainWindow(wx.Frame):
         season=self.season.GetSelection()	# zero-based
 
         try:
-            output=Output(fspath,lbpath,xppath,season,status,log,dumplib,False)
+            output=Output(fspath,lbpath,xppath,season, status,log,refresh,
+                          dumplib, False)
             output.scanlibs()
             output.procphotos()
             output.process()

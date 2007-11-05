@@ -1,30 +1,3 @@
-#
-# Copyright (c) 2005,2006,2007 Jonathan Harris
-# 
-# Mail: <x-plane@marginal.org.uk>
-# Web:  http://marginal.org.uk/x-planescenery/
-#
-# See FS2XPlane.html for usage.
-#
-# This software is licensed under a Creative Commons License
-#   Attribution-ShareAlike 2.5:
-#
-#   You are free:
-#     * to copy, distribute, display, and perform the work
-#     * to make derivative works
-#     * to make commercial use of the work
-#   Under the following conditions:
-#     * Attribution: You must give the original author credit.
-#     * Share Alike: If you alter, transform, or build upon this work, you
-#       may distribute the resulting work only under a license identical to
-#       this one.
-#   For any reuse or distribution, you must make clear to others the license
-#   terms of this work.
-#
-# This is a human-readable summary of the Legal Code (the full license):
-#   http://creativecommons.org/licenses/by-sa/2.5/legalcode
-#
-
 from math import floor, sin, cos, radians
 from os import curdir, listdir, mkdir, pardir, sep, stat, unlink, walk
 from os.path import basename, dirname, exists, isdir, join, normpath, splitext
@@ -45,7 +18,7 @@ import convmdl
 import convxml
 
 class Output:
-    def __init__(self, fspath, lbpath, xppath, season, status, log,
+    def __init__(self, fspath, lbpath, xppath, season, status, log, refresh,
                  dumplib, debug):
 
         self.dumplib=dumplib
@@ -63,6 +36,7 @@ class Output:
         # Callbacks
         self.status=status
         self.log=log
+        self.refresh=refresh
 
         # Per-BGL counts - should live somewhere else
         self.gencount=0
