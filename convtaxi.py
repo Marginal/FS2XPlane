@@ -46,7 +46,7 @@ class Node:
     types={'RAMP_CARGO':'Cargo ',
            'RAMP_GA':'GA ',        'RAMP_GA_LARGE':'GA ',
            'RAMP_GA_MEDIUM':'GA ', 'RAMP_GA_SMALL':'GA ',
-           'RAMP_MIL_CARGO':'Mil cargo ', 'RAMP_MIL_COMBAT':'Military '}
+           'RAMP_MIL_CARGO':'Mil Cargo ', 'RAMP_MIL_COMBAT':'Military '}
     gates=['GATE_A', 'GATE_B', 'GATE_C', 'GATE_D', 'GATE_E', 'GATE_F',
            'GATE_G', 'GATE_H', 'GATE_I', 'GATE_J', 'GATE_K', 'GATE_L',
            'GATE_M', 'GATE_N', 'GATE_O', 'GATE_P', 'GATE_Q', 'GATE_R',
@@ -72,7 +72,7 @@ class Node:
             self.heading=float(point.heading)
             
             # type appears to be secondary to name
-            if point.type in Node.gates:
+            if point.name in Node.gates:
                 self.startup='Gate '+point.name[5]
             elif point.name=='GATE':
                 self.startup='Gate'
