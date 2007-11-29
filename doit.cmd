@@ -232,8 +232,8 @@ REM set TARGET="%XP%\LTBA"
 REM set SOURCE="%FS9%\Doubs"
 REM set TARGET="%XP%\Doubs"
 
-REM set SOURCE="%FS9%\isd_limc2005"
-REM set TARGET="%XP%\LIMC"
+set SOURCE="%FS9%\isd_limc2005"
+set TARGET="%XP%\LIMC"
 
 REM set SOURCE="%FS9%\isdproject-lirf2005\Flight Simulator 9\Addon Scenery"
 REM set TARGET="%XP%\LIRF"
@@ -292,9 +292,9 @@ REM set SOURCE="%FS9%\KLAX"
 REM set TARGET="%XP%\KLAX"
 REM set LB=
 
-set SOURCE="%FS9%\LAX_Central"
-set TARGET="%XP%\LAX"
-set LB=
+REM set SOURCE="%FS9%\LAX_Central"
+REM set TARGET="%XP%\LAX"
+REM set LB=
 
 REM set SOURCE="%FS9%\PHX2007_HR_1"
 REM set TARGET="%XP%\Phoenix"

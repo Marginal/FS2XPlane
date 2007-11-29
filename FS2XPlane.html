@@ -107,10 +107,11 @@ package or it can extract all the objects in MSFS scenery libraries.<p>
 <ul>
   <li>Run the <samp>FS2XPlane</samp> application.</li>
   <li>Download the scenery package that you want to convert. There are
-two kinds of scenery packages; those that come with an installer program
-and those that you install manually:</li>
+two kinds of scenery packages; those that are supplied as an installer program
+(<code>.exe</code> file) and those that you install manually
+(<code>.zip</code> file):</li>
     <dl>
-      <dt>Installer program:</dt>
+      <dt>Installer program (<code>.exe</code>):</dt>
       <dd>Double-click on the installer program to run it
       <small>(unless you have a PPC Mac, in which case you can't use this
       scenery package)</small>.<br>
@@ -118,7 +119,7 @@ and those that you install manually:</li>
       The installer program puts the scenery in a folder somewhere inside of
       your MSFS installation. Find this folder (it may be under
       the<code> Addon&nbsp;Scenery </code> folder).</dd>
-      <dt>Manual installation:</dt>
+      <dt>Manual installation (<code>.zip</code>):</dt>
       <dd>Read the installation notes for the scenery package. Most
       packages require you to unzip the package into a new folder under
       the<code> Addon&nbsp;Scenery </code> folder inside of your MSFS
@@ -292,7 +293,7 @@ See <a href="#pavement">below</a> for one method of dealing with this.</li>
   <li>Data that X-Plane does not understand, <i>eg</i> airspace boundaries.</li>
   <li>Terrain and landclass data.</li>
   <li>"Hard" surfaces above ground-level.</li>
-  <li>Areas that make use of some of the more obscure pre-FS2002 BGL opcodes.</li>
+  <li>Areas that make use of some of the more obscure pre-FS2002 BGL commands.</li>
 </ul>
 
 <h3><a name="pavement">Pavement</a></h3>
@@ -470,7 +471,7 @@ The beacon, taxiway or windsock is omitted.</td>
       <td style="background-color: white; vertical-align: top;">Can't parse
 &lt;area #n or object id&gt; in &lt;filename&gt;</td>
       <td style="background-color: white;">This is most likely caused by
-the presence of obscure pre-FS2002 opcodes in the source BGL file.<br>
+the presence of obscure pre-FS2002 commands in the source BGL file.<br>
 This area or library object will likely be incompletely converted,
 but any other areas or objects in the same file will be OK.</td>
     </tr>
@@ -573,7 +574,7 @@ The request is ignored.</td>
     <tr>
       <td style="background-color: white; vertical-align: top;">Skipping
 pre-FS2002 scenery in [&lt;object&nbsp;id&gt; in] file &lt;filename&gt;</td>
-      <td style="background-color: white;">Old pre-FS2002 opcodes were
+      <td style="background-color: white;">Old pre-FS2002 commands were
 found.<br>
 The old-style scenery is not converted, but other scenery in this
 file or library object will be OK.</td>
@@ -657,7 +658,7 @@ You may be asked whether to overwrite some files; say yes.</li>
 <table style="width: 100%;" border="0" cellpadding="2">
   <tbody>
     <tr>
-      <td class="banner">Version 2.30 &copy; 2007 <a href="mailto:x-plane@marginal.org.uk">Jonathan Harris</a>
+      <td class="banner">Version 2.31 &copy; 2007 <a href="mailto:x-plane@marginal.org.uk">Jonathan Harris</a>
 <a rel="license" href="http://creativecommons.org/licenses/by-nc-sa/3.0/">
 <img alt="Creative Commons License" style="border: 0px solid ; width: 88px; height: 31px; vertical-align: text-bottom;" src="http://creativecommons.org/images/public/somerights20.png"></a></td>
     </tr>
