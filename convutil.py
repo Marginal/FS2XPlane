@@ -350,20 +350,8 @@ class Object:
 
         # Special handling for trees using default MSFS tree texture
         if self.tex and not exists(self.tex) and basename(self.tex).lower() in ['treeswi.bmp', 'treessp.bmp', 'treessu.bmp', 'treesfa.bmp', 'treeshw.bmp']:
-            self.tex='Resources/Tree_side.png'	# X-Plane v8 texture
+            self.tex='Resources/trees.png'
             self.lit=None
-            mapping=[[(1,0),(0,6),(1,6),(1,4)],
-                     [(7,2),(5,7),(3,0),(2,5)],
-                     [(7,2),(1,7),(2,6),(5,4)],
-                     [(7,2),(6,7),(2,6),(6,4)]]
-            newvt=[]
-            for (x,y,z,nx,ny,nz,u,v) in self.vt:
-                (un,vn)=mapping[min(int(u*4),3)][min(int(v*4),3)]
-                if un==1 and vn==0 and (v*4)%1>=0.125:	# shrub
-                    v=v-0.125
-                newvt.append((x,y,z,nx,ny,nz,
-                              (un+(u*4)%1)/8.0, (vn+(v*4)%1)/8.0))
-            self.vt=newvt
 
         # self.tex & .lit are case-corrected full pathname to source texture
         (tex,lit)=maketexs(self.tex, self.lit, output)
