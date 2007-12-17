@@ -121,7 +121,7 @@ class Link:	# TaxiwayPath or TaxiwayParking
             if self.type in ['PATH','PARKING']:
                 self.draw=False	# No surface for apron paths
             else:
-                self.draw=T(path, 'drawSurface') or T(path, 'drawDetail')
+                self.draw=not D(path, 'drawSurface') or T(path, 'drawSurface') or not D(path, 'drawDetail') or T(path, 'drawDetail')
             self.centreline=T(path, 'centerLine')
             self.centrelights=T(path, 'centerLineLighted')
             self.lines=[path.rightEdge,path.leftEdge]
@@ -416,7 +416,7 @@ def taxilayout(allnodes, alllinks, surfaceheading, output, aptdat=None, ident="u
     gluTessProperty(tessObj,GLU_TESS_BOUNDARY_ONLY,GL_TRUE)
     gluTessCallback(tessObj,GLU_TESS_BEGIN_DATA,   tessbegin)
     gluTessCallback(tessObj,GLU_TESS_VERTEX_DATA,  tessvertex)
-    gluTessCallback(tessObj,GLU_TESS_END_DATA,     tessend)
+    #gluTessCallback(tessObj,GLU_TESS_END_DATA,     tessend)
     gluTessCallback(tessObj,GLU_TESS_COMBINE_DATA, tesscombine)
 
     # Candidates
@@ -1008,3 +1008,113 @@ def taxilayout(allnodes, alllinks, surfaceheading, output, aptdat=None, ident="u
                     aptdat.extend(out)
                 else:
                     output.misc.append((120, n.loc, out))            
+
+# --------------------------------------------------------------------------
+
+def aproncombine(coords, vertex, weight):
+    return Point(coords[2], coords[0])
+
+def apronlayout(points, surface, surfaceheading, output, aptdat=None, ident="unknown"):
+
+    tessObj = gluNewTess()
+    gluTessNormal(tessObj, 0, -1, 0)
+    gluTessProperty(tessObj,GLU_TESS_WINDING_RULE,GLU_TESS_WINDING_NONZERO)
+    gluTessProperty(tessObj,GLU_TESS_BOUNDARY_ONLY,GL_TRUE)
+    gluTessCallback(tessObj,GLU_TESS_BEGIN_DATA,   tessbegin)
+    gluTessCallback(tessObj,GLU_TESS_VERTEX_DATA,  tessvertex)
+    #gluTessCallback(tessObj,GLU_TESS_END_DATA,     tessend)
+    gluTessCallback(tessObj,GLU_TESS_COMBINE, aproncombine)
+
+    newpoints=[]
+    gluTessBeginPolygon(tessObj, (newpoints, None))
+    gluTessBeginContour(tessObj)
+    for pt in points:
+        gluTessVertex(tessObj, [pt.lon, 0, pt.lat], pt)
+    gluTessEndContour(tessObj)
+    gluTessEndPolygon(tessObj)
+    gluDeleteTess(tessObj)
+
+    # Tessellator spits out points in any order - first split out exteriors
+    outpoints=[]
+    j=0
+    while j<len(newpoints):
+        points=newpoints[j]
+        n=len(points)
+        area2=0
+        i=0
+        while i<n:
+            loc=points[i]
+            loc1=points[(i+1)%n]
+            area2+=(loc.lon * loc1.lat - loc1.lon * loc.lat)
+            i+=1
+    
+        if area2>=0:	# exterior
+            p=newpoints.pop(j)
+            if area2>=1e-8:	# crappy exterior - arbitrary
+                outpoints.append([p])
+        elif area2>-1e-8:	# crappy interior - arbitrary
+            newpoints.pop(j)
+        else:
+            j+=1
+    
+    # Attach interiors to enclosing exterior. Assumes no intersections
+    # http://local.wasp.uwa.edu.au/~pbourke/geometry/insidepoly/ Sln 2
+    if __debug__:
+        if newpoints: print "Assign interiors:"
+    for e in outpoints:
+        opoints=e[0]	# the exterior polygon
+        n=len(opoints)
+        if __debug__: print "Exterior", len(opoints)
+        j=0
+        while j<len(newpoints):
+            points=newpoints[j]	# candidate interior polygon
+            for loc in points:
+                if __debug__: print len(points), j, loc,
+                angle=0
+                for i in range(n):
+                    if loc.equals(opoints[i]):
+                        # try another point in the candidate
+                        if __debug__: print "Coincident", loc,
+                        break
+                    # sum angles between exterior points
+                    thisangle=loc.angleto(opoints[i])-loc.angleto(opoints[(i+1)%n])
+                    if thisangle>pi: thisangle-=twopi
+                    if thisangle<-pi: thisangle+=twopi
+                    angle+=thisangle
+                else:
+                    # angle is 0 (outside) or twopi (inside)
+                    if angle>pi:
+                        if __debug__: print "Inside", angle
+                        # interior polygon point is inside exterior
+                        e.append(newpoints.pop(j))
+                    else:
+                        if __debug__: print "Outside", angle
+                        j+=1
+                    break
+            else:
+                # wtf - all interior points were coincident with exterior
+                if __debug__: print "wtf", angle
+                newpoints.pop(j)
+    if __debug__:
+        if output.debug and newpoints:
+            output.debug.write("Unassigned interiors!\n")
+            for points in newpoints: output.debug.write("%d %s\n" % (len(points), points[0]))
+            
+    # Finally output the polygons
+    out=[]
+    for tw in outpoints:
+        out.append(AptNav(110, "%02d %4.2f %6.2f Apron" % (
+            surface, 0.25, surfaceheading)))
+        for points in tw:
+            n=len(points)
+            for i in range(n):
+                out.append(AptNav(111, "%10.6f %11.6f" % (points[i].lat, points[i].lon)))
+            assert(out[-1].code!=110)
+            out[-1].code+=2		# Terminate last
+
+    if not outpoints:
+        pass	# only exterior was too crappy
+    elif aptdat:
+        aptdat.extend(out)
+    else:
+        output.misc.append((110, outpoints[0][0][0], out))

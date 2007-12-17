@@ -7,7 +7,7 @@ from tempfile import gettempdir
 
 from convutil import m2f, NM2m, complexity, asciify, AptNav, Object, Point, Matrix, FS2XError
 from convobjs import makegenquad, makegenmulti
-from convtaxi import designators, surfaces, taxilayout, Node, Link
+from convtaxi import apronlayout, designators, surfaces, taxilayout, Node, Link
 
 
 # member var is defined
@@ -782,10 +782,6 @@ class Airport:
                 if T(apron, 'drawSurface') or T(apron, 'drawDetail'):
                     surface=surfaces[apron.surface]
                     smoothing=0.25
-                    if self.runway:
-                        heading=float(self.runway[0].heading)%180
-                    else:
-                        heading=0
                     l=[]
                     for v in apron.vertex:
                         if D(v, 'lat') and D(v, 'lon'):
@@ -795,19 +791,7 @@ class Airport:
                         if output.excluded(loc): break
                         l.append(loc)
                     else:
-                        # sort CCW
-                        area2=0
-                        count=len(l)
-                        for i in range(count):
-                            area2+=(l[i].lon * l[(i+1)%count].lat -
-                                    l[(i+1)%count].lon * l[i].lat)
-                        if area2<0: l.reverse()
-                        aptdat.append(AptNav(110, "%02d %4.2f %6.2f Apron" % (
-                            surface, smoothing, surfaceheading)))
-                        for loc in l:
-                            aptdat.append(AptNav(111, "%10.6f %11.6f %d" % (
-                                loc.lat, loc.lon, 0)))
-                        aptdat[-1].code=113
+                        apronlayout(l, surface, surfaceheading, output, aptdat, ident)
 
         # ApronEdgeLights
         for a in self.apronedgelights:
