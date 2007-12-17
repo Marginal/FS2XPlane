@@ -87,22 +87,28 @@ a binary (or just stick with the command-line program).</dd>
 <p>Run the <samp>FS2XPlane</samp> application.</p>
 <dl>
   <dt><b>Windows</b></dt>
-  <dd>If you don't have FS2004 or FSX installed then FS2XPlane creates a
-fake FS2004 installation
-in<code> Program&nbsp;Files\Microsoft&nbsp;Games\Flight&nbsp;Simulator&nbsp;9</code>, a fake FSX installation
+  <dd>If you don't have FSX installed then FS2XPlane creates a
+fake FSX installation
 in<code> Program&nbsp;Files\Microsoft&nbsp;Games\Microsoft&nbsp;Flight&nbsp;Simulator&nbsp;X</code>, and sets up the subfolders and registry entries that
-some MSFS scenery package installer programs require.</dd>
+some MSFS scenery package installer programs require.<br>
+If you don't have FS2004 installed then you should install FS2004 add-on
+scenery packages into your real FSX installation (if you have one) or into
+this fake FSX installation (if you don't).</dd>
   <dt>&nbsp;</dt>
   <dt><b>Mac OS</b> and <b>Linux</b></dt>
-  <dd>FS2XPlane creates a combined fake FS2004 & FSX installation in the folder
-<code>FS2004</code> inside of your home folder, and sets up the subfolders and
-Wine registry entries that some MSFS scenery package installer programs
-require.</dd>
+  <dd>FS2XPlane creates a combined fake FS2004 &amp; FSX installation in the
+folder <code>FS2004</code> inside of your home folder, and sets up the
+subfolders and Wine registry entries that some MSFS scenery package installer
+programs require.<br>
+You should install FS2004 &amp; FSX add-on scenery packages into this fake
+MSFS installation.</dd>
+  </dd>
 </dl>
 
 <h3><a name="usage"></a>Usage</h3>
-<p>FS2XPlane can operate in one of two ways - it can convert a MSFS scenery
-package or it can extract all the objects in MSFS scenery libraries.<p>
+<p>FS2XPlane can operate in one of two ways - it can convert a MSFS add-on
+scenery package or it can extract all the objects in MSFS add-on scenery
+libraries.<p>
 <h4>Converting a scenery package</h4>
 <ul>
   <li>Run the <samp>FS2XPlane</samp> application.</li>
@@ -129,7 +135,7 @@ two kinds of scenery packages; those that are supplied as an installer program
   <ul>
     <li>Whether the package depends on a scenery library. If so, download
 and follow the installation notes for this additional scenery library.
-See the notes <a href="#rwy12">below</a> if your package depends on the
+See the notes <a href="#rwy12">below</a> if the package depends on the
 "rwy12" library.</li>
     <li>Whether the package depends on a collection of texture files, <i>eg</i>
 "<a target="_blank" href="ftp://ftp.atlanticskies.com/pub/scenery/NovaTxt1.zip">Nova 1</a>",
@@ -145,9 +151,9 @@ installed package.</li>
   </ul>
   <li>In FS2XPlane, supply the location of the folder that contains the MSFS scenery package.</li>
   <li>Supply the location of any additional MSFS libraries that the
-package depends on. Specify the<code> Addon&nbsp;Scenery </code>folder to
+package depends on. Leave this as the<code> Addon&nbsp;Scenery </code>folder to
 have FS2XPlane search through all installed libraries (recommended),
-or leave this blank for none.</li>
+or make this blank for none.</li>
   <li>Specify the location for the new X-Plane scenery package.
 This should be a non-existent or empty folder directly under
 X-Plane's<code> Custom&nbsp;Scenery </code>folder.</li>
@@ -290,6 +296,8 @@ See <a href="#pavement">below</a> for one method of dealing with this.</li>
 <p>The following MSFS scenery data are discarded:</p>
 <ul>
   <li>FSX photoscenery.</li>
+  <li>FSX jetways.</li>
+  <li>FSX fences.</li>
   <li>Data that X-Plane does not understand, <i>eg</i> airspace boundaries.</li>
   <li>Terrain and landclass data.</li>
   <li>"Hard" surfaces above ground-level.</li>

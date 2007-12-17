@@ -1839,7 +1839,12 @@ class ProcScen:
                 if self.debug: self.debug.write("Bad texture %d/%d\n" %(self.t,len(self.tex)))
             self.t=None
         if __debug__:
-            if self.debug and self.t!=None: self.debug.write("%s\n" % basename(self.tex[self.t]))
+            if self.debug:
+                if self.t!=None and self.tex[self.t]:
+                    self.debug.write("%s\n" % basename(self.tex[self.t]))
+                else:
+                    self.debug.write("Bad tex %s\n" % self.t)
+            
         
     def DrawTriList(self):	# b9
         idx=[]
@@ -2956,7 +2961,7 @@ def findtex(name, thistexdir, addtexdir, dropmissing=False):
                     if i.startswith(s) and i[-4:]==ext:
                         return join(texdir, d[i])
 
-    if not thistexdir: return None
+    if not thistexdir: return name.lower()
     (texdir, d)=thistexdir
 
     # Look for textures that differ only in accents - eg PRAM2005

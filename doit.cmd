@@ -262,6 +262,10 @@ REM set SOURCE="%FS9%\..\FSDreamTeam\Zurich"
 REM set TARGET="%XP%\Zurich-fsdt"
 REM set LB=
 
+REM set SOURCE="%FS9%\Locarno"
+REM set TARGET="%XP%\Locarno"
+REM set LB=
+
 REM set SOURCE="%FS9%\NorAP2004_2"
 REM set TARGET="%XP%\NorAP"
 
