@@ -795,7 +795,7 @@ class ProcScen:
     def Call(self):		# 23:Call, 32:PerspectiveCall
         (off,)=unpack('<h', self.bgl.read(2))
         if not off: raise struct.error	# infloop
-        self.stack.append((self.bgl.tell(),self.layer,False))
+        self.precall(False)
         self.bgl.seek(off-4,1)
 
     def IfIn1(self):		# 24
@@ -819,7 +819,7 @@ class ProcScen:
     def SeparationPlane(self):	# 25
         # Used for animating distance. Skip
         (off,nx,ny,nz,dist)=unpack('<4hi', self.bgl.read(12))
-        #self.stack.append((self.bgl.tell(),self.layer,self.matrix))
+        #self.precall(self.matrix[-1])
         #self.bgl.seek(off-14,1)
 
     def SetWrd(self):		# 26
@@ -920,7 +920,7 @@ class ProcScen:
 
     def Instance(self):		# 33
         (off,p,b,h)=unpack('<h3H', self.bgl.read(8))
-        self.stack.append((self.bgl.tell(),self.layer,True))
+        self.precall(True)
         p=p*360/65536.0
         b=b*360/65536.0
         h=h*360/65536.0
@@ -986,7 +986,7 @@ class ProcScen:
 
     def VInstance(self):	# 3b
         (off,var)=unpack('<hH', self.bgl.read(4))
-        self.stack.append((self.bgl.tell(),self.layer,True))
+        self.precall(True)
         p=self.getvar(var)
         p=self.getvar(var)*360/65536.0
         b=self.getvar(var+2)*360/65536.0
@@ -1149,7 +1149,7 @@ class ProcScen:
         if not off: raise struct.error	# infloop
         #if __debug__:
         #    if self.debug: self.debug.write("PointVICall %d %d %d %d %d %d %d %d %d\n" % (x,y,z,p,vp,b,vb,h,vh))
-        self.stack.append((self.bgl.tell(),self.layer,True))
+        self.precall(True)
         p=p*360/65536.0
         b=b*360/65536.0
         h=h*360/65536.0
@@ -1338,7 +1338,7 @@ class ProcScen:
 
     def AddCat(self):		# 74
         (off,cat)=unpack('<2h', self.bgl.read(4))
-        self.stack.append((self.bgl.tell(),self.layer,False))
+        self.precall(False)
         if __debug__:
             if self.debug: self.debug.write("Layer %d\n" % cat)
         self.layer=cat
@@ -1373,13 +1373,13 @@ class ProcScen:
     def Call32(self):		# 2b:AddObj32, 8a:Call32
         (off,)=unpack('<i', self.bgl.read(4))
         if not off: raise struct.error	# infloop
-        self.stack.append((self.bgl.tell(),self.layer,False))
+        self.precall(False)
         self.bgl.seek(off-6,1)
 
     def AddCat32(self):		# 8b
         (off,cat)=unpack('<ih', self.bgl.read(6))
         if not off: raise struct.error	# infloop
-        self.stack.append((self.bgl.tell(),self.layer,False))
+        self.precall(False)
         if __debug__:
             if self.debug: self.debug.write("Layer %d\n" % cat)
         self.layer=cat
@@ -1559,7 +1559,7 @@ class ProcScen:
     def SpriteVICall(self):	# a7
         (off,x,y,z,p,b,h,vp,vb,vh)=unpack('<4h6H', self.bgl.read(20))
         if not off: raise struct.error	# infloop
-        self.stack.append((self.bgl.tell(),self.layer,self.matrix[-1]))
+        self.precall(True)
         newmatrix=Matrix()
         newmatrix=newmatrix.offset(x,y,z)
         if __debug__:
@@ -1959,6 +1959,14 @@ class ProcScen:
             alt=-(~hi+(~lo+1)/65536.0)
 
         return (lat,lon,alt)
+
+
+    # Stack return data prior to a call
+    def precall(self, matrix):
+        if len(self.stack)>100:		# arbitrary
+            if __debug__: self.debug.write("!Recursion limit\n")
+            raise struct.error
+        self.stack.append((self.bgl.tell(), self.layer, matrix and True))
 
 
     # Try to make a draped polygon
