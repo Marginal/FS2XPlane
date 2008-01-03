@@ -9,34 +9,36 @@ from convutil import Polygon, Point
 LATRES=360.0/32768
 LONRES=480.0/32768
 
-photore=re.compile(r"S(\d)\$([+-]*\d+)-([+-]*\d+)_(\d)_(\d)\.[bB][mM][pP]$")
-
+texre=re.compile(r"\.(bmp|dds)$", re.IGNORECASE)
+photore=re.compile(r"[0-3]{15,15}su\.(bmp|dds)$", re.IGNORECASE)
+blueskyre=re.compile(r"S(\d)\$([+-]*\d+)-([+-]*\d+)_(\d)_(\d)\.(bmp|BMP|dds|DDS)$")
 
 # Handle FS2004 and www.blueskyscenery.com photoscenery
 def ProcPhoto(texdir, output):
 
     if output.debug: output.debug.write("%s\n" % texdir.encode("utf-8"))
 
-    texs=listdir(texdir)
-    texdict=dict([[i,True] for i in texs])
+    # All textures
+    texs=[i for i in listdir(texdir) if texre.search(i)]
+    texsdict=dict([[i[:-4].lower(),i] for i in texs])
 
     # Blue Sky Scenery style
-    for tex in texs:
-        match=photore.split(tex)
-        if not match or len(match)<6: continue
+    bluesky=[i for i in texs if blueskyre.match(i)]
+    blueskydict=dict([[i[:-4],i] for i in bluesky])
+    for tex in bluesky:
+        match=blueskyre.split(tex)
+        if len(match)<6: continue
         lat=int(match[2])
         lon=int(match[3])
         layer=int(match[1])
         res=0.125*layer
         name=tex[:-4]
 
-        if ishigher(name, layer, lat,lon, texdict, output): continue
+        if ishigher(name, layer, lat,lon, blueskydict, output): continue
 
         # findtex is too slow
-        for ext in ['_lm.bmp', '_lm.BMP', '_LM.bmp', '_LM.BMP']:
-            if name+ext in texdict:
-                lit=join(texdir,name+ext)
-                break
+        if name+'_lm' in texsdict:
+            lit=join(texdir,texsdict[name+'_lm'])
         else:
             lit=None
 
@@ -46,10 +48,12 @@ def ProcPhoto(texdir, output):
         if layer<1: layer=1
         makephoto(name, join(texdir,tex), lit, lat, lon, res, layer, output)
 
-    # FS2004 style
-    for tex in glob(join(texdir, '[0123][0123][0123][0123][0123][0123][0123][0123][0123][0123][0123][0123][0123][0123][0123][sS][uU].[bBdD][mMdD][pPsS]')):
-        seasonal=glob(tex[:-6]+["[sS][pP]","[sS][uU]","[fF][aA]","[wW][iI]"][output.season]+".[bBdD][mMdD][pPsS]")
-        if seasonal: tex=seasonal[0]
+    # Standard FS2004 style - assumes that summer exists
+    for tex in texs:
+        if not photore.match(tex): continue
+        name=tex[:-6]
+        seasonal=name+["sp","su","fa","wi"][output.season]
+        if seasonal in texsdict: tex=texsdict[seasonal]
         # find NW point
         lat=lon=0
         for i in tex[-21:-6]:
@@ -62,25 +66,22 @@ def ProcPhoto(texdir, output):
                 lon=lon+1
         lat=8192-lat	# = 90
         lon=lon-12288	# = -180
-        name=basename(tex)[:-6]
 
-        if ishigher(name, 0, lat,lon, texdict, output): continue
+        if ishigher(name, 0, lat,lon, blueskydict, output): continue
 
         # findtex is too slow
-        for ext in ['lm.bmp', 'lm.BMP', 'LM.bmp', 'LM.BMP']:
-            if name+ext in texdict:
-                lit=join(texdir,name+ext)
-                break
+        if name+'lm' in texsdict:
+            lit=join(texdir,texsdict[name+'lm'])
         else:
             lit=None
 
         lat=lat*LATRES
         lon=lon*LONRES
-        makephoto(name, tex, lit, lat, lon, 1, 0, output)
+        makephoto(name, join(texdir,tex), lit, lat, lon, 1, 0, output)
 
 
 # Check for higher-res Blue Sky Scenery scenery
-def ishigher(name, layer, lat,lon, texdict, output):
+def ishigher(name, layer, lat,lon, blueskydict, output):
     bstr="%d-%d" % (lat,lon)
     for (res,n) in [(1,8),(2,4),(4,2)]:
         if res==layer: return False
@@ -88,7 +89,7 @@ def ishigher(name, layer, lat,lon, texdict, output):
         resstr="S%d$%s" % (res,bstr)
         for i in range(n):
             for j in range(n):
-                if ("%s_%d_%d.bmp" % (resstr, i, j)) not in texdict and ("%s_%d_%d.BMP" % (resstr, i, j)) not in texdict:
+                if ("%s_%d_%d" % (resstr, i, j)) not in blueskydict:
                     hires=False
                     break
             else:
@@ -96,7 +97,7 @@ def ishigher(name, layer, lat,lon, texdict, output):
             break
 
         if hires:
-            if output.debug: output.debug.write("Photo: %s higher res is %s\n" % (name, basename(resstr)))
+            if output.debug: output.debug.write("Photo: %s higher res is %s\n" % (name, resstr))
             return True
     return False
                 
