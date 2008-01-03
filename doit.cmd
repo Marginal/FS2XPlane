@@ -5,6 +5,7 @@ set FS9=C:\Program Files\Microsoft Games\Flight Simulator 9\Addon Scenery
 set FSX=C:\Program Files\Microsoft Games\Microsoft Flight Simulator X\Addon Scenery
 set LB=-l "%FS9%"
 set XP=C:\Games\X-Plane\Custom Scenery
+set XP9=C:\Games\X-Plane 9.00\Custom Scenery
 set SN=-sSummer
 
 REM set SOURCE="C:\Program Files\Microsoft Games\Flight Simulator 9\Scenery\Generic"
@@ -29,6 +30,10 @@ REM set TARGET="%XP%\EGSY"
 REM set SOURCE="%FS9%\FlyTampa-SanFrancisco"
 REM set TARGET="%XP%\KSFO"
 
+REM set SOURCE="%FS9%\Fly Tampa Dubai"
+REM set TARGET="%XP9%\OMDB"
+REM set LB=-9
+
 REM set SOURCE="C:\Program Files\VisualFlight\VisualFlightLondon"
 REM set TARGET="%XP%\EGLC"
 
@@ -40,6 +45,10 @@ REM set TARGET="%XP%\Raizet"
 
 REM set SOURCE="%FS9%\Juliana"
 REM set TARGET="%XP%\Juliana"
+
+REM set SOURCE="%FS9%\ChinaAirports2"
+REM set TARGET="%XP%\ChinaAirports2"
+REM set LB=
 
 REM set SOURCE="%FS9%\CYYZ2007"
 REM set TARGET="%XP%\CYYZ"
@@ -55,6 +64,10 @@ REM set SOURCE="%FS9%\Mega EDDF"
 REM set TARGET="%XP%\EDDF"
 REM set LB=
 
+REM set SOURCE="%FS9%\..\megaSceneryNY\Provid_w"
+REM set TARGET="%XP9%\MegaNY"
+REM set LB=-9
+
 REM set SOURCE="%FS9%\EDDV"
 REM set TARGET="%XP%\EDDV"
 REM set LB=
@@ -65,8 +78,9 @@ REM set TARGET="%XP%\EFHK"
 REM set SOURCE="%FS9%\EFHF"
 REM set TARGET="%XP%\EFHF"
 
-REM set SOURCE="%FS9%\EFRO4"
-REM set TARGET="%XP%\EFRO"
+set SOURCE="%FS9%\EFRO4"
+set TARGET="%XP9%\EFRO"
+set LB=-9
 
 REM set SOURCE="%FS9%\EFLL 1.0"
 REM set TARGET="%XP%\EFLL"
@@ -90,8 +104,8 @@ REM set TARGET="%XP%\Helsinki"
 REM set LB=
 
 REM set SOURCE="%FS9%\Vantaa_photoscenery_1.0"
-REM set TARGET="%XP%\Vantaa"
-REM set LB=
+REM set TARGET="%XP9%\Vantaa"
+REM set LB=-9
 
 REM set SOURCE="%FS9%\ESSA_v2"
 REM set TARGET="%XP%\ESSA"
@@ -232,8 +246,8 @@ REM set TARGET="%XP%\LTBA"
 REM set SOURCE="%FS9%\Doubs"
 REM set TARGET="%XP%\Doubs"
 
-set SOURCE="%FS9%\isd_limc2005"
-set TARGET="%XP%\LIMC"
+REM set SOURCE="%FS9%\isd_limc2005"
+REM set TARGET="%XP%\LIMC"
 
 REM set SOURCE="%FS9%\isdproject-lirf2005\Flight Simulator 9\Addon Scenery"
 REM set TARGET="%XP%\LIRF"

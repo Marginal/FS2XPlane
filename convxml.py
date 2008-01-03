@@ -134,7 +134,7 @@ class SceneryObject:
                 parser.gencount += 1
                 name="%s-generic-%d.obj" % (asciify(parser.filename[:-4]),
                                             parser.gencount)
-                obj=makegenmulti(name, int(m.buildingSides),
+                obj=makegenmulti(name, output.palettex, int(m.buildingSides),
                                  scale*float(m.sizeX), scale*float(m.sizeZ),
                                  [scale*float(m.sizeBottomY),
                                   scale*float(m.sizeWindowY),
@@ -150,7 +150,7 @@ class SceneryObject:
                 parser.gencount += 1
                 name="%s-generic-%d.obj" % (asciify(parser.filename[:-4]),
                                             parser.gencount)
-                obj=makegenquad(name,
+                obj=makegenquad(name, output.palettex,
                                 scale*float(m.sizeX), scale*float(m.sizeZ),
                                 atan((float(m.sizeX)-float(m.sizeTopX))/h2),
                                 atan((float(m.sizeZ)-float(m.sizeTopZ))/h2),
@@ -185,7 +185,7 @@ class SceneryObject:
                 parser.gencount += 1
                 name="%s-generic-%d.obj" % (asciify(parser.filename[:-4]),
                                             parser.gencount)
-                obj=makegenquad(name,
+                obj=makegenquad(name, output.palettex,
                                 scale*float(m.sizeX), scale*float(m.sizeZ),
                                 0, 0, heights, rtexs, roof)
                 output.objdat[name]=[obj]
@@ -1008,7 +1008,9 @@ class ModelData:
 
 class Parse:
     def __init__(self, fd, srcfile, output):
+        if output.debug: output.debug.write('%s\n' % srcfile.encode("utf-8"))
         self.filename=basename(srcfile)
+        self.output=output
         self.elems=[]
         self.parents=[]
         self.parname=''	# parent class(es)
@@ -1025,8 +1027,7 @@ class Parse:
             elem.export(self, output)
 
     def start_element(self, name, attrs):
-        if name=='FSData':
-            return
+        if name=='FSData': return
         try:
             elem=eval('%s%s(attrs)' % (self.parname, name))
             if self.parents:
@@ -1036,7 +1037,8 @@ class Parse:
             self.parents.append(elem)
             self.parname+=(name+'.')
         except (NameError, AttributeError):
-            #print "Skippping", self.parname, name
+            if self.output.debug:
+                self.output.debug.write("Skipping %s%s(%s)\n" % (self.parname, name, attrs))
             return
             
     def end_element(self, name):

@@ -37,6 +37,7 @@ if platform=='win32':
     platdata=[('win32',
                ['win32/bglxml.exe',
                 'win32/bglunzip.exe',
+                'win32/bmp2dds.exe',
                 'win32/bmp2png.exe',
                 'win32/DSFTool.exe',
                 ])
@@ -58,7 +59,7 @@ elif platform.lower().startswith('darwin'):
 
 res=["Resources/library objects.txt"]
 for f in listdir('Resources'):
-    if f[-4:] in ['.bgl', '.obj', '.png']: res.append('Resources/%s' % f)
+    if f[-4:] in ['.bgl','.dds','.obj','.png']: res.append('Resources/%s' % f)
     
 setup(name='FS2XPlane',
       version=("%4.2f" % appversion),
@@ -69,6 +70,7 @@ setup(name='FS2XPlane',
       data_files=[('',
                    ['FS2XPlane.html',
                     'bglxml.copying.txt',
+                    'Squish_license.txt',
                     ]),
                   ('Resources',
                    res),

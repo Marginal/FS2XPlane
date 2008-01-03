@@ -16,10 +16,10 @@ except NameError:
     from OpenGL import GLU
     gluTessVertex = GLU._gluTessVertex
 
-from convutil import cirp, m2f, NM2m, complexity, asciify, unicodeify, normalize, rgb2uv, cross, dot, AptNav, Object, Polygon, Point, Matrix, FS2XError, unique, palettetex, groundfudge, planarfudge, effects
+from convutil import cirp, m2f, NM2m, complexity, asciify, unicodeify, normalize, rgb2uv, cross, dot, AptNav, Object, Polygon, Point, Matrix, FS2XError, unique, groundfudge, planarfudge, effects
 from convobjs import makegenquad, makegenmulti
 from convtaxi import taxilayout, Node, Link
-from convphoto import photore
+from convphoto import blueskyre
 
 
 # Subset of XML TaxiwayPoint
@@ -540,7 +540,7 @@ class ProcScen:
                 # must have a colour for lights and lines
                 mat=[(1.0,1.0,1.0),(0,0,0),(0,0,0),0]
         elif self.t==None:
-            tex=palettetex
+            tex=self.output.palettetex
             if __debug__:
                 if self.debug and not mat: self.debug.write("Transparent\n")
         else:
@@ -741,7 +741,7 @@ class ProcScen:
             (idx,tu,tv)=unpack('<H2h', self.bgl.read(6))
             (x,y,z,c,c,c,c,c)=self.vtx[idx]
             vtx.append((x,y,z, nx,ny,nz, tu/255.0,tv/255.0))
-        if not self.objdat and photore.match(basename(self.tex[self.t])):
+        if not self.objdat and blueskyre.match(basename(self.tex[self.t])):
             if __debug__:
                 if self.debug: self.debug.write("Photoscenery\n")
             return	# handled in ProcPhoto
@@ -1204,13 +1204,13 @@ class ProcScen:
             if foo in self.output.gencache:
                 name=self.output.gencache[foo]
             else:
-                newobj=makegenmulti(name,*foo)
+                newobj=makegenmulti(name, self.output.palettex, *foo)
         else:
             foo=(size_x, size_z, incx, incz, tuple(heights), tuple(texs), roof)
             if foo in self.output.gencache:
                 name=self.output.gencache[foo]
             else:
-                newobj=makegenquad(name, *foo)
+                newobj=makegenquad(name, self.output.palettex, *foo)
         if newobj:
             self.output.objdat[name]=[newobj]
             self.output.gencache[foo]=name
@@ -1538,13 +1538,13 @@ class ProcScen:
             if foo in self.output.gencache:
                 name=self.output.gencache[foo]
             else:
-                newobj=makegenmulti(name,*foo)
+                newobj=makegenmulti(name, self.output.palettex, *foo)
         else:
             foo=(size_x, size_z, incx, incz, tuple(heights), tuple(texs), roof)
             if foo in self.output.gencache:
                 name=self.output.gencache[foo]
             else:
-                newobj=makegenquad(name, *foo)
+                newobj=makegenquad(name, self.output.palettex, *foo)
         if newobj:
             self.output.objdat[name]=[newobj]
             self.output.gencache[foo]=name
@@ -2548,7 +2548,7 @@ class ProcScen:
                 for (m, vtx, i, dbl) in self.objdat[lkey]:
 
                     # replace materials with palette texture
-                    if tex==palettetex:
+                    if tex==self.output.palettetex:
                         (pu,pv)=rgb2uv(m[0])
                     
                     vbase=len(vt)
@@ -2560,7 +2560,7 @@ class ProcScen:
                             (x,y,z)=newmatrix.transform(x,y,z)
                             (nx,ny,nz)=newmatrix.rotate(nx,ny,nz)
                         # replace materials with palette texture
-                        if tex==palettetex:
+                        if tex==self.output.palettetex:
                             tu=pu
                             tv=pv
                         vt.append([x*scale,alt+y*scale,-z*scale, nx,ny,-nz, tu,tv])
@@ -2601,7 +2601,7 @@ class ProcScen:
             (lat, lon, layer, altmsl, heading)=okey
             loc=Point(lat, lon)
             for (tex, lit, vlight, vline, lines, veffect, vt, idx, mattri) in objdat[okey]:
-                if tex==palettetex or (not tex and not lit):
+                if tex==self.output.palettetex or (not tex and not lit):
                     fname=asciify(bname)
                 else:
                     if tex:

@@ -18,8 +18,8 @@ import convmdl
 import convxml
 
 class Output:
-    def __init__(self, fspath, lbpath, xppath, season, status, log, refresh,
-                 dumplib, debug):
+    def __init__(self, fspath, lbpath, xppath, dumplib, season, dds,
+                 status, log, refresh, debug):
 
         self.dumplib=dumplib
         self.docomplexity=False
@@ -32,6 +32,7 @@ class Output:
         self.xppath=xppath
         self.hemi=0	# 0=N, 1=S
         self.season=season
+        self.dds=dds
 
         # Callbacks
         self.status=status
@@ -60,23 +61,26 @@ class Output:
         self.stock={}	# FS2004 stock objects - we don't have these
         self.friendly={}	# GUID->friendly name map
         self.haze={}	# Textures that have palette-based transparency
-        self.dufftex={}	# Textures we couldn't convert (avoid multiple reports)
+        self.donetex={}	# Textures we have seen (avoid multiple convert/report)
         self.visrunways=False	# Runways on top of scenery - should be per apt
         
         if platform=='win32':
             self.bglexe=join(curdir,'win32','bglunzip.exe')
             self.xmlexe=join(curdir,'win32','bglxml.exe')
             self.pngexe=join(curdir,'win32','bmp2png.exe')
+            self.ddsexe=join(curdir,'win32','bmp2dds.exe')
             self.dsfexe=join(curdir,'win32','DSFTool.exe')
         elif platform.lower().startswith('linux'):
             self.bglexe=join(curdir,'linux','bglunzip')
             self.xmlexe=join(curdir,'linux','bglxml')
             self.pngexe=join(curdir,'linux','bmp2png')
+            self.ddsexe=join(curdir,'linux','bmp2dds')
             self.dsfexe=join(curdir,'linux','DSFTool')
         else:	# Mac
             self.bglexe=join(curdir,'MacOS','bglunzip')
             self.xmlexe=join(curdir,'MacOS','bglxml')
             self.pngexe=join(curdir,'MacOS','bmp2png')
+            self.ddsexe=join(curdir,'MacOS','bmp2dds')
             self.dsfexe=join(curdir,'MacOS','DSFTool')
 
         for path in [fspath, lbpath]:
@@ -85,6 +89,10 @@ class Output:
             if path and not isdir(path):
                 raise FS2XError('"%s" is not a folder' % path)
 
+        if self.dds:
+            self.palettetex='Resources/FS2X-palette.dds'
+        else:
+            self.palettetex='Resources/FS2X-palette.png'
         self.addtexdir=None
         try:
             for f in listdir(lbpath):
@@ -294,6 +302,7 @@ class Output:
                                 ProcEx(bgl, self)
                             except:
                                 self.log("Can't parse Exclusion section in file %s" % filename)
+                                if self.debug: print_exc(None, self.debug)
                         if not libbase: continue
                         bgl.seek(libbase)
                         while True:
@@ -408,10 +417,13 @@ class Output:
         if self.debug: self.debug.write('Photoscenery\n')
         for path, dirs, files in walk(self.fspath):
             if basename(path).lower()=='texture':
+                # Only look at BMPs in 'texture' directory
                 try:
-                    ProcPhoto(path, self)	# Only look at BMPs in 'texture' directory
+                    self.status(0, path[len(self.fspath)+1:])
+                    ProcPhoto(path, self)
                 except:
                     self.log("Can't parse this photoscenery")
+                    if self.debug: print_exc(None, self.debug)
 
 
     # Fill out self.objplc, self.objdat, self.polyplc, self.polydat
@@ -474,6 +486,7 @@ class Output:
                         convbgl.Parse(bgl, bglname, self)
                     except:
                         self.log("Can't read \"%s\"" % filename)
+                        if self.debug: print_exc(None, self.debug)
                 elif c==0x201:
                     xmls.append(bglname)
                 else:
@@ -498,8 +511,10 @@ class Output:
                         if not self.debug: unlink(tmp)
                     except:
                         self.log("Can't parse file %s" % basename(bglname))
+                        if self.debug: print_exc(None, self.debug)
                 else:
-                    self.log("Can't parse file %s\n%s" % (basename(bglname), x))
+                    self.log("Can't parse file %s" % basename(bglname))
+                    if self.debug: self.debug.write("%s\nError: %s\n" % (bglname,x))
             if self.doexcfac or not self.needfull: break
             # Do them again, this time with exclusions
             self.aptfull=self.apt
@@ -597,6 +612,7 @@ class Output:
                     self.log("Can't parse object %s in file %s" % (
                         name, filename))
                     bgl.close()
+                    if self.debug: print_exc(None, self.debug)
                     continue
                 # Write a flat BGL section
                 bgl.close()

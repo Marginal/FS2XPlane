@@ -3,7 +3,7 @@ from os.path import basename, dirname, join, normpath, pardir, splitext
 from struct import unpack
 
 from convbgl import findtex, maketexdict
-from convutil import asciify, palettetex, rgb2uv,  Matrix, Object
+from convutil import asciify, rgb2uv,  Matrix, Object
 
 
 # handle FSX format library MDL file
@@ -186,7 +186,7 @@ class ProcScen:
                         (nx,ny,nz)=matrix.rotate(nx,ny,nz)
                         objvt.append((x,y,-z, nx,ny,-nz, tu,tv))
                 else:
-                    tex=palettetex
+                    tex=output.palettetex
                     lit=None
                     fname=bname
                     (pu,pv)=rgb2uv(d)

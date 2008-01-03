@@ -115,10 +115,13 @@ def status(percent, msg):
         else:
             frame.progress = wx.ProgressDialog(msg, '', 100, frame,
                                                wx.PD_APP_MODAL|wx.PD_CAN_ABORT)
-            if platform=='darwin':	# Too narrow on MacOS
-                (x,y)=frame.progress.GetClientSize()
+            # Too narrow for long paths
+            (x,y)=frame.progress.GetClientSize()
+            if platform=='darwin':
                 frame.progress.SetClientSize((x+x,y))
-                frame.progress.CenterOnParent()
+            elif platform=='win32':
+                frame.progress.SetClientSize((x+x/2,y))                
+            frame.progress.CenterOnParent()
     else:
         if not frame.progress.Update(percent, msg):
             raise FS2XError('Stopped')
@@ -287,14 +290,18 @@ class MainWindow(wx.Frame):
         wx.EVT_BUTTON(self, XPBROWSE, self.onXPbrowse)
 
         # 2nd panel
+        self.xpver  = wx.RadioBox(panel2,-1, "X-Plane version:",
+                                  choices=["v8 (PNG)", "v9 (DDS)"])
         self.season = wx.RadioBox(panel2,-1, "Season:",
                                   choices=["Spring", "Summer",
                                            "Autumn", "Winter"])
         self.dumplib= wx.CheckBox(panel2,-1, "Just extract library objects")
         # use panel and sizer so tab order works normally
         box2 = wx.BoxSizer(wx.HORIZONTAL)
-        box2.Add(self.season, 1)
-        box2.Add(self.dumplib, 0, wx.ALIGN_CENTER_VERTICAL|wx.ALL|wx.EXPAND,10)
+        box2.Add(self.xpver, 0)
+        box2.Add(self.season, 0, wx.LEFT, 10)
+        box2.Add([0,0], 1, wx.LEFT, 10)	# push following buttons to right
+        box2.Add(self.dumplib, 0, wx.TOP|wx.EXPAND, 8)
         panel2.SetSizer(box2)
 
         wx.EVT_CHECKBOX(self, self.dumplib.GetId(), self.onDump)
@@ -354,9 +361,9 @@ class MainWindow(wx.Frame):
             height=sz.height+42
         else:
             height=sz.height            
-        self.SetSize((sz.width+400, height))
+        self.SetSize((800, height))
         # +50 is a hack cos I can't work out how to change minsize of TextCtrl
-        self.SetSizeHints(sz.width+50, height, -1, height)
+        self.SetSizeHints(sz.width, height, -1, height)
         self.Show(True)
 
         if platform=='darwin':
@@ -446,10 +453,11 @@ class MainWindow(wx.Frame):
             
         self.logname=abspath(join(xppath, 'summary.txt'))
         season=self.season.GetSelection()	# zero-based
+        dds=self.xpver.GetSelection()		# zero-based
 
         try:
-            output=Output(fspath,lbpath,xppath,season, status,log,refresh,
-                          dumplib, False)
+            output=Output(fspath, lbpath, xppath, dumplib, season, dds,
+                          status,log,refresh, False)
             output.scanlibs()
             output.procphotos()
             output.process()

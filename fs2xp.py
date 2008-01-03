@@ -34,7 +34,6 @@
 from getopt import getopt, GetoptError
 from os import chdir, mkdir
 from os.path import abspath, normpath, basename, dirname, pardir, exists, isdir, join
-from profile import run
 from sys import exit, argv
 from traceback import print_exc
 
@@ -57,7 +56,7 @@ def refresh():
     pass
 
 def usage():
-    exit('\nUsage:\tfs2xp [options] "MSFS scenery location" "X-Plane scenery location"\noptions:\t-l "Additional MSFS library location"\n\t\t-s Spring|Summer|Autumn|Winter\n\t\t-x\n')
+    exit('\nUsage:\tfs2xp [options] "MSFS scenery location" "X-Plane scenery location"\noptions:\t-l "Additional MSFS library location"\n\t\t-s Spring|Summer|Autumn|Winter\n\t\t-x\n\t\t-9\n')
 
 
 # Path validation
@@ -74,10 +73,11 @@ else:
 lbpath=None
 season=0
 debug=False
+dds=False
 dumplib=False
 prof=False
 try:
-    (opts, args) = getopt(argv[1:], 'l:s:dpx?h')
+    (opts, args) = getopt(argv[1:], 'l:s:d9px?h')
 except GetoptError, e:
     print '\nError:\t'+e.msg
     usage()
@@ -88,6 +88,8 @@ for (opt, arg) in opts:
         lbpath=abspath(arg)
     elif opt=='-d':
         debug=True
+    elif opt=='-9':
+        dds=True
     elif opt=='-p':
         prof=True
     elif opt=='-x':
@@ -114,11 +116,12 @@ logname=abspath(join(xppath, 'summary.txt'))
 
 # Main
 try:
-    output=Output(fspath,lbpath,xppath,season, status,log,refresh,
-                  dumplib, debug and not prof)
+    output=Output(fspath, lbpath, xppath, dumplib, season, dds,
+                  status, log, refresh, debug and not prof)
     output.scanlibs()
     output.procphotos()
     if prof:
+        from profile import run
         run('output.process()', join(xppath,'profile.dmp'))
     else:
         output.process()

@@ -19,8 +19,8 @@ REM del /s /q *.bak >nul: 2>&1
 del /s /q *.pyc >nul: 2>&1
 
 @set PY=fs2xp.py FS2XPlane.py convbgl.py convmain.py convmdl.py convobjs.py convphoto.py convtaxi.py convutil.py convxml.py MessageBox.py version.py
-@set DATA=FS2XPlane.html bglxml.copying.txt
-@set RSRC=Resources/*.bgl Resources/*.obj Resources/*.png "Resources/library objects.txt"
+@set DATA=FS2XPlane.html bglxml.copying.txt Squish_license.txt
+@set RSRC=Resources/*.bgl Resources/*.dds Resources/*.obj Resources/*.png "Resources/library objects.txt"
 
 :source
 REM zip -r FS2XPlane_%VER%_src.zip dist.cmd %PY% %DATA% %RSRC% linux MacOS win32 |findstr -vc:"adding:"
@@ -46,7 +46,7 @@ copy linux\fs2xplane "%RPMRT%\usr\local\bin" |findstr -v "file(s) copied"
 for %%I in (%DATA%) do (copy %%I "%RPMRT%\usr\local\lib\fs2xplane" |findstr -v "file(s) copied")
 for %%I in (%PY%) do (copy %%I "%RPMRT%\usr\local\lib\fs2xplane" |findstr -v "file(s) copied")
 for %%I in (%RSRC%) do (copy "Resources\%%~nxI" "%RPMRT%\usr\local\lib\fs2xplane\Resources" |findstr -v "file(s) copied")
-for %%I in (linux\bglunzip linux\bglxml linux\bmp2png linux\DSFTool linux\fake2004 linux\winever) do (copy %%I "%RPMRT%\usr\local\lib\fs2xplane\linux" |findstr -v "file(s) copied")
+for %%I in (linux\bglunzip linux\bglxml linux\bmp2dds linux\bmp2png linux\DSFTool linux\fake2004 linux\winever) do (copy %%I "%RPMRT%\usr\local\lib\fs2xplane\linux" |findstr -v "file(s) copied")
 for %%I in (win32\bglunzip.exe win32\DSFTool.exe win32\fake2004.exe) do (copy %%I "%RPMRT%\usr\local\lib\fs2xplane\win32" |findstr -v "file(s) copied")
 "C:\Program Files\cygwin\lib\rpm\rpmb.exe" --quiet -bb --target i386-pc-linux --define '_topdir /tmp/fs2xplane' /tmp/fs2xplane/fs2xplane.spec
 move "%RPM%\RPMS\i386\fs2xplane-%VERSION%-%RELEASE%.cygwin.i386.rpm" fs2xplane-%VERSION%-%RELEASE%.i386.rpm

@@ -35,8 +35,6 @@ NM2m=1852	# 1 international nautical mile [m]
 groundfudge=0.22	# arbitrary: 0.124 used in UNNT, 0.172 in KBOS, 2.19 in LIRP
 planarfudge=0.1	# arbitrary
 
-palettetex='Resources/FS2X-palette.png'
-
 complexities=3
 
 apronlightspacing=60.96	# [m] = 200ft
@@ -350,7 +348,10 @@ class Object:
 
         # Special handling for trees using default MSFS tree texture
         if self.tex and not exists(self.tex) and basename(self.tex).lower() in ['treeswi.bmp', 'treessp.bmp', 'treessu.bmp', 'treesfa.bmp', 'treeshw.bmp']:
-            self.tex='Resources/trees.png'
+            if output.dds:
+                self.tex='Resources/trees.dds'
+            else:
+                self.tex='Resources/trees.png'
             self.lit=None
 
         # self.tex & .lit are case-corrected full pathname to source texture
@@ -376,10 +377,9 @@ class Object:
             objfile.write("I\n800\t# %sOBJ\n" % banner)
             objfile.write("\n# %s\n\n" % comment)
             if tex and self.vt:
-                objfile.write("TEXTURE\t\t%s\n" % (basename(tex)))
+                objfile.write("TEXTURE\t\t%s\n" % tex)
                 if lit:
-                    objfile.write("TEXTURE_LIT\t%s\n" % (
-                        basename(lit)))
+                    objfile.write("TEXTURE_LIT\t%s\n" % lit)
             else:
                 objfile.write("TEXTURE\t\n")
     
@@ -481,14 +481,7 @@ class Polygon:
                 #self.surface==o.surface	# redundant
 
     def export(self, output, fslayers):
-        if self.tex and not exists(self.tex):
-            # Missing texture in polygon causes crash
-            if not self.tex in output.dufftex:
-                output.log("Texture %s not found" % basename(self.tex))
-            self.tex="Resources/blank.png"
-            output.dufftex[self.tex]=True
-            
-        (tex,lit)=maketexs(self.tex, self.lit, output)
+        (tex,lit)=maketexs(self.tex, self.lit, output, True)
         try:
             path=join(output.xppath, 'objects')
             objpath=join(path, self.filename)
@@ -503,10 +496,10 @@ class Polygon:
                 else:
                     suffix=''                    
                 objfile.write("TEXTURE%s\t\t%s\n" % (
-                    suffix, basename(tex)))
+                    suffix, tex))
                 if lit:
                     objfile.write("TEXTURE_LIT%s\t%s\n" % (
-                        suffix, basename(lit)))
+                        suffix, lit))
             else:
                 objfile.write("TEXTURE\t\n")
             objfile.write("SCALE\t\t%d %d\n" % (self.scale, self.scale))
@@ -519,70 +512,88 @@ class Polygon:
             raise FS2XError("Can't write \"%s\"" % objpath)
 
 
-def maketexs(fstex, fslit, output):
+def maketexs(fstex, fslit, output, substituteblank=False):
     path=join(output.xppath, 'objects')
     if not isdir(path): mkdir(path)
     palno=None
     if fstex or fslit:
-        if not fstex: fstex='Resources/transparent.png'
-        (tex,ext)=splitext(basename(fstex))
-        if not ext.lower() in ['.dds', '.bmp', '.png']:
-            tex+=ext	# For *.xAF etc
-        # Spaces not allowed in textures. Avoid Mac/PC interop problems
-        tex=asciify(tex).replace(' ','_')+'.png'
-        dst=join(path, tex)
-
-        if dirname(fstex)=='Resources':
-            # texture is supplied with this program (eg FS2X-palette.png)
-            copyfile(join(os.getcwdu(),fstex), dst)
-        else:
-            if fstex in output.haze: palno=output.haze[fstex]
-            maketex(fstex, dst, output, palno)
+        if not fstex:
+            fstex='Resources/transparent.png'
+        elif fstex in output.haze:
+            palno=output.haze[fstex]
+        tex=maketex(fstex, path, output, palno, substituteblank)
     else:
         tex=None
 
     if fslit:
-        (lit,ext)=splitext(basename(fslit))
-        if lit[-3:].lower()=='_lm':
-            lit=lit[:-3]+'_LIT'
-        if not ext.lower() in ['.dds', '.bmp', '.png']:
-            lit+=ext	# For *.xAF etc
-        # Spaces not allowed in textures. Avoid Mac/PC interop problems
-        lit=asciify(lit).replace(' ','_')+'.png'
-        if fslit in output.haze: palno=output.haze[fslit]
-        maketex(fslit, join(path, lit), output, palno)
+        if fslit in output.haze:
+            palno=output.haze[fslit]
+        lit=maketex(fslit, path, output, palno)
         return (tex,lit)
-    elif False: #was fstex, now done in makekey
-        (src,e)=splitext(basename(fstex).lower())
-        src+='_lm'
-        for ext in [e, '.dds', '.bmp', '.r8']:
-            for i in listdir(dirname(fstex)):
-                if i.lower()==src+ext:
-                    lit=i[:len(src)-3]
-                    if not ext.lower() in ['.dds', '.bmp', '.png']:
-                        lit+=ext	# For *.xAF etc
-                    lit=asciify(lit).replace(' ','_')+'_LIT.png'
-                    maketex(join(dirname(fstex),i), join(path, lit), output, palno)
-                    print basename(fstex), lit
-                    return (tex,lit)
-    return (tex,None)
+    else:
+        return (tex,None)
 
 
 # Assumes src filename has correct case
-def maketex(src, dst, output, palno):
-    if exists(dst):
-        return True	# assume it's already been converted
-    if src in output.dufftex:
-        return False
+# Returns new base dst name
+def maketex(src, dstdir, output, palno, substituteblank=False):
+    if not substituteblank and src in output.donetex:
+        return output.donetex[src]
+
+    if dirname(src)=='Resources':
+        # texture is supplied with this program (eg FS2X-palette.png)
+        tex=output.donetex[src]=basename(src)
+        copyfile(join(os.getcwdu(),src), join(dstdir,tex))
+        return tex
+
+    # Spaces not allowed in textures. Avoid Mac/PC interop problems
+    (tex,ext)=splitext(asciify(basename(src).replace(' ','_')))
+
+    if tex[-3:].lower()=='_lm':
+        tex=tex[:-3]+'_LIT'
+    ext=ext.lower()
+    if not ext in ['.dds', '.bmp', '.png']:
+        tex+=ext	# For *.xAF etc
+
     if not exists(src):
-        (s,e)=splitext(basename(src.lower()))
+        if output.dds:
+            tex=tex+'.dds'
+        else:
+            tex=tex+'.png'
         for f in listdir('Resources'):
-            if f.lower().startswith(s) and f.endswith('.png'):
-                copyfile(join(os.getcwdu(), 'Resources', f), dst)
-                return True
-        output.dufftex[src]=True
-        output.log("Texture %s not found" % basename(src))
-        return False
+            if f.lower()==tex.lower():
+                copyfile(join(os.getcwdu(),'Resources',tex), join(dstdir,tex))
+                output.donetex[src]=tex
+                return tex
+        if src not in output.donetex:
+            output.log("Texture %s not found" % basename(src))
+        if substituteblank:
+            # Missing texture in polygon causes crash
+            if output.dds:
+                copyfile(join(os.getcwdu(),'Resources','blank.dds'),
+                         join(dstdir,'blank.dds'))
+                return 'blank.dds'
+            else:
+                copyfile(join(os.getcwdu(),'Resources','blank.png'),
+                         join(dstdir,'blank.png'))
+                return 'blank.png'
+        output.donetex[src]=tex
+        return tex
+    elif src in output.donetex:
+        return output.donetex[src]
+
+    if output.dds and ext in ['.dds', '.bmp']:
+        dds=tex+'.dds'
+        dst=join(dstdir,dds)
+        x=helper(output.ddsexe, src, dst)
+        if exists(dst):
+            output.donetex[src]=dds
+            return dds
+        elif output.debug:
+            output.debug.write("DDS:\t%s:\t%s\n" % (src, x))
+
+    tex+='.png'
+    dst=join(dstdir,tex)
     try:
         tmp=None
         if stat(src).st_size>=65536 and stat(src).st_size<65600:
@@ -607,15 +618,14 @@ def maketex(src, dst, output, palno):
             x=helper(output.pngexe, '-xbrq', '-o', dst, src)
         if tmp: unlink(tmp)
         if not exists(dst):
-            output.dufftex[src]=True
             output.log("Can't convert texture %s\n%s" % (basename(src),x))
-            return False
-        return True
 
     except IOError:
-        output.dufftex[src]=True
         output.log("Can't convert texture %s" % basename(src))
-        return False
+
+    output.donetex[src]=tex
+    return tex
+
 
 # Uniquify list, retaining order. Assumes list items are hashable
 def unique(seq):

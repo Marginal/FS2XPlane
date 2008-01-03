@@ -157,6 +157,11 @@ or make this blank for none.</li>
   <li>Specify the location for the new X-Plane scenery package.
 This should be a non-existent or empty folder directly under
 X-Plane's<code> Custom&nbsp;Scenery </code>folder.</li>
+  <li>Select the X-Plane version that you're targetting. X-Plane v9
+supports DDS textures; DDS textures load faster and use less video RAM than
+PNG textures, and on average require slightly less disk space.
+<small>(If the author has chosen not to compress a texture it will still be
+converted as a PNG texture).</small></li>
   <li>Select the season for converted textures.
 <small>(Not all MSFS scenery packages supply seasonal textures, in
 which case this setting will be ignored).</small></li>
@@ -185,6 +190,7 @@ libraries. It cannot read uncompiled "API", "SBuilder", "SCM" or "MDL" files
   <li>Supply the location where you put the MSFS scenery libraries.</code></li>
   <li>Specify the location for the new X-Plane scenery objects.
 This should be a non-existent or empty folder.</li>
+  <li>Select the X-Plane version that you're targetting.</li>
   <li>Select the season for converted textures. <small>(Not all MSFS
 scenery libraries supply seasonal textures, in which case this setting
 will be ignored).</small></li>
@@ -258,12 +264,12 @@ areas of the planet, describing the placement of scenery objects.</td>
       <td style="vertical-align: top; background-color: white;"><code>objects\*.obj</code></td>
       <td style="background-color: white;">Scenery objects.
 These are named as follows:
-      <ul>
-        <li>Library objects:<code>
-&lt;id&gt;[-&lt;texture&nbsp;name&gt;][_&lt;scale&gt;].obj</code></li>
-        <li>Procedural scenery:<code>
-&lt;BGL&nbsp;name&gt;[-&lt;texture&nbsp;name&gt;][-number].obj</code></li>
-      </ul>
+      <dl>
+        <dt>Library objects:</dt>
+	<dd><code>&lt;id&gt;[-&lt;texture&nbsp;name&gt;][_&lt;scale&gt;].obj</code></dd>
+        <dt>Procedural scenery:</dt>
+	<dd><code>&lt;BGL&nbsp;name&gt;[-&lt;texture&nbsp;name&gt;][-number].obj</code></dd>
+      </dl>
       </td>
     </tr>
     <tr>
@@ -271,9 +277,9 @@ These are named as follows:
       <td style="background-color: white;">Draped polygon definitions.</td>
     </tr>
     <tr>
-      <td style="vertical-align: top; background-color: white;"><code>objects\*.png</code></td>
+      <td style="vertical-align: top; background-color: white;"><code>objects\*.dds</code>, <code>objects\*.png</code></td>
       <td style="background-color: white;">Textures used by the scenery
-objects and polygons, converted to PNG format.</td>
+objects and polygons, converted to DDS or PNG format.</td>
     </tr>
   </tbody>
 </table>
@@ -336,10 +342,10 @@ permitted by law in some jurisdictions).</li>
 resides with the copyright holder of the original (MSFS format)
 files. Therefore you may not redistribute the derived files without the
 express permission of the copyright holder.</li>
-<li>This application may copy various <code>.obj</code> files
-from the <code>Resources</code> folder into the derived scenery
-package. These files are &copy;&nbsp;Jonathan&nbsp;Harris and are
-licensed under a Creative Commons
+<li>This application may create various <code>.obj</code> files in the
+derived scenery that contain a comment stating that they are
+&copy;&nbsp;Jonathan&nbsp;Harris.
+These files are licensed under a Creative Commons
 <a rel="license" href="http://creativecommons.org/licenses/by-sa/3.0/">Attribution-ShareAlike</a>
 license. The license allows for re-distribution of these files in
 a commerical or non-commerical scenery package - please read the
@@ -350,22 +356,29 @@ license for the conditions.</li>
 <ul>
   <li>The included program <code>bglxml</code> is
 &copy;&nbsp;2004-2005 Alessandro&nbsp;G.&nbsp;Antonini,
-and is licensed under the GNU <a target="_blank" href="bglxml.copying.txt">General Public License</a>
-(GPL). (The full distribution, including source, can
-be obtained <a target="_blank" href="http://cpinf.com/html/index.php?option=com_remository">here</a>).</li>
+and is licensed under the GNU
+<a target="_blank" href="bglxml.copying.txt">General Public License</a> (GPL).<br>
+The full distribution, including source code, can be obtained
+<a target="_blank" href="http://www.cpinf.com/downloads/bgl-xml.html">here</a>.</li>
   <li>The included program <code>bmp2png</code>
-is derived from source &copy;&nbsp;1999-2005 MIYASAKA&nbsp;Masaru.
+is derived from source &copy;&nbsp;1999-2005 MIYASAKA&nbsp;Masaru.<br>
 Permission to use, copy, modify, and distribute this software and
 its documentation for any purpose and without fee is hereby granted,
 provided that the above copyright notice appear in all copies and
 that both that copyright notice and this permission notice appear
 in supporting documentation. This software is provided "as is"
-without express or implied warranty. (The full distribution of
-the original software, including source, can be obtained
-<a target="_blank" href="http://cetus.sakura.ne.jp/softlab/b2p-home/">here</a>).</li>
+without express or implied warranty.<br>
+The full distribution of the original software, including source code,
+can be obtained
+<a target="_blank" href="http://cetus.sakura.ne.jp/softlab/b2p-home/">here</a>.</li>
+  <li>The included program <code>bmp2dds</code> uses the "Squish" library,
+which is &copy;&nbsp;2006 Simon&nbsp;Brown, and is licensed under the
+<a target="_blank" href="Squish_license.txt">MIT License</a>.<br>
+The Squish library source code can be obtained
+<a target="_blank" href="http://www.sjbrown.co.uk/?code=squish">here</a>.</li>
   <li>The included progam <code>DSFTool</code> is
-&copy;&nbsp;2004-2006 Laminar Research and is included with permission.
-All Rights Reserved. This and other X-Plane scenery tools can be obtained 
+&copy;&nbsp;2004-2006 Laminar Research, All Rights Reserved, and is included with permission.<br>
+This and other X-Plane scenery tools can be obtained 
 <a target="_blank" href="http://scenery.x-plane.com/tools.php">here</a>.</li>
   <li>The term "X-Plane" is a registered trademark of
 Laminar&nbsp;Research.</li>
@@ -656,7 +669,7 @@ You may be asked whether to overwrite some files; say yes.</li>
 <table style="width: 100%;" border="0" cellpadding="2">
   <tbody>
     <tr>
-      <td class="banner">Version 2.32 &copy; 2007 <a href="mailto:x-plane@marginal.org.uk">Jonathan Harris</a>
+      <td class="banner">Version 3.00 &copy; 2007,2008 <a href="mailto:x-plane@marginal.org.uk">Jonathan Harris</a>
 <a rel="license" href="http://creativecommons.org/licenses/by-nc-sa/3.0/">
 <img alt="Creative Commons License" style="border: 0px solid ; width: 88px; height: 31px; vertical-align: text-bottom;" src="http://creativecommons.org/images/public/somerights20.png"></a></td>
     </tr>
