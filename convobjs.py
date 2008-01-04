@@ -1,11 +1,13 @@
+import codecs
 from math import sin, cos, atan, pi
 from os import listdir
 from os.path import join
+import xml.parsers.expat
 
-from convutil import Object, rgb2uv
+from convutil import asciify, Object, rgb2uv
 
 # X-Plane automatically generates versions of these from nav.dat data 
-ignorestock=['air_localizerantenna01', 'air_ndb_dmeantenna','air_ndb_dmeshack','air_ndb_dmetower','gen_dme','gen_ndb01','gen_tacan','ndb','sco_gen_checkershed','sco_gen_ilstransmitter','sco_gen_radarshackb','sco_gen_radarshackbaseb','sco_gen_radarshackdish','sco_gen_vor03','sco_gen_vor03dme','sco_gen_vorsmall','sco_gen_vorsmall2','sco_gen_vorsmall2dme','sco_gen_vorsmalldme']
+ignorestock=['air_localizerantenna01', 'air_ndb_dmeantenna','air_ndb_dmeshack','air_ndb_dmetower','gen_dme','gen_ndb01','gen_tacan','ndb','ndbhigh','sco_gen_checkershed','sco_gen_ilstransmitter','sco_gen_radarshackb','sco_gen_radarshackbaseb','sco_gen_radarshackdish','sco_gen_vor03','sco_gen_vor03dme','sco_gen_vorsmall','sco_gen_vorsmall2','sco_gen_vorsmall2dme','sco_gen_vorsmalldme']
 
 # Stock X-Plane objects that are close enough to stock MSFS objects
 libobjs={'ag_building_1':	'ins/church.obj',
@@ -20,7 +22,13 @@ libobjs={'ag_building_1':	'ins/church.obj',
          'sailboat_s_down':	'lib/ships/SailBoat.obj',
          'sailboat_s_up':	'lib/ships/SailBoat.obj',
          'veh_carrier1':	'lib/ships/Carrier.obj',
+         'veh_carrier2':	'lib/ships/Carrier.obj',
+         'VEH_carrier01':	'lib/ships/Carrier.obj',
+         'VEH_carrier01_high_detail':	'lib/ships/Carrier.obj',
+         'VEH_cruiser01':	'lib/ships/Frigate.obj',
+         'VEH_destroyer01':	'lib/ships/Frigate.obj',
          'veh_water_eastcoastcarrier1':	'lib/ships/Carrier.obj',
+         'veh_water_eastcoastcarrier2':	'lib/ships/Carrier.obj',
          'veh_water_sailboat1':	'lib/ships/SailBoat.obj',
          'veh_water_sailboat2':	'lib/ships/SailBoat.obj',
          'veh_water_sailboat3':	'lib/ships/SailBoat.obj',
@@ -509,3 +517,40 @@ def genrgb(story, idx):
     return (r/255.0, g/255.0, b/255.0)
 
         
+# read EZ-Scenery UID mappings
+# EZ-Scenery: http://www.simforums.com/forums/forum_posts.asp?TID=21569
+# SBuilder: http://www.fsdeveloper.com/forum/showpost.php?p=49183&postcount=2
+def friendlytxt(filename, friendly):
+    try:
+        h=codecs.open(filename, 'rU', 'latin1')
+        for line in h:
+            line=line.strip()
+            if line or line[0] in [';', '#']:
+                continue
+            uid=line.split()[0].lower()
+            if len(uid)!=32 or not isalnum(uid):
+                continue
+            friendly[uid]=asciify(line[33:].strip())
+        h.close()
+    except:
+        pass
+
+
+# read Rwy12 UID mappings
+class friendlyxml:
+
+    def __init__(self, filename, friendly):
+        self.friendly=friendly
+        h=file(filename, 'rU')
+        try:
+            parser=xml.parsers.expat.ParserCreate()
+            parser.StartElementHandler = self.start_element
+            parser.ParseFile(h)
+        except:
+            pass
+        h.close()
+
+    def start_element(self, name, attrs):
+        if name=='obj' and attrs['guid'] and attrs['name']:
+            self.friendly[str(attrs['guid']).lower()]=asciify(attrs['name'].replace(' - ','_').replace(' ','_').replace('-','_').replace(',',''))
+

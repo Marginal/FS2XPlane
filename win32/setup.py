@@ -57,7 +57,8 @@ elif platform.lower().startswith('darwin'):
               #  ]),
               ]
 
-res=["Resources/library objects.txt"]
+res=["Resources/library objects.txt",
+     "Resources/Rwy12.xml"]
 for f in listdir('Resources'):
     if f[-4:] in ['.bgl','.dds','.obj','.png']: res.append('Resources/%s' % f)
     

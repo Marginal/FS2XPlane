@@ -10,7 +10,7 @@ from traceback import print_exc
 from tempfile import gettempdir
 
 from convutil import asciify, banner, helper, complexities, AptNav, Object, Polygon, Point, FS2XError, sortfolded
-from convobjs import makestock, ignorestock
+from convobjs import makestock, ignorestock, friendlytxt, friendlyxml
 from convbgl import ProcEx, maketexdict
 from convphoto import ProcPhoto
 import convbgl
@@ -127,17 +127,14 @@ class Output:
         except IOError:
             raise FS2XError("Can't read \"%s\"." % path)
         for line in stock:
-            line=line.strip()
-            if line[0]==';': continue
-            #l=line.find(',')
-            #if l!=-1:
-            #    self.stock[line[:l].strip()]=line[l+1:].strip()
-            l=line.find('{')
-            if l!=-1:
-                guid=line[l+1:-1].strip()
-                self.stock[guid[:8]+guid[14:18]+guid[9:13]+guid[26:28]+guid[24:26]+guid[21:23]+guid[19:21]+guid[34:36]+guid[32:34]+guid[30:32]+guid[28:30]]=line[:l].strip().lower()
-            
+            line=line.split()
+            if line and not line[0].startswith(';'):
+                guid=line[1][1:-1]
+                self.stock[guid[:8]+guid[14:18]+guid[9:13]+guid[26:28]+guid[24:26]+guid[21:23]+guid[19:21]+guid[34:36]+guid[32:34]+guid[30:32]+guid[28:30]]=line[0]
         stock.close()
+
+        # Standard Rwy12 mappings
+        friendlyxml(join('Resources', 'Rwy12.xml'), self.friendly)
 
         if debug:
             # note full debugging also requires non-optimised execution
@@ -186,27 +183,8 @@ class Output:
             # read Rwy12 UID mappings
             for path, dirs, files in walk(toppath):
                 for filename in files:
-                    if filename[-4:].lower()!='.xml':
-                        continue
-                    try:
-                        h=file(join(path,filename), 'rU')
-                        h.readline()
-                        if not h.readline().strip()=='<objectsLibrary>':
-                            h.close()
-                            continue
-                        for line in h:
-                            if not line.startswith('<obj') or not 'guid="' in line or not 'name="' in line:
-                                continue
-                            uid=line[line.index('guid="')+6:]
-                            if not uid[32]=='"': continue
-                            uid=uid[:32].lower()
-                            for j in uid:
-                                if not j in '0123456789abcdef': break
-                            else:
-                                line=line[line.index('name="')+6:]
-                                self.friendly[uid]=asciify(line[:line.index('"')])
-                    except:
-                        pass
+                    if filename[-4:].lower()=='.xml':
+                        friendlyxml(join(path,filename), self.friendly)
                         
             for path, dirs, files in walk(toppath):
                 if basename(path).lower()!='scenery':
@@ -218,22 +196,7 @@ class Output:
                         continue
                     if exists(join(path,filename[:-4]+'.txt')):
                         # read EZ-Scenery UID mapping
-                        try:
-                            h=file(join(path,filename[:-4]+'.txt'), 'rU')
-                            if not h.readline().startswith('Library description file'):
-                                h.close()
-                                raise IOError
-                            for line in h:
-                                if len(line)<=33 or line[0]=='#' or not line[32] in ' \t':
-                                    continue
-                                uid=line[:32].lower()
-                                for j in uid:
-                                    if not j in '0123456789abcdef': break
-                                else:
-                                    self.friendly[uid]=asciify(line[32:].strip())
-                            h.close()
-                        except:
-                            pass
+                        friendlytxt(filename[:-4]+'.txt', self.friendly)
                     bglname=join(path, filename)
                     if stat(bglname).st_size==0:
                         self.done[bglname]=True

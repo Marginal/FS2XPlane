@@ -1,3 +1,4 @@
+; Objects from FSX SP2 SDK
 acropol	{7a326bdd-0e16-401c-b275-0330067879a4}
 ag_acaciagroup01	{4e87a4f2-05bf-4b1c-9d40-8561a8ac4608}
 ag_acaciatree01	{4a3c3de5-b5e3-4273-b596-ce9b8ace0ba4}
