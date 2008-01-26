@@ -289,7 +289,7 @@ class Output:
                             name=None
                             if hdsize>42:
                                 # Use "friendly" name instead of id
-                                name=asciify(bgl.read(hdsize-(41)).rstrip(' \0'))
+                                name=asciify(bgl.read(hdsize-(41)).rstrip(' \0')).replace('\\','_').replace('/','_').replace(':','_').replace('*','_').replace('?','_').replace('"','_').replace('<','_').replace('>','_').replace('|','_')	# XXX yuck
                             if not name or name=="Object":
                                 if uid in self.friendly:
                                     name=self.friendly[uid]
@@ -344,7 +344,7 @@ class Output:
                                                 c=bgl.read(4)
                                                 (size,)=unpack('<I', bgl.read(4))
                                                 if c=='MDLN':
-                                                    name=bgl.read(size).strip('\0').strip()
+                                                    name=bgl.read(size).strip('\0').strip().replace('\\','_').replace('/','_').replace(':','_').replace('*','_').replace('?','_').replace('"','_').replace('<','_').replace('>','_').replace('|','_')	# XXX yuck
                                                     break
                                                 elif c=='MDLD':
                                                     break	# stop at data
