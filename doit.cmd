@@ -78,9 +78,9 @@ REM set TARGET="%XP%\EFHK"
 REM set SOURCE="%FS9%\EFHF"
 REM set TARGET="%XP%\EFHF"
 
-set SOURCE="%FS9%\EFRO4"
-set TARGET="%XP9%\EFRO"
-set LB=-9
+REM set SOURCE="%FS9%\EFRO4"
+REM set TARGET="%XP9%\EFRO"
+REM set LB=-9
 
 REM set SOURCE="%FS9%\EFLL 1.0"
 REM set TARGET="%XP%\EFLL"
@@ -98,6 +98,9 @@ REM set TARGET="%XP%\EFTP"
 REM set SOURCE="%FS9%\Espoo_photoscenery_1.0"
 REM set TARGET="%XP%\Espoo"
 REM set LB=
+
+set SOURCE="%FSX%\faroes_fsx_acc"
+set TARGET="%XP9%\Faroes"
 
 REM set SOURCE="%FS9%\Helsinki_photoscenery_1.0"
 REM set TARGET="%XP%\Helsinki"
