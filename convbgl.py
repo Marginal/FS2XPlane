@@ -1204,13 +1204,13 @@ class ProcScen:
             if foo in self.output.gencache:
                 name=self.output.gencache[foo]
             else:
-                newobj=makegenmulti(name, self.output.palettex, *foo)
+                newobj=makegenmulti(name, self.output.palettetex, *foo)
         else:
             foo=(size_x, size_z, incx, incz, tuple(heights), tuple(texs), roof)
             if foo in self.output.gencache:
                 name=self.output.gencache[foo]
             else:
-                newobj=makegenquad(name, self.output.palettex, *foo)
+                newobj=makegenquad(name, self.output.palettetex, *foo)
         if newobj:
             self.output.objdat[name]=[newobj]
             self.output.gencache[foo]=name
@@ -1538,13 +1538,13 @@ class ProcScen:
             if foo in self.output.gencache:
                 name=self.output.gencache[foo]
             else:
-                newobj=makegenmulti(name, self.output.palettex, *foo)
+                newobj=makegenmulti(name, self.output.palettetex, *foo)
         else:
             foo=(size_x, size_z, incx, incz, tuple(heights), tuple(texs), roof)
             if foo in self.output.gencache:
                 name=self.output.gencache[foo]
             else:
-                newobj=makegenquad(name, self.output.palettex, *foo)
+                newobj=makegenquad(name, self.output.palettetex, *foo)
         if newobj:
             self.output.objdat[name]=[newobj]
             self.output.gencache[foo]=name
