@@ -1,6 +1,6 @@
-FSX jetways
-FSX fences
 FSX new custom terrain textures
+
+v9.? apt.dat: including jetways & fences
 
 safedock (LIMC, LIRF?)
 Real, not overlay orthophotos

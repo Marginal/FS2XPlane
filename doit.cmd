@@ -46,9 +46,9 @@ REM set TARGET="%XP%\Raizet"
 REM set SOURCE="%FS9%\Juliana"
 REM set TARGET="%XP%\Juliana"
 
-REM set SOURCE="%FS9%\ChinaAirports2"
-REM set TARGET="%XP%\ChinaAirports2"
-REM set LB=
+set SOURCE="%FS9%\ChinaAirports2"
+set TARGET="%XP%\ChinaAirports2"
+set LB=
 
 REM set SOURCE="%FS9%\CYYZ2007"
 REM set TARGET="%XP%\CYYZ"
@@ -99,8 +99,8 @@ REM set SOURCE="%FS9%\Espoo_photoscenery_1.0"
 REM set TARGET="%XP%\Espoo"
 REM set LB=
 
-set SOURCE="%FSX%\faroes_fsx_acc"
-set TARGET="%XP9%\Faroes"
+REM set SOURCE="%FSX%\faroes_fsx_acc"
+REM set TARGET="%XP9%\Faroes"
 
 REM set SOURCE="%FS9%\Helsinki_photoscenery_1.0"
 REM set TARGET="%XP%\Helsinki"
