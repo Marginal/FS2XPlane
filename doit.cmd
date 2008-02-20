@@ -46,9 +46,9 @@ REM set TARGET="%XP%\Raizet"
 REM set SOURCE="%FS9%\Juliana"
 REM set TARGET="%XP%\Juliana"
 
-set SOURCE="%FS9%\ChinaAirports2"
-set TARGET="%XP%\ChinaAirports2"
-set LB=
+REM set SOURCE="%FS9%\ChinaAirports2"
+REM set TARGET="%XP%\ChinaAirports2"
+REM set LB=
 
 REM set SOURCE="%FS9%\CYYZ2007"
 REM set TARGET="%XP%\CYYZ"
@@ -330,6 +330,9 @@ REM set TARGET="%XP%\PAJN"
 REM set SOURCE="%FS9%\Lebor_OLBA2k2"
 REM set TARGET="%XP%\OLBA"
 REM set LB=
+
+set SOURCE="%FS9%\Occitania"
+set TARGET="%XP%\Occitania"
 
 REM set SOURCE="%FS9%\PRAM 2005\PRAM VFR"
 REM set TARGET="%XP%\PRAM"

@@ -277,7 +277,7 @@ class AptNav:
     def __init__(self, code, text):
         self.code=code
 	# X-Plane only renders a subset of ascii - see interface.png
-        self.text=asciify(text)
+        self.text=asciify(text, False)
 
     def __repr__(self):
         return '"%-3d %s"' % (self.code, self.text)
@@ -475,8 +475,8 @@ class Polygon:
         return (self.filename==o.filename and
                 self.tex==o.tex and
                 self.lit==o.lit and
-                self.nowrap==o.nowrap) #and
-                #self.layer==o.layer)	 	# 8.60 layer bug
+                self.nowrap==o.nowrap and
+                self.layer==o.layer)	 	# was ignored - 8.60 layer bug
                 #self.scale==o.scale		# scale is boring
                 #self.surface==o.surface	# redundant
 
@@ -547,7 +547,7 @@ def maketex(src, dstdir, output, palno, substituteblank=False):
         return tex
 
     # Spaces not allowed in textures. Avoid Mac/PC interop problems
-    (tex,ext)=splitext(asciify(basename(src).replace(' ','_')))
+    (tex,ext)=splitext(asciify(basename(src)))
 
     if tex[-3:].lower()=='_lm':
         tex=tex[:-3]+'_LIT'
@@ -689,21 +689,21 @@ def viewer(filename):
 
 
 # Turn string into ascii
-def asciify(s, fordisplay=False):
+def asciify(s, forfilename=True):
     if type(s)==types.UnicodeType:
         s=normalize(s)
+    if forfilename:
+        s=s.replace(' - ','_')
     # s may be unicode, so can't use translate()
     a=''
     for c in s:
-        if ord(c)>255:
+        if ord(c)<32 or ord(c)>255:
             a=a+'_'
-        elif ord(c)<32:
-            a=a+' '
+        elif c in ' \\/:*?"<>|"' and forfilename:
+            a=a+'_'
         elif ord(c)<0x7b:
             a=a+chr(ord(c))	# convert from unicode string
-        elif ord(c)<0x80 and not fordisplay:
-            a=a+chr(ord(c))	# X-Plane won't show {|}~ either
-        else:
+        else:			# X-Plane won't show {|}~ either
             a=a+asciitbl[ord(c)-0x7b]
     return a
 

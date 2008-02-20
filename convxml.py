@@ -421,16 +421,18 @@ class Airport:
         airloc=Point(float(self.lat), float(self.lon))
         ident=self.ident
         if len(self.ident)>4:
-            ident=ident[0:4]
+            if ident[:4] not in output.apt:
+                ident=ident[:4]
+            else:
+                ident=ident[:3]+ident[-1]
+            output.log('Shortened ICAO airport code from "%s" to "%s"' % (
+                self.ident, ident))
             
         if ident not in output.apt:
             output.apt[ident]=(airloc,[])
-            if ident!=self.ident:
-                output.log('Shortened ICAO airport code from "%s" to "%s"' % (
-                    self.ident, ident))
         elif self.runway or self.helipad or self.taxiwaypoint:
             # Duplicate
-            raise FS2XError('Found duplicate definition of airport %s in %s' % (self.ident, parser.filename))
+            raise FS2XError('Found duplicate definition of airport %s in file %s' % (self.ident, parser.filename))
 
         aptdat=output.apt[ident][1]
             
@@ -441,7 +443,7 @@ class Airport:
                 txt+=" 1"
             else:
                 txt+=" 0"
-            txt+=(" 0 %s %s" % (ident, asciify(self.name, True)))
+            txt+=(" 0 %s %s" % (ident, self.name))
             aptdat.append(AptNav(1, txt))
 
         # Runways
@@ -1008,7 +1010,7 @@ class ModelData:
 
 class Parse:
     def __init__(self, fd, srcfile, output):
-        if output.debug: output.debug.write('%s\n' % srcfile.encode("utf-8"))
+        if output.debug: output.debug.write('%s\n' % srcfile.encode("latin1"))
         self.filename=basename(srcfile)
         self.output=output
         self.elems=[]

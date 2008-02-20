@@ -16,7 +16,7 @@ blueskyre=re.compile(r"S(\d)\$([+-]*\d+)-([+-]*\d+)_(\d)_(\d)\.(bmp|BMP|dds|DDS)
 # Handle FS2004 and www.blueskyscenery.com photoscenery
 def ProcPhoto(texdir, output):
 
-    if output.debug: output.debug.write("%s\n" % texdir.encode("utf-8"))
+    if output.debug: output.debug.write("%s\n" % texdir.encode("latin1", 'replace'))
 
     # All textures
     texs=[i for i in listdir(texdir) if texre.search(i)]

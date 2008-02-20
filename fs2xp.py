@@ -43,13 +43,13 @@ from convutil import FS2XError, viewer
 # callbacks
 def status(percent, msg):
     if percent<0: print
-    print msg
+    print msg.encode("latin1",'replace')
 
 def log(msg):
     if not isdir(dirname(logname)):
         mkdir(dirname(logname))
     logfile=file(logname, 'at')
-    logfile.write('%s\n' % msg)
+    logfile.write('%s\n' % msg.encode("latin1",'replace'))
     logfile.close()
 
 def refresh():
@@ -85,7 +85,7 @@ for (opt, arg) in opts:
     if opt in ['-?' or '-h']:
         usage()
     elif opt=='-l':
-        lbpath=abspath(arg)
+        lbpath=abspath(unicode(arg))
     elif opt=='-d':
         debug=True
     elif opt=='-9':
@@ -107,10 +107,10 @@ if dumplib:
         exit("\nError:\tSpecify only one of -l and -x\n")
     else:
         fspath=None
-        lbpath=abspath(args[0])
+        lbpath=abspath(unicode(args[0]))
 else:
-    fspath=abspath(args[0])
-xppath=abspath(args[1])
+    fspath=abspath(unicode(args[0]))
+xppath=abspath(unicode(args[1]))
 logname=abspath(join(xppath, 'summary.txt'))
         
 

@@ -17,7 +17,7 @@ class ProcScen:
 
         assert(scale==1)	# new-style objects are scaled when placed
 
-        comment="object %s in file %s" % (libname,asciify(basename(srcfile)))
+        comment="object %s in file %s" % (libname,asciify(basename(srcfile),False))
 
         tex=[]
         mat=[]
@@ -151,10 +151,10 @@ class ProcScen:
                     (tex,lit)=texture
                     if tex:
                         (fname,ext)=splitext(basename(tex))
-                        fname="%s%s-%s" % (libname, suffixstr, asciify(fname).replace(' ','_'))
+                        fname="%s%s-%s" % (libname, suffixstr, asciify(fname))
                     elif lit:
                         (fname,ext)=splitext(basename(lit))
-                        fname="%s%s-%s" % (libname, suffixstr, asciify(fname).replace(' ','_'))
+                        fname="%s%s-%s" % (libname, suffixstr, asciify(fname))
                 else:
                     fname="%s%s" % (libname, suffixstr)
                 if fname in output.objdat:
@@ -180,7 +180,7 @@ class ProcScen:
                         (fname,ext)=splitext(basename(tex))
                     else:
                         (fname,ext)=splitext(basename(lit))
-                    fname="%s-%s" % (bname, asciify(fname).replace(' ','_'))
+                    fname="%s-%s" % (bname, asciify(fname))
                     for (x,y,z, nx,ny,nz, tu,tv) in vt:
                         (x,y,z)=matrix.transform(x,y,z)
                         (nx,ny,nz)=matrix.rotate(nx,ny,nz)

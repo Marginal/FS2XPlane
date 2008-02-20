@@ -260,7 +260,7 @@ class Output:
                         # Exclusions
                         if excbase:
                             bgl.seek(excbase)
-                            if self.debug: self.debug.write('%s\n' % filename)
+                            if self.debug: self.debug.write('%s\n' % filename.encode("latin1", 'replace'))
                             try:
                                 ProcEx(bgl, self)
                             except:
@@ -289,7 +289,7 @@ class Output:
                             name=None
                             if hdsize>42:
                                 # Use "friendly" name instead of id
-                                name=asciify(bgl.read(hdsize-(41)).rstrip(' \0')).replace('\\','_').replace('/','_').replace(':','_').replace('*','_').replace('?','_').replace('"','_').replace('<','_').replace('>','_').replace('|','_')	# XXX yuck
+                                name=asciify(bgl.read(hdsize-(41)).rstrip(' \0'))
                             if not name or name=="Object":
                                 if uid in self.friendly:
                                     name=self.friendly[uid]
@@ -344,7 +344,7 @@ class Output:
                                                 c=bgl.read(4)
                                                 (size,)=unpack('<I', bgl.read(4))
                                                 if c=='MDLN':
-                                                    name=bgl.read(size).strip('\0').strip().replace('\\','_').replace('/','_').replace(':','_').replace('*','_').replace('?','_').replace('"','_').replace('<','_').replace('>','_').replace('|','_')	# XXX yuck
+                                                    name=asciify(bgl.read(size).strip('\0').strip())
                                                     break
                                                 elif c=='MDLD':
                                                     break	# stop at data
@@ -472,6 +472,8 @@ class Output:
                         convxml.Parse(xmlfile, bglname, self)
                         xmlfile.close()
                         if not self.debug: unlink(tmp)
+                    except FS2XError:
+                        raise
                     except:
                         self.log("Can't parse file %s" % basename(bglname))
                         if self.debug: print_exc(None, self.debug)
@@ -585,7 +587,7 @@ class Output:
                 offset=0
                 size=len(data)
 
-            if self.debug: self.debug.write('%s %s FS%s\n' % (bglname.encode("utf-8"), name, mdlformat))
+            if self.debug: self.debug.write('%s %s FS%s\n' % (bglname.encode("latin1", 'replace'), name, mdlformat))
             try:
                 # Add library object to self.objdat
                 texdir=normpath(join(dirname(bglname), pardir))

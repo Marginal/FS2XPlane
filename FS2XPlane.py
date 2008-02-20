@@ -132,7 +132,7 @@ def log(msg):
     newlog=not exists(frame.logname)
     logfile=file(frame.logname, 'at')
     if newlog: logfile.write(sysdesc)
-    logfile.write('%s\n' % msg.encode("utf-8"))
+    logfile.write('%s\n' % msg.encode("latin1",'replace'))
     logfile.close()
 
 def refresh():
@@ -475,6 +475,10 @@ class MainWindow(wx.Frame):
                 myMessageBox('', 'Done.', wx.ICON_INFORMATION|wx.OK, self)
 
         except FS2XError, e:
+            if exists(self.logname):
+                logfile=file(self.logname, 'at')
+                logfile.write('%s\n' % e.msg.encode("latin1",'replace'))
+                logfile.close()
             myMessageBox(e.msg, 'Error during conversion.', wx.ICON_ERROR|wx.CANCEL, self)
 
         except:

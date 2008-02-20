@@ -80,7 +80,7 @@ class TaxiwayName:
 # Read BGL header
 class Parse:
     def __init__(self, bgl, srcfile, output):
-        if output.debug: output.debug.write('%s\n' % srcfile.encode("utf-8"))
+        if output.debug: output.debug.write('%s\n' % srcfile.encode("latin1",'replace'))
         # Per-BGL counts
         output.gencount=1	# next generic building number
         output.gencache={}	# cache of generic buildings
@@ -161,8 +161,7 @@ class Parse:
                                     if __debug__:
                                         if output.debug: output.debug.write("Animation\n")
                             except:
-                                output.log("Can't parse area #%d in %s" % (
-                                    areano, name))
+                                output.log("Can't parse area #%d in file %s" % (areano, name))
                                 if output.debug: print_exc(None, output.debug)
                                     
                             bgl.seek(posa+l)
@@ -210,9 +209,9 @@ class ProcScen:
         self.texdir=texdir
         if libname:
             self.comment="object %s in file %s" % (
-                libname,asciify(self.srcfile))
+                libname,asciify(self.srcfile,False))
         else:
-            self.comment="file %s" % asciify(self.srcfile)	# Used for reporting
+            self.comment="file %s" % asciify(self.srcfile,False)	# Used for reporting
         self.output=output
 
         self.start=bgl.tell()
@@ -410,6 +409,7 @@ class ProcScen:
               0x70:self.AreaSense,
               0x73:self.Jump,
               0x74:self.AddCat,
+              0x75:self.Call,
               0x76:self.NOP,
               0x77:self.ScaleAGL,
               0x7a:self.FaceTTMap,
@@ -684,7 +684,7 @@ class ProcScen:
         self.t=0
         if __debug__:
             if self.debug:
-                self.debug.write("%s\n" % basename(self.tex[0]))
+                self.debug.write("%s\n" % basename(self.tex[0]).encode("latin1",'replace'))
                 if x or y:
                     self.debug.write("!Tex offsets %d,%d\n" % (x,y))
         
@@ -792,7 +792,7 @@ class ProcScen:
                 if self.debug: self.debug.write("Now\n%s\n" % self.matrix[-1])
         self.bgl.seek(off)
 
-    def Call(self):		# 23:Call, 32:PerspectiveCall
+    def Call(self):		# 23:Call, 32:PerspectiveCall, 75:AddMnt
         (off,)=unpack('<h', self.bgl.read(2))
         if not off: raise struct.error	# infloop
         self.precall(False)
@@ -857,8 +857,12 @@ class ProcScen:
             # self.m==None and If color defined then use it in preference to bitmap
             return
         if self.concave:
-            (vtx,idx)=subdivide(vtx)
             self.concave=False
+            (vtx,idx)=subdivide(vtx)
+            if not vtx:
+                if self.debug: self.debug.write("!Subdivision failed\n")
+                return
+
         else:
             idx=[]
             for i in range(1,len(vtx)-1):
@@ -1141,7 +1145,7 @@ class ProcScen:
             size=size-1
         self.tex=[findtex(tex.rstrip(), self.texdir, self.output.addtexdir)]
         if __debug__:
-            if self.debug: self.debug.write("%s\n" % basename(self.tex[0]))
+            if self.debug: self.debug.write("%s\n" % basename(self.tex[0]).encode("latin1",'replace'))
         self.t=0
         
     def PointVICall(self):	# 46
@@ -1841,7 +1845,7 @@ class ProcScen:
         if __debug__:
             if self.debug:
                 if self.t!=None and self.tex[self.t]:
-                    self.debug.write("%s\n" % basename(self.tex[self.t]))
+                    self.debug.write("%s\n" % basename(self.tex[self.t]).encode("latin1",'replace'))
                 else:
                     self.debug.write("Bad tex %s\n" % self.t)
             
@@ -1974,7 +1978,7 @@ class ProcScen:
         if self.t==None: return False	# Only care about textured polygons
         if not self.loc: return False	# Not for library objects
         if __debug__:
-            if self.debug: self.debug.write("Poly: %s %s %s %d " % (basename(self.tex[self.t]), self.alt, self.layer, self.zbias))
+            if self.debug: self.debug.write("Poly: %s %s %s %d " % (basename(self.tex[self.t]).encode("latin1",'replace'), self.alt, self.layer, self.zbias))
 
         if idx:
             # Altitude test
@@ -2427,7 +2431,7 @@ class ProcScen:
             if not ext.lower() in ['.dds', '.bmp', '.png']:
                 fname+=ext	# For *.xAF etc
             # Spaces not allowed in textures. Avoid Mac/PC interop problems
-            fname=asciify(fname).replace(' ','_')
+            fname=asciify(fname)
             poly=Polygon(fname+'.pol', tex, lit, heading==65535, scale, layer)
             if fname in self.output.polydat:
                 iname=fname
@@ -2480,8 +2484,8 @@ class ProcScen:
                 newmatrix=Matrix().offset(round(x+scale2-(x+scale2)%scale,3), round(y+scale2-(y+scale2)%scale,3), round(z+scale2-(z+scale2)%scale,3))	# round to nearest unit to encourage a match
                 if __debug__:
                     if self.debug:
-                        if tex: thing=basename(tex)
-                        elif lit: thing=basename(lit)
+                        if tex: thing=basename(tex).encode("latin1",'replace')
+                        elif lit: thing=basename(lit).encode("latin1",'replace')
                         else: thing=None
                         self.debug.write("New heading %6.2f, offset (%7.3f,%7.3f,%7.3f) for %s\n" % (heading, newmatrix.m[3][0], newmatrix.m[3][1], newmatrix.m[3][2], thing))
             if loc:
@@ -2613,8 +2617,7 @@ class ProcScen:
                     if not ext.lower() in ['.dds', '.bmp', '.png']:
                         fname+=ext	# For *.xAF etc
                     # Spaces not allowed in textures. Avoid Mac/PC interop problems
-                    fname="%s-%s" % (asciify(bname),
-                                     asciify(fname).replace(' ','_'))
+                    fname="%s-%s" % (asciify(bname), asciify(fname))
     
                 # Check whether this object is a 'decal' and apply poly_os
                 poly=0
@@ -2893,7 +2896,7 @@ def ProcTerrain(bgl, srcfile, output):
     (reserved1,)=unpack('<I', bgl.read(4))	# No idea how to decode this
     bgl.seek(11*4,1)
     (lwm,vtp)=unpack('<2I', bgl.read(8))
-    if lwm or vtp: output.log('Skipping terrain data in file %s' % asciify(basename(srcfile)))
+    if lwm or vtp: output.log('Skipping terrain data in file %s' % asciify(basename(srcfile),False))
 
 
 def subdivide(vtx):

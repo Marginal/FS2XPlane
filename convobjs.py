@@ -552,5 +552,5 @@ class friendlyxml:
 
     def start_element(self, name, attrs):
         if name=='obj' and attrs['guid'] and attrs['name']:
-            self.friendly[str(attrs['guid']).lower()]=asciify(attrs['name'].replace(' - ','_').replace(' ','_').replace('-','_').replace(',',''))
+            self.friendly[str(attrs['guid']).lower()]=asciify(attrs['name'])
 
