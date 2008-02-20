@@ -1,2 +1,2 @@
 appname='FS2XPlane'
-appversion=3.01	# Must be numeric
+appversion=3.02	# Must be numeric

@@ -20,17 +20,18 @@ h5 { font-family: Arial,Helvetica,sans-serif; }
 <table style="width: 100%;" border="0" cellpadding="2">
   <tbody>
     <tr>
-      <td class="banner">Marginal &rarr; <a href="http://marginal.org.uk/x-planescenery/">X-Plane
-Scenery</a> &rarr; <a href="http://marginal.org.uk/x-planescenery/tools.html">Tools</a> &rarr; FS2XPlane</td>
+      <td class="banner">Marginal &rarr; <a href="http://marginal.org.uk/x-planescenery/">X-Plane Scenery</a> &rarr; <a href="http://marginal.org.uk/x-planescenery/tools.html">Tools</a> &rarr; FS2XPlane</td>
     </tr>
   </tbody>
 </table>
 <hr>
+
 <h2><img style="border: 0px solid; vertical-align: middle;" src="Resources/FS2XPlane.png"> MS FS Add-on Scenery converter for X-Plane<small><sup>&reg;</sup></small></h2>
+
 <h3>Overview</h3>
 <p>This application converts MS Flight Simulator 2004 and FSX add-on 
 scenery packages to X-Plane DSF overlay scenery packages.
-The resulting X-Plane scenery packages work under X-Plane 8.60 and
+The resulting X-Plane scenery packages work under X-Plane 8.64 and
 later on Windows, Mac OS and Linux. Standard "ENV" or "DSF" global scenery
 for the relevant areas must also have been installed.</p>
 <p>See the <a href="#license">license</a>
@@ -42,8 +43,10 @@ section below before using this application.</p>
   <li>Procedural scenery (<i>eg</i> buildings).</li>
   <li>Exclusion of default/generic objects.</li>
 </ul>
-<p>See the <a href="#limitations">limitations</a>
+<p>See the <a href="#limitations">Limitations</a>
 section for details of features that are not converted.</p>
+<p>See the <a href="#problems">Problems</a>
+section for how to report problems to the author.</p>
 <p>This application works best with scenery packages that have been
 specifically designed for FS2004 or FSX - <i>ie</i> containing airports
 authored in AFCAD2, 
@@ -54,6 +57,7 @@ The application also works with FS2002 and older scenery packages that
 contain old-style BGL procedural scenery, but produces poorer and less
 efficient X-Plane scenery <small>(this is mostly due to the fact that older
 MSFS scenery packages tend to use lots of small texture files)</small>.</p>
+
 <h3><a name="requirements">Requirements</a></h3>
 <dl>
   <dt><b>Windows</b></dt>
@@ -67,8 +71,8 @@ then you should install X11 from the your Mac OS
 <a target="_blank" href="http://docs.info.apple.com/article.html?artnum=301229">DVD</a> or
 <a target="_blank" href="http://docs.info.apple.com/article.html?artnum=25735">CD 3</a>,
 and also 
-<a target="_blank" href="http://downloads.sourceforge.net/darwine/Darwine-x86-0.9.12.dmg">download Darwine (x86)</a> -
-drag the folder <code>Darwine</code> to your Applications folder to install it.
+<a target="_blank" href="http://thisismyinter.net/?p=29">download</a>
+and install Darwine.
 This will allow you to run MSFS scenery package installer programs
 and will also in some cases allow FS2XPlane to produce more complete
 X-Plane scenery.<br>
@@ -83,6 +87,7 @@ The GUI application additionally requires the wxPython runtime. wxPython
 <a target="_blank" href="http://www.wxpython.org/download.php#binaries">download</a>
 a binary (or just stick with the command-line program).</dd>
 </dl>
+
 <h3><a name="settingup">Setting Up</a></h3>
 <p>Run the <samp>FS2XPlane</samp> application.</p>
 <dl>
@@ -109,6 +114,7 @@ MSFS installation.</dd>
 <p>FS2XPlane can operate in one of two ways - it can convert a MSFS add-on
 scenery package or it can extract all the objects in MSFS add-on scenery
 libraries.<p>
+
 <h4>Converting a scenery package</h4>
 <ul>
   <li>Run the <samp>FS2XPlane</samp> application.</li>
@@ -219,6 +225,7 @@ Winter</code> </li>
   <li>allow sloped runways: <b>unchecked</b></li>
   <li>compress textures to save VRAM: checked</li>
 </ul>
+
 <h3>Files produced</h3>
 <p>The application produces the following files in the X-Plane
 scenery package folder:</p>
@@ -284,6 +291,7 @@ objects and polygons, converted to DDS or PNG format.</td>
   </tbody>
 </table>
 <br>
+
 <h3><a name="limitations">Limitations</a></h3>
 The following MSFS scenery data are simplified and will need rework in
 X-Plane:<br>
@@ -327,6 +335,7 @@ objects and polygons that make up the "fake" pavement, otherwise you may
 see duplicated aprons, taxiways, lights and/or lines.</p>
 
 <h3><a name="license"></a>License and terms</h3>
+
 <h4>License</h4>
 <p>This application mechanically rewrites files from one format (MSFS)
 to another (X-Plane). Your license to use this application is subject to
@@ -418,7 +427,7 @@ Does your filesystem truncate file names?</td>
     </tr>
     <tr>
       <td style="background-color: white; vertical-align: top;">Found
-duplicate definition of airport &lt;code&gt; in &lt;filename&gt;</td>
+duplicate definition of airport &lt;code&gt; in file &lt;filename&gt;</td>
       <td style="background-color: white; vertical-align: top;">Some scenery packages supply alternative airport layouts. This application should be run using only one of the alternatives.<br>
 Read the installation notes that came with the scenery package,
 delete the alternative layout, and run the application again.</td>
@@ -480,7 +489,7 @@ The beacon, taxiway or windsock is omitted.</td>
     </tr>
     <tr>
       <td style="background-color: white; vertical-align: top;">Can't parse
-&lt;area #n or object id&gt; in &lt;filename&gt;</td>
+&lt;area #n or object id&gt; in file &lt;filename&gt;</td>
       <td style="background-color: white;">This is most likely caused by
 the presence of obscure pre-FS2002 commands in the source BGL file.<br>
 This area or library object will likely be incompletely converted,
@@ -665,11 +674,29 @@ You may be asked whether to overwrite some files; say yes.</li>
   <li>Download and open <a target="_blank" href="http://www.simviation.com/cgi-bin/syb.cgi?section=misc&file=rw12_lib3_v12.zip">rwy12_lib3_v1.2.zip</a> and repeat step 6.</li>
 </ol>
 
+<h3><a name="problems">Problems</a></h3>
+<p>Please email any problems that you have with this software to the
+<a href="mailto:Jonathan Harris <x-plane@marginal.org.uk>">author</a>.
+But please first ensure that you're using the
+<a href="http://marginal.org.uk/x-planescenery/tools.html">latest</a>
+version of FS2XPlane - your problem may have already been fixed.</p>
+<p>Please supply the following information with your report:</p>
+<ul>
+  <li>A link to where the MSFS package can be downloaded.</li>
+  <li>A description of what happened and how that differs from what you
+expected (note that "It doesn't work" is not a helpful description).
+Screenshots can be helpful here.</li>
+  <li>Attach (don't paste) a copy of the <code>summary.txt</code> file that
+FS2XPlane creates in
+<code>X-Plane/Custom&nbsp;Scenery/<i>packagename</i>/summary.txt</code>.</li>
+</ul>
+
 <hr>
 <table style="width: 100%;" border="0" cellpadding="2">
   <tbody>
     <tr>
-      <td class="banner">Version 3.01 &copy; 2007,2008 <a href="mailto:x-plane@marginal.org.uk">Jonathan Harris</a>
+      <td class="banner">Version 3.02 &copy; 2007, 2008
+<a href="mailto:Jonathan Harris <x-plane@marginal.org.uk>">Jonathan Harris</a>
 <a rel="license" href="http://creativecommons.org/licenses/by-nc-sa/3.0/">
 <img alt="Creative Commons License" style="border: 0px solid ; width: 88px; height: 31px; vertical-align: text-bottom;" src="http://creativecommons.org/images/public/somerights20.png"></a></td>
     </tr>
