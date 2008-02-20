@@ -7,8 +7,8 @@ set RELEASE=1
 set RPM=%TMP%\fs2xplane
 
 @if exist FS2XPlane_%VER%_src.zip del FS2XPlane_%VER%_src.zip
-@if exist fs2xplane-%VERSION%-%RELEASE%.i386.rpm del fs2xplane-%VERSION%-%RELEASE%.i386.rpm
-@if exist fs2xplane_%VERSION%-%RELEASE%_i386.deb del fs2xplane_%VERSION%-%RELEASE%_i386.deb
+@if exist fs2xplane-%VERSION%-%RELEASE%.noarch.rpm del fs2xplane-%VERSION%-%RELEASE%.noarch.rpm
+@if exist fs2xplane_%VERSION%-%RELEASE%_all.deb del fs2xplane_%VERSION%-%RELEASE%_all.deb
 @if exist FS2XPlane_%VER%_mac.zip del FS2XPlane_%VER%_mac.zip
 @if exist FS2XPlane_%VER%_win32.exe del FS2XPlane_%VER%_win32.exe
 
@@ -30,7 +30,7 @@ REM tar -zcf FS2XPlane_%VER%_linux.tar.gz %PY% %DATA% %RSRC% linux win32/bglunzi
 set RPMRT=%TMP%\fs2xplane\root
 mkdir "%RPM%\BUILD"
 mkdir "%RPM%\SOURCES"
-mkdir "%RPM%\RPMS\i386"
+mkdir "%RPM%\RPMS\noarch"
 mkdir "%RPMRT%\usr\local\bin"
 mkdir "%RPMRT%\usr\local\lib\fs2xplane\Resources"
 mkdir "%RPMRT%\usr\local\lib\fs2xplane\linux"
@@ -48,8 +48,8 @@ for %%I in (%PY%) do (copy %%I "%RPMRT%\usr\local\lib\fs2xplane" |findstr -v "fi
 for %%I in (%RSRC%) do (copy "Resources\%%~nxI" "%RPMRT%\usr\local\lib\fs2xplane\Resources" |findstr -v "file(s) copied")
 for %%I in (linux\bglunzip linux\bglxml linux\bmp2dds linux\bmp2png linux\DSFTool linux\fake2004 linux\winever) do (copy %%I "%RPMRT%\usr\local\lib\fs2xplane\linux" |findstr -v "file(s) copied")
 for %%I in (win32\bglunzip.exe win32\DSFTool.exe win32\fake2004.exe) do (copy %%I "%RPMRT%\usr\local\lib\fs2xplane\win32" |findstr -v "file(s) copied")
-"C:\Program Files\cygwin\lib\rpm\rpmb.exe" --quiet -bb --target i386-pc-linux --define '_topdir /tmp/fs2xplane' /tmp/fs2xplane/fs2xplane.spec
-move "%RPM%\RPMS\i386\fs2xplane-%VERSION%-%RELEASE%.cygwin.i386.rpm" fs2xplane-%VERSION%-%RELEASE%.i386.rpm
+"C:\Program Files\cygwin\lib\rpm\rpmb.exe" --quiet -bb --target noarch-pc-linux --define '_topdir /tmp/fs2xplane' /tmp/fs2xplane/fs2xplane.spec
+move "%RPM%\RPMS\noarch\fs2xplane-%VERSION%-%RELEASE%.cygwin.noarch.rpm" fs2xplane-%VERSION%-%RELEASE%.noarch.rpm
 REM Debian/Ubuntu
 mkdir "%RPMRT%\DEBIAN"
 mkdir "%RPMRT%\usr\local\share\applications"
