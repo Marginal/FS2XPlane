@@ -422,6 +422,7 @@ class ProcScen:
               0x8a:self.Call32,
               0x8b:self.AddCat32,
               0x8f:self.NOPi,
+              0x92:self.NOPh,
               0x93:self.NOPh,
               0x95:self.CrashIndirect,
               0x96:self.CrashStart,
@@ -1930,7 +1931,7 @@ class ProcScen:
         pass
 
     def NOPh(self):
-        # 30:Brightness, 3f:ShadowCall, 81:AntiAlias, 93: Specular?
+        # 30:Brightness, 3f:ShadowCall, 81:AntiAlias, 92:?, 93:Specular
         self.bgl.read(2)
 
     def NOPi(self):
@@ -2911,7 +2912,7 @@ def subdivide(vtx):
         gluTessBeginPolygon(tessObj, (points, idx))
         gluTessBeginContour(tessObj)
         for vertex in vtx:
-            (x,y,z, nx,ny,nz, tu, tv)=vertex
+            (x,y,z, nx,ny,nz, tu,tv)=vertex
             gluTessVertex(tessObj, [x, y, z], vertex)
         gluTessEndContour(tessObj)
         gluTessEndPolygon(tessObj)
