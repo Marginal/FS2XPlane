@@ -114,9 +114,11 @@ class Point:
         a2=radians(to.lat)
         b2=radians(to.lon)
         if a1==a2 and b1==b2: return 0
-        return (diaa/2) * acos(cos(a1)*cos(b1)*cos(a2)*cos(b2) +
-                               cos(a1)*sin(b1)*cos(a2)*sin(b2) +
-                               sin(a1)*sin(a2))
+        x=(cos(a1)*cos(b1)*cos(a2)*cos(b2) +
+           cos(a1)*sin(b1)*cos(a2)*sin(b2) +
+           sin(a1)*sin(a2))
+        if x>=1: return 0
+        return (diaa/2) * acos(x)
 
     # From http://www.mathforum.org/library/drmath/view/55417.html
     def headingto(self, to):
