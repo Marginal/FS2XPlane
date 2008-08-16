@@ -278,8 +278,7 @@ class Matrix:
 class AptNav:
     def __init__(self, code, text):
         self.code=code
-	# X-Plane only renders a subset of ascii - see interface.png
-        self.text=asciify(text, False)
+        self.text=text
 
     def __repr__(self):
         return '"%-3d %s"' % (self.code, self.text)
@@ -464,7 +463,7 @@ class Object:
 
 
 class Polygon:
-    def __init__(self, filename, tex, lit, nowrap, scale, layer):
+    def __init__(self, filename, tex, lit, nowrap, scale, layer, paging=None):
         self.filename=filename
         self.tex=tex
         self.lit=lit
@@ -472,6 +471,7 @@ class Polygon:
         self.scale=scale
         self.layer=layer
         self.surface=(layer!=None and layer>4)
+        self.paging=paging
 
     def __eq__(self, o):
         return (self.filename==o.filename and
@@ -483,6 +483,10 @@ class Polygon:
                 #self.surface==o.surface	# redundant
 
     def export(self, output, fslayers):
+        if self.paging and ((self.tex in output.donetex) or
+                            (self.lit in output.donetex)):
+            # Avoid paging shared textures
+            self.paging=None
         (tex,lit)=maketexs(self.tex, self.lit, output, True)
         try:
             path=join(output.xppath, 'objects')
@@ -507,6 +511,10 @@ class Polygon:
             objfile.write("SCALE\t\t%d %d\n" % (self.scale, self.scale))
             if self.layer!=None:
                 objfile.write("LAYER_GROUP\t%s\n" % fslayers[self.layer])
+            if self.paging:
+                (lat, lon, pixels)=self.paging
+                objfile.write("LOAD_CENTER\t%10.6f %11.6f %d %d\n" % (
+                    lat, lon, int(self.scale*1.414), pixels))
             if self.surface:
                 objfile.write("SURFACE\t\tconcrete\n")
             objfile.close()
