@@ -60,6 +60,7 @@ class Output:
         self.polydat={}	# Polygons by name
         self.stock={}	# FS2004 stock objects - we don't have these
         self.friendly={}	# GUID->friendly name map
+        self.names={}	# friendly names must be unique
         self.haze={}	# Textures that have palette-based transparency
         self.donetex={}	# Textures we have seen (avoid multiple convert/report)
         self.visrunways=False	# Runways on top of scenery - should be per apt
@@ -129,12 +130,14 @@ class Output:
         for line in stock:
             line=line.split()
             if line and not line[0].startswith(';'):
+                name=line[0]
                 guid=line[1][1:-1]
-                self.stock[guid[:8]+guid[14:18]+guid[9:13]+guid[26:28]+guid[24:26]+guid[21:23]+guid[19:21]+guid[34:36]+guid[32:34]+guid[30:32]+guid[28:30]]=line[0]
+                self.stock[guid[:8]+guid[14:18]+guid[9:13]+guid[26:28]+guid[24:26]+guid[21:23]+guid[19:21]+guid[34:36]+guid[32:34]+guid[30:32]+guid[28:30]]=name
+                self.names[name]=True
         stock.close()
 
         # Standard Rwy12 mappings
-        friendlyxml(join('Resources', 'Rwy12.xml'), self.friendly)
+        friendlyxml(join('Resources', 'Rwy12.xml'), self.friendly, self.names)
 
         if debug:
             # note full debugging also requires non-optimised execution
@@ -152,16 +155,18 @@ class Output:
             try:
                 c=self.fspath.split(sep)
                 company=c[-2].lower()
-                package=c[-1].replace(' ','').lower()
+                package=c[-1].replace(' ','').lower()[:-1]
                 if company!='addon scenery':
                     handle=OpenKey(HKEY_CURRENT_USER, 'Software\\'+company)
                     i=0
                     while True:
                         v=EnumKey(handle, i)
-                        if v.replace(' ','').lower().startswith(package):
+                        if package in v.replace(' ','').lower():
                             handle2=OpenKey(handle,v)
                             if QueryValueEx(handle2, 'SerialNumber'):
                                 self.registered=True
+                                if self.debug: self.debug.write('Registered\n')
+                                break
                             break
                         i+=1
                         # EnvironmentError raised when no more values
@@ -184,7 +189,7 @@ class Output:
             for path, dirs, files in walk(toppath):
                 for filename in files:
                     if filename[-4:].lower()=='.xml':
-                        friendlyxml(join(path,filename), self.friendly)
+                        friendlyxml(join(path,filename), self.friendly, self.names)
                         
             for path, dirs, files in walk(toppath):
                 if basename(path).lower()!='scenery':
@@ -196,7 +201,7 @@ class Output:
                         continue
                     if exists(join(path,filename[:-4]+'.txt')):
                         # read EZ-Scenery UID mapping
-                        friendlytxt(filename[:-4]+'.txt', self.friendly)
+                        friendlytxt(filename[:-4]+'.txt', self.friendly, self.names)
                     bglname=join(path, filename)
                     if stat(bglname).st_size==0:
                         self.done[bglname]=True
@@ -290,13 +295,14 @@ class Output:
                             if hdsize>42:
                                 # Use "friendly" name instead of id
                                 name=asciify(bgl.read(hdsize-(41)).rstrip(' \0'))
-                            if not name or name=="Object":
-                                if uid in self.friendly:
-                                    name=self.friendly[uid]
-                                else:
-                                    name=uid
-                            else:
+                            if uid in self.friendly:
+                                name=self.friendly[uid]
+                            elif name and name not in self.names:
                                 self.friendly[uid]=name
+                                self.names[name]=True
+                            else:
+                                name=uid
+
                             if not uid in self.libobj:	# 1st wins
                                 if self.debug and toppath==self.fspath: self.debug.write("%s:\t%s\t%s\tFS8\n" % (uid, name, bglname[len(toppath)+1:]))
                                 self.libobj[uid]=(8, bglname, tmp,
@@ -353,13 +359,15 @@ class Output:
                                         else:
                                             mdlformat=9	# FS9 format
 
-                                    if not name:
-                                        if uid in self.stock:
-                                            name=self.stock[uid]
-                                        elif uid in self.friendly:
-                                            name=self.friendly[uid]
-                                        else:
-                                            name=uid
+                                    if uid in self.stock:
+                                        name=self.stock[uid]
+                                    elif uid in self.friendly:
+                                        name=self.friendly[uid]
+                                    elif name and name not in self.names:
+                                        self.friendly[uid]=name
+                                        self.names[name]=True
+                                    else:
+                                        name=uid
 
                                     if not uid in self.libobj:
                                         if self.debug and toppath==self.fspath: self.debug.write("%s:\t%s\t%s\tFS%d\n" % (uid, name, bglname[len(toppath)+1:], mdlformat))
@@ -463,7 +471,11 @@ class Output:
 
         # Do airport facilities last so that exclusions have been set up
         for self.doexcfac in [False, True]:
-            for bglname in xmls:
+            n = len(xmls)
+            for i in range(n):
+                bglname=xmls[i]
+                if not self.doexcfac:
+                    self.status(i*100.0/n, bglname[len(self.fspath)+1:])
                 tmp=join(gettempdir(), basename(bglname[:-3])+'xml')
                 x=helper(self.xmlexe, '-t', bglname, tmp)
                 if exists(tmp):
@@ -528,6 +540,7 @@ class Output:
 
             # Convert the library object
             filename=basename(bglname)
+            if self.debug: self.debug.write('%s %s FS%s\n' % (bglname.encode("latin1", 'replace'), name, mdlformat))
             self.status(i*100.0/len(self.objplc), name)
             i+=1
             scen=None
@@ -569,7 +582,9 @@ class Output:
                         else:
                             bgl.seek(size,1)
                     data+=bgldata
-                    if not data: raise IOError
+                    if not data:
+                        if self.debug: self.debug.write('!No data\n')
+                        continue
                     if scen: scen+=len(data)	# Offset from first instruction
                     if tran: tran+=len(data)	# Offset from first instruction
                     data+=tbldata	# Table data must be last
@@ -587,7 +602,6 @@ class Output:
                 offset=0
                 size=len(data)
 
-            if self.debug: self.debug.write('%s %s FS%s\n' % (bglname.encode("latin1", 'replace'), name, mdlformat))
             try:
                 # Add library object to self.objdat
                 texdir=normpath(join(dirname(bglname), pardir))
