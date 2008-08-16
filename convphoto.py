@@ -14,6 +14,10 @@ photore=re.compile(r"[0-3]{15,15}su\.(bmp|dds)$", re.IGNORECASE)
 blueskyre=re.compile(r"S(\d)\$([+-]*\d+)-([+-]*\d+)_(\d)_(\d)\.(bmp|BMP|dds|DDS)$")
 
 # Handle FS2004 and www.blueskyscenery.com photoscenery
+
+# Must be called after processing objects to avoid applying texture paging
+# to textures used in objects
+
 def ProcPhoto(texdir, output):
 
     if output.debug: output.debug.write("%s\n" % texdir.encode("latin1", 'replace'))
@@ -44,9 +48,8 @@ def ProcPhoto(texdir, output):
 
         lat=(lat-int(match[4])*res)*LATRES
         lon=(lon+int(match[5])*res)*LONRES
-        layer=4-layer
-        if layer<1: layer=1
-        makephoto(name, join(texdir,tex), lit, lat, lon, res, layer, output)
+        layer=max(1,4-layer)
+        makephoto(name, join(texdir,tex), lit, lat, lon, res, layer, 512, output)
 
     # Standard FS2004 style - assumes that summer exists
     for tex in texs:
@@ -77,7 +80,7 @@ def ProcPhoto(texdir, output):
 
         lat=lat*LATRES
         lon=lon*LONRES
-        makephoto(name, join(texdir,tex), lit, lat, lon, 1, 0, output)
+        makephoto(name, join(texdir,tex), lit, lat, lon, 1, 0, 256, output)
 
 
 # Check for higher-res Blue Sky Scenery scenery
@@ -102,7 +105,7 @@ def ishigher(name, layer, lat,lon, blueskydict, output):
     return False
                 
 
-def makephoto(name, tex, lit, lat, lon, scale, layer, output):
+def makephoto(name, tex, lit, lat, lon, scale, layer, pixels, output):
     # lat and lon are the NW corner cos that's how MSFS does it
     if output.debug: output.debug.write("Photo: %s %.6f,%.6f,%s " % (name, lat, lon, scale))
     if lon+LONRES*scale > floor(lon)+1:
@@ -134,7 +137,8 @@ def makephoto(name, tex, lit, lat, lon, scale, layer, output):
             points[i][3]=points[-1][0]
     elif output.debug: output.debug.write("OK\n")
 
-    poly=Polygon(name+'.pol', tex, lit, True, int(1216*scale), layer)
+    poly=Polygon(name+'.pol', tex, lit, True, int(LATRES*1852*60*scale), layer,
+                 (lat-LATRES*scale*0.5, lon+LONRES*scale*0.5, pixels))
     output.polydat[name]=poly
     for p in points:
         output.polyplc.append((name, 65535, p))

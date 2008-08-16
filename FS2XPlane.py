@@ -459,9 +459,9 @@ class MainWindow(wx.Frame):
             output=Output(fspath, lbpath, xppath, dumplib, season, dds,
                           status,log,refresh, False)
             output.scanlibs()
-            output.procphotos()
             output.process()
             output.proclibs()
+            output.procphotos()
             output.export()
             if self.progress:
                 self.progress.Destroy()

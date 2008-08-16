@@ -119,15 +119,15 @@ try:
     output=Output(fspath, lbpath, xppath, dumplib, season, dds,
                   status, log, refresh, debug and not prof)
     output.scanlibs()
-    output.procphotos()
     if prof:
         from profile import run
         run('output.process()', join(xppath,'profile.dmp'))
     else:
         output.process()
-        output.proclibs()
-        output.export()
-        if output.debug: output.debug.close()
+    output.proclibs()
+    output.procphotos()
+    output.export()
+    if output.debug: output.debug.close()
     if exists(logname):
         status(-1, 'Displaying summary "%s"' % logname)
         viewer(logname)
