@@ -12,14 +12,14 @@ from convtaxi import apronlayout, designators, surfaces, taxilayout, Node, Link
 
 # member var is defined
 def D(c, v):
-    return (v in dir(c) and eval("c.%s" % v))
+    return getattr(c,v,None)
 
 # member var is defined and true
 def T(c, v):
-    return (v in dir(c) and eval("c.%s" % v)=='TRUE')
+    return getattr(c,v,None)=='TRUE'
 
 # Set up XML parser for new-style scenery
-  
+
 class SceneryObject:
     def __init__(self, attrs):
         for k, v in attrs.iteritems():
@@ -128,39 +128,48 @@ class SceneryObject:
                 output.log('Non-zero altitude (%sm) for generic building at (%10.6f, %11.6f) in file %s' % (round(alt,2), loc.lat, loc.lon, parser.filename))
             if pitch or bank:
                 output.log('Non-zero pitch/bank (%s/%s) for generic building at (%10.6f, %11.6f) in file %s' % (pitch, bank, loc.lat, loc.lon, parser.filename))
-            texs=[int(l.bottomTexture), int(l.windowTexture),
-                  int(l.topTexture), int(l.roofTexture)]
+            texs=(int(l.bottomTexture), int(l.windowTexture),
+                  int(l.topTexture), int(l.roofTexture))
+
             for m in l.multisidedbuilding:
-                parser.gencount += 1
-                name="%s-generic-%d.obj" % (asciify(parser.filename[:-4]),
-                                            parser.gencount)
-                obj=makegenmulti(name, output.palettetex, int(m.buildingSides),
-                                 scale*float(m.sizeX), scale*float(m.sizeZ),
-                                 [scale*float(m.sizeBottomY),
-                                  scale*float(m.sizeWindowY),
-                                  scale*float(m.sizeTopY),
-                                  scale*float(m.sizeRoofY)],
-                                 texs)
-                output.objdat[name]=[obj]
+                key=(int(m.buildingSides),
+                     scale*float(m.sizeX), scale*float(m.sizeZ),
+                     (scale*float(m.sizeBottomY),
+                      scale*float(m.sizeWindowY),
+                      scale*float(m.sizeTopY),
+                      scale*float(m.sizeRoofY)),
+                     texs)
+                if key in parser.genmulticache:
+                    name=parser.genmulticache[key]
+                else:
+                    parser.gencount += 1
+                    name="%s-generic-%d.obj" % (asciify(parser.filename[:-4]),
+                                                parser.gencount)
+                    obj=makegenmulti(name, output.palettetex, *key)
+                    parser.genmulticache[key]=name
+                    output.objdat[name]=[obj]
                 output.objplc.append((loc, heading, cmplx, name, 1))
                                 
             for m in l.pyramidalbuilding:
                 h2=2*(float(m.sizeBottomY)+float(m.sizeWindowY)+
                       float(m.sizeTopY))
-                parser.gencount += 1
-                name="%s-generic-%d.obj" % (asciify(parser.filename[:-4]),
-                                            parser.gencount)
-                obj=makegenquad(name, output.palettetex,
-                                scale*float(m.sizeX), scale*float(m.sizeZ),
-                                atan((float(m.sizeX)-float(m.sizeTopX))/h2),
-                                atan((float(m.sizeZ)-float(m.sizeTopZ))/h2),
-                                [scale*float(m.sizeBottomY),
-                                 scale*float(m.sizeWindowY),
-                                 scale*float(m.sizeTopY)],
-                                texs, 0)
-                output.objdat[name]=[obj]
+                key=(scale*float(m.sizeX), scale*float(m.sizeZ),
+                     atan((float(m.sizeX)-float(m.sizeTopX))/h2),
+                     atan((float(m.sizeZ)-float(m.sizeTopZ))/h2),
+                     (scale*float(m.sizeBottomY),
+                      scale*float(m.sizeWindowY),
+                      scale*float(m.sizeTopY)),
+                     texs, 0)
+                if key in parser.genquadcache:
+                    name=parser.genquadcache[key]
+                else:
+                    parser.gencount += 1
+                    name="%s-generic-%d.obj" % (asciify(parser.filename[:-4]),
+                                                parser.gencount)
+                    obj=makegenquad(name, output.palettetex, *key)
+                    parser.genquadcache[key]=name
+                    output.objdat[name]=[obj]
                 output.objplc.append((loc, heading, cmplx, name, 1))
-
             for m in l.rectangularbuilding:
                 heights=[scale*float(m.sizeBottomY),
                          scale*float(m.sizeWindowY),
@@ -182,13 +191,17 @@ class SceneryObject:
                     rtexs.extend([int(m.gableTexture), int(m.faceTexture)])
                 else:
                     continue
-                parser.gencount += 1
-                name="%s-generic-%d.obj" % (asciify(parser.filename[:-4]),
-                                            parser.gencount)
-                obj=makegenquad(name, output.palettetex,
-                                scale*float(m.sizeX), scale*float(m.sizeZ),
-                                0, 0, heights, rtexs, roof)
-                output.objdat[name]=[obj]
+                key=(scale*float(m.sizeX), scale*float(m.sizeZ),
+                     0, 0, tuple(heights), tuple(rtexs), roof)
+                if key in parser.genquadcache:
+                    name=parser.genquadcache[key]
+                else:
+                    parser.gencount += 1
+                    name="%s-generic-%d.obj" % (asciify(parser.filename[:-4]),
+                                                parser.gencount)
+                    obj=makegenquad(name, output.palettetex, *key)
+                    parser.genquadcache[key]=name
+                    output.objdat[name]=[obj]
                 output.objplc.append((loc, heading, cmplx, name, 1))
                 
         for l in self.libraryobject:
@@ -232,7 +245,7 @@ class Ndb:
     # Export to nav.dat
     def export(self, parser, output):
         if D(self, 'name'):
-            name=self.name
+            name=asciify(self.name)
             if name[-3:].upper()!='NDB': name+=' NDB'
         else:
             name=self.ident+' NDB'
@@ -443,7 +456,7 @@ class Airport:
                 txt+=" 1"
             else:
                 txt+=" 0"
-            txt+=(" 0 %s %s" % (ident, self.name))
+            txt+=(" 0 %s %s" % (ident, asciify(self.name)))
             aptdat.append(AptNav(1, txt))
 
         # Runways
@@ -590,7 +603,7 @@ class Airport:
                 else:
                     end=1
                 if D(ils, 'name'):
-                    name=("%s %s" % (self.ident, ils.name))
+                    name=("%s %s" % (self.ident, asciify(ils.name)))
                 else:
                     name=('%s %s ILS' % (self.ident, number[end]))
                 if D(ils, 'range'):
@@ -604,7 +617,7 @@ class Airport:
                 for gs in ils.glideslope:
                     angle[end]=float(gs.pitch)
                     if D(ils, 'name'):
-                        name=("%s %s" % (self.ident, ils.name))
+                        name=("%s %s" % (self.ident, asciify(ils.name)))
                     else:
                         name=('%s %s GS' % (self.ident, number[end]))
                     if D(gs, 'range'):
@@ -618,7 +631,7 @@ class Airport:
 
                 for dme in ils.dme:
                     if D(ils, 'name'):
-                        name=("%s %s" % (self.ident, ils.name))
+                        name=("%s %s" % (self.ident, asciify(ils.name)))
                     else:
                         name=('%s %s DME-ILS' % (self.ident, number[end]))
                     if D(dme, 'range'):
@@ -781,7 +794,8 @@ class Airport:
         # Aprons - come after taxiways so that taxiways overlay them
         for a in self.aprons:
             for apron in a.apron:
-                if T(apron, 'drawSurface') or T(apron, 'drawDetail'):
+                if True: # T(apron, 'drawSurface') or T(apron, 'drawDetail'):
+                    # drawSurface & drawDetail ignored in FSX and mostly in FS9
                     surface=surfaces[apron.surface]
                     smoothing=0.25
                     l=[]
@@ -816,7 +830,7 @@ class Airport:
 
         # Tower view location
         if D(self, 'name'):
-            view=self.name+' Tower'
+            view=asciify(self.name)+' Tower'
         else:
             view='Tower Viewpoint'
         for tower in self.tower:
@@ -828,7 +842,7 @@ class Airport:
         for n in allnodes:
             if n.startup:
                 startups.append(AptNav(15, "%10.6f %11.6f %6.2f %s" % (
-                    n.loc.lat, n.loc.lon, n.heading, n.startup)))
+                    n.loc.lat, n.loc.lon, n.heading, asciify(n.startup))))
         startups.sort(lambda x,y: cmp(x.text[30:], y.text[30:]))
         aptdat.extend(startups)
 
@@ -913,7 +927,7 @@ class Airport:
             else:
                 ctype=com.type
             coms.append(AptNav(codes[com.type], "%5d %s %s" % (
-                float(com.frequency)*100, com.name, ctype)))
+                float(com.frequency)*100, asciify(com.name), ctype)))
         coms.sort()
         aptdat.extend(coms)
 
@@ -940,7 +954,7 @@ class Vor:
         else:
             dtype='VOR'
         if D(self, 'name'):
-            name=self.name
+            name=asciify(self.name)
             if name[-3:].upper()!=dtype: name+=(' '+dtype)
         else:
             name=self.ident+' '+dtype
@@ -986,7 +1000,7 @@ class Marker:
         else:	# 'BACKCOURSE'
             return
         if D(self, 'name'):
-            name=self.name
+            name=asciify(self.name)
             if name[-3:].upper()!=mtype: name+=(' '+mtype)
         else:
             name=self.ident+' '+mtype
@@ -1013,10 +1027,10 @@ class Parse:
         if output.debug: output.debug.write('%s\n' % srcfile.encode("latin1"))
         self.filename=basename(srcfile)
         self.output=output
-        self.elems=[]
         self.parents=[]
-        self.parname=''	# parent class(es)
         self.gencount=0
+        self.genmulticache={}
+        self.genquadcache={}
 
         parser=xml.parsers.expat.ParserCreate()
         parser.StartElementHandler = self.start_element
@@ -1024,27 +1038,26 @@ class Parse:
         parser.ParseFile(fd)
         fd.close()
 
-        # Parsed OK. Now export
-        for elem in self.elems:
-            elem.export(self, output)
-
     def start_element(self, name, attrs):
-        if name=='FSData': return
+        #if self.output.debug:
+        #    self.output.debug.write("%s%s(%s)\n" % ('  '*len(self.parents), name, attrs))
         try:
-            elem=eval('%s%s(attrs)' % (self.parname, name))
             if self.parents:
-                exec("self.parents[-1].%s.append(elem)" % name.lower())
+                parent=self.parents[-1]
+                elem=getattr(parent, name)(attrs)
+                getattr(parent, name.lower()).append(elem)
             else:
-                self.elems.append(elem)
+                elem=globals()[name](attrs)
             self.parents.append(elem)
-            self.parname+=(name+'.')
-        except (NameError, AttributeError):
+        except (KeyError, AttributeError):
+            if name=='FSData': return
             if self.output.debug:
-                self.output.debug.write("Skipping %s%s(%s)\n" % (self.parname, name, attrs))
-            return
+                self.output.debug.write("Skipping %s%s(%s)\n" % ('.'*len(self.parents), name, attrs))
+            self.parents.append(None)
             
     def end_element(self, name):
-        if self.parname[-(len(name)+1):-1]==name:
-            self.parents.pop()
-            self.parname=self.parname[:-(len(name)+1)]
+        if self.parents:
+            elem=self.parents.pop()
+            if elem and not self.parents:
+                elem.export(self, self.output)
 
