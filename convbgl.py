@@ -330,9 +330,9 @@ class ProcScen:
             0x342: 255,	# building_texture
             0x344: 255,	# aircraft_texture
             0x346: 5,	# image_complex: complexity of the scenery 0-5
-            0x37e: 0,	# xv: rotated X-axis eye to object distance
-            0x382: 0,	# yv: rotated Y-axis eye to object distance
-            0x386: 0,	# zv: rotated Z-axis eye to object distance
+            0x37e: 1,	# xv: rotated X-axis eye to object distance
+            0x382: 67,	# yv: rotated Y-axis eye to object distance - must be >66 for UK2000
+            0x386: 1,	# zv: rotated Z-axis eye to object distance
             0x389: 12,	# zulu hours in the day - Midday
             0x390: 0,	# water_texture
             0xc72: 5,	# ground wind velocity [kts?]
@@ -422,7 +422,6 @@ class ProcScen:
               0x8a:self.Call32,
               0x8b:self.AddCat32,
               0x8f:self.NOPi,
-              0x92:self.NOPh,
               0x93:self.NOPh,
               0x95:self.CrashIndirect,
               0x96:self.CrashStart,
@@ -704,6 +703,7 @@ class ProcScen:
     def IfInBoxRawPlane(self):	# 1b
         # Skip
         (off,)=unpack('<h', self.bgl.read(2))
+        if not off: raise struct.error	# infloop
         self.bgl.seek(off-4,1)
         
     def IfIn2(self):		# 1c
@@ -718,6 +718,7 @@ class ProcScen:
                 if maxs[i]==4: maxs[i]=5	# bug in eg EGNT
             val=self.getvar(var[i])
             if val<mins[i] or val>maxs[i]:
+                if not off: raise struct.error	# infloop
                 self.bgl.seek(off-22,1)
                 break
 
@@ -782,6 +783,7 @@ class ProcScen:
                 if maxs[i]==4: maxs[i]=5	# bug in eg EGNT
             val=self.getvar(var[i])
             if val<mins[i] or val>maxs[i]:
+                if not off: raise struct.error	# infloop
                 self.bgl.seek(off-22,1)
                 break
 
@@ -815,6 +817,7 @@ class ProcScen:
         if (self.output.registered and var==0) or var in [0x312,0x314,0x316,0x318,0x31a]:
             return	# user-defined - assume True
         if val<vmin or val>vmax:
+            if not off: raise struct.error	# infloop
             self.bgl.seek(off-10,1)
 
     def SeparationPlane(self):	# 25
@@ -925,6 +928,7 @@ class ProcScen:
 
     def Instance(self):		# 33
         (off,p,b,h)=unpack('<h3H', self.bgl.read(8))
+        if not off: raise struct.error	# infloop
         self.precall(True)
         p=p*360/65536.0
         b=b*360/65536.0
@@ -987,10 +991,12 @@ class ProcScen:
         (mask,)=unpack('<H', self.bgl.read(2))
         val=self.getvar(var)
         if val&mask==0:
+            if not off: raise struct.error	# infloop
             self.bgl.seek(off-8,1)
 
     def VInstance(self):	# 3b
         (off,var)=unpack('<hH', self.bgl.read(4))
+        if not off: raise struct.error	# infloop
         self.precall(True)
         p=self.getvar(var)
         p=self.getvar(var)*360/65536.0
@@ -1343,6 +1349,7 @@ class ProcScen:
 
     def AddCat(self):		# 74
         (off,cat)=unpack('<2h', self.bgl.read(4))
+        if not off: raise struct.error	# infloop
         self.precall(False)
         if __debug__:
             if self.debug: self.debug.write("Layer %d\n" % cat)
@@ -1408,6 +1415,7 @@ class ProcScen:
     def CrashStart(self):	# 96
         # Skip real crash code
         (off,)=unpack('<h', self.bgl.read(2))
+        if not off: raise struct.error	# infloop
         self.bgl.seek(off-4,1)
         
     def Interpolate(self):	# 9e
@@ -1789,6 +1797,7 @@ class ProcScen:
             if vmax==4: vmax=5	# bug in eg EGNT
         val=self.getvar(var)
         if val<vmin or val>vmax:
+            if not off: raise struct.error	# infloop
             self.bgl.seek(off-10,1)
 
     def VertexList(self):	# b5
@@ -1931,7 +1940,7 @@ class ProcScen:
         pass
 
     def NOPh(self):
-        # 30:Brightness, 3f:ShadowCall, 81:AntiAlias, 92:?, 93:Specular
+        # 30:Brightness, 3f:ShadowCall, 81:AntiAlias, 93: Specular?
         self.bgl.read(2)
 
     def NOPi(self):
@@ -1988,7 +1997,7 @@ class ProcScen:
             else:
                 (x,y,z)=vtx[idx[0]][:3]
             yval=y*self.scale
-            if self.altmsl or yval+self.alt>groundfudge:
+            if (self.altmsl and not self.layer) or yval+self.alt>groundfudge:
                 if __debug__:
                     if self.debug: self.debug.write("Above ground %s\n" % (yval+self.alt))
                 return False
@@ -2070,7 +2079,7 @@ class ProcScen:
             else:
                 (x,y,z)=vtx[0][:3]
             yval=y*self.scale
-            if self.altmsl or yval+self.alt>groundfudge:
+            if (self.altmsl and not self.layer) or yval+self.alt>groundfudge:
                 if __debug__:
                     if self.debug: self.debug.write("Above ground %s\n" % (yval+self.alt))
                 return False
@@ -2912,7 +2921,7 @@ def subdivide(vtx):
         gluTessBeginPolygon(tessObj, (points, idx))
         gluTessBeginContour(tessObj)
         for vertex in vtx:
-            (x,y,z, nx,ny,nz, tu,tv)=vertex
+            (x,y,z, nx,ny,nz, tu, tv)=vertex
             gluTessVertex(tessObj, [x, y, z], vertex)
         gluTessEndContour(tessObj)
         gluTessEndPolygon(tessObj)
