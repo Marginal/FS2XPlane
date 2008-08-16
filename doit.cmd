@@ -40,6 +40,11 @@ REM set TARGET="%XP%\EGLC"
 REM set SOURCE="%FS9%\Ádisutjipto scenery"
 REM set TARGET="%XP%\Adisutjipto"
 
+REM set SOURCE="%FS9%\AirhispaniaSC"
+REM set TARGET="%XP9%\Airhispania"
+REM set LB=-9
+REM -l "%FSX%"
+
 REM set SOURCE="%FS9%\A‚roport du Raizet"
 REM set TARGET="%XP%\Raizet"
 
@@ -54,6 +59,10 @@ REM set SOURCE="%FS9%\CYYZ2007"
 REM set TARGET="%XP%\CYYZ"
 REM set LB=
 
+REM set SOURCE="%FS9%\Daytona_Beach_FL_Package"
+REM set TARGET="%XP9%\Daytona_Beach"
+REM set LB=-9 -l "%FSX%"
+
 REM set SOURCE="%FS9%\EDDN Freeware"
 REM set TARGET="%XP%\EDDN"
 
@@ -63,6 +72,10 @@ REM set TARGET="%XP%\EDDL"
 REM set SOURCE="%FS9%\Mega EDDF"
 REM set TARGET="%XP%\EDDF"
 REM set LB=
+
+REM set SOURCE="%FS9%\..\megaSceneryNY"
+REM set TARGET="%XP9%\MegaNY"
+REM set LB=-9
 
 REM set SOURCE="%FS9%\..\megaSceneryNY\Provid_w"
 REM set TARGET="%XP9%\MegaNY"
@@ -88,6 +101,10 @@ REM set TARGET="%XP%\EFLL"
 REM set SOURCE="C:\Documents and Settings\Jonathan\My Documents\FS2004SDK\TERRAIN_SDK\Samples\NiagaraFalls test\NiagaraFallsSample"
 REM set TARGET="%XP%\Niagra"
 REM set LB=
+
+REM set SOURCE="%FSX%\Colombia Xtreme"
+REM set TARGET="%XP9%\Colombia"
+REM set LB=-9 -l "%FSX%"
 
 REM set SOURCE="%FS9%\EFKA_1_0"
 REM set TARGET="%XP%\EFKA"
@@ -207,6 +224,10 @@ REM set TARGET="%XP%\LFRK"
 REM set SOURCE="%FS9%\Essa_2k2"
 REM set TARGET="%XP%\ESSA"
 
+REM set SOURCE="%FSX%\ESSB_fsx"
+REM set TARGET="%XP9%\ESSB"
+REM set LB=-l "%FSX%"
+
 REM set SOURCE="%FS9%\UK2000 scenery\UK2000 Glasgow xtreme"
 REM set TARGET="%XP%\EGPF"
 
@@ -279,6 +300,10 @@ REM set SOURCE="%FS9%\..\FSDreamTeam\Zurich"
 REM set TARGET="%XP%\Zurich-fsdt"
 REM set LB=
 
+REM set SOURCE="%FSX%\..\FSDreamTeam\OHareX"
+REM set TARGET="%XP9%\KORD"
+REM set LB=
+
 REM set SOURCE="%FS9%\Locarno"
 REM set TARGET="%XP%\Locarno"
 REM set LB=
@@ -313,9 +338,9 @@ REM set SOURCE="%FS9%\KLAX"
 REM set TARGET="%XP%\KLAX"
 REM set LB=
 
-REM set SOURCE="%FS9%\LAX_Central"
-REM set TARGET="%XP%\LAX"
-REM set LB=
+set SOURCE="%FS9%\LAX_Central"
+set TARGET="%XP9%\LAX"
+set LB=-9
 
 REM set SOURCE="%FS9%\PHX2007_HR_1"
 REM set TARGET="%XP%\Phoenix"
@@ -331,8 +356,8 @@ REM set SOURCE="%FS9%\Lebor_OLBA2k2"
 REM set TARGET="%XP%\OLBA"
 REM set LB=
 
-set SOURCE="%FS9%\Occitania"
-set TARGET="%XP%\Occitania"
+REM set SOURCE="%FS9%\Occitania"
+REM set TARGET="%XP%\Occitania"
 
 REM set SOURCE="%FS9%\PRAM 2005\PRAM VFR"
 REM set TARGET="%XP%\PRAM"
@@ -378,7 +403,7 @@ REM set TARGET="%XP%\Aerosoft EGLL"
 REM set LB=
 
 REM set SOURCE="%FS9%\Test"
-REM set TARGET="%XP%\Test"
+REM set TARGET="%XP9%\Test"
 REM set LB=
 
 REM set SOURCE="%FSX%"
