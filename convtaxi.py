@@ -31,11 +31,11 @@ designators={'C':'C', 'CENTER':'C', 'L':'L', 'LEFT':'L', 'R':'R', 'RIGHT':'R'}
 
 # member var is defined
 def D(c, v):
-    return (v in dir(c) and eval("c.%s" % v))
+    return getattr(c,v,None)
 
 # member var is defined and true
 def T(c, v):
-    return (v in dir(c) and eval("c.%s" % v)=='TRUE')
+    return getattr(c,v,None)=='TRUE'
 
 class Node:
     parking={'E_PARKING':'East ',  'NE_PARKING':'North East ',
@@ -121,7 +121,8 @@ class Link:	# TaxiwayPath or TaxiwayParking
             if self.type in ['PATH','PARKING']:
                 self.draw=False	# No surface for apron paths
             else:
-                self.draw=not D(path, 'drawSurface') or T(path, 'drawSurface') or not D(path, 'drawDetail') or T(path, 'drawDetail')
+                # drawSurface & drawDetail ignored in FSX and mostly in FS9
+                self.draw=True	# not D(path, 'drawSurface') or T(path, 'drawSurface') or not D(path, 'drawDetail') or T(path, 'drawDetail')
             self.centreline=T(path, 'centerLine')
             self.centrelights=T(path, 'centerLineLighted')
             self.lines=[path.rightEdge,path.leftEdge]
