@@ -61,8 +61,9 @@ class ProcScen:
                                 mat.append(((1.0,1.0,1.0),(sr,sg,sb),(er,eg,eb),0, (texture, lit)))
                             else:
                                 mat.append(((dr,dg,db),(sr,sg,sb),(er,eg,eb),0, None))
-                        #print "Materials", len(mat)
-                        #for i in mat: print i
+                        if __debug__:
+                            if output.debug:
+                                output.debug.write("Materials %d\n" % len(mat))
                     elif c=='INDE':
                         idx=unpack('<%dH' % (size/2), bgl.read(size))
                     elif c=='VERB':
@@ -77,37 +78,46 @@ class ProcScen:
                     elif c=='TRAN':
                         for i in range(0,size,64):
                             matrix.append(Matrix([unpack('<4f',bgl.read(16)) for j in range(4)]))
-                        #print "Matrices", len(matrix)
-                        #for i in matrix: print i
+                        if __debug__:
+                            if output.debug:
+                                output.debug.write("Matrices %d\n" % len(matrix))
+                                for i in range(len(matrix)): output.debug.write("%s = %d\n" % (matrix[i], i))
                     elif c=='AMAP':
                         for i in range(0,size,8):
                             (a,b)=unpack('<2I',bgl.read(8))
                             amap.append(b)
-                        #print "Animation map", len(amap)
-                        #for i in amap: print i                        
+                        if __debug__:
+                            if output.debug:
+                                output.debug.write("Animation map %d\n" % len(amap))
+                                for i in range(len(amap)):
+                                    output.debug.write("%2d: %2d\n" % (i, amap[i]))
                     elif c=='SCEN':
                         # Assumed to be after TRAN and AMAP sections
                         count=size/8
                         for i in range(count):
                             (child,peer,offset,unk)=unpack('<4h',bgl.read(8))
-                            thismatrix=matrix[amap[offset/8]]
-                            scen.append((child,peer,thismatrix,-1))
+                            scen.append((child,peer,offset,-1))
                         # Invert Child/Peer pointers to get parents
                         for i in range(count):
-                            (child, peer, thismatrix, parent)=scen[i]
+                            (child, peer, thisoff, parent)=scen[i]
                             if child!=-1:	# child's parent is me
-                                (xchild, xpeer, xmatrix, xparent)=scen[child]
-                                scen[child]=(xchild, xpeer, xmatrix, i)
+                                (xchild, xpeer, xoff, xparent)=scen[child]
+                                scen[child]=(xchild, xpeer, xoff, i)
                             if peer!=-1:	# peer's parent is my parent
-                                (xchild, xpeer, xmatrix, xparent)=scen[peer]
-                                scen[peer]=(xchild, xpeer, xmatrix, parent)
-                        #print "Scene Graph", len(scen)
-                        #for i in scen: print i
+                                (xchild, xpeer, xoff, xparent)=scen[peer]
+                                scen[peer]=(xchild, xpeer, xoff, parent)
+                        # Replace AMAP offsets with matrix
+                        if __debug__:
+                            if output.debug: output.debug.write("Scene Graph %d\n" % len(scen))
+                        for i in range(count):
+                            (child, peer, offset, parent)=scen[i]
+                            scen[i]=(child, peer, matrix[amap[offset/8]], parent)
+                            if __debug__:
+                                if output.debug: output.debug.write("%2d: %2d %2d %2d %2d\n" % (i, child, peer, parent, offset/8))
                     elif c=='LODT':
                         endt=size+bgl.tell()
                         partno=0
                         maxlod=0
-                        #print "Parts"
                         while bgl.tell()<endt:
                             c=bgl.read(4)
                             (size,)=unpack('<I', bgl.read(4))
@@ -119,10 +129,13 @@ class ProcScen:
                                     (size,)=unpack('<I', bgl.read(4))
                                     if c=='PART':
                                         (typ,scene,material,verb,voff,vcount,ioff,icount,unk)=unpack('<9I', bgl.read(36))
-                                        #print lod, typ,scene,material,verb,voff,vcount,ioff,icount,unk
                                         assert (typ==1)
                                         maxlod=max(lod,maxlod)
                                         (child, peer, finalmatrix, parent)=scen[scene]
+                                        if __debug__:
+                                            if output.debug:
+                                                output.debug.write("LOD %4d scene %d material %d tris %d\n" % (lod, scene, material, icount/3))
+
                                         while parent!=-1:
                                             (child, peer, thismatrix, parent)=scen[parent]
                                             finalmatrix=finalmatrix*thismatrix
@@ -144,6 +157,15 @@ class ProcScen:
         sorted={}
         libname=asciify(libname)
         for ((d,s,sp,e,texture),vt,idx,matrix) in data[maxlod]:
+            if __debug__:
+                if output.debug:
+                    if texture:
+                        (tex,lit)=texture
+                        if tex: tex=basename(tex).encode("latin1",'replace')
+                    else:
+                        tex=None
+                    output.debug.write("%s\n%s\n" % (tex, matrix))
+                    
             # handle multiple objects with same name
             while True:
                 if suffix: suffixstr='-%d' % suffix
@@ -174,6 +196,7 @@ class ProcScen:
             for ((d,s,e,p),vt,idx,matrix) in sorted[texture]:
                 vbase=len(objvt)
                 ibase=len(objidx)
+                nrmmatrix=matrix.adjoint()
                 if texture:
                     (tex,lit)=texture
                     if tex:
@@ -183,16 +206,17 @@ class ProcScen:
                     fname="%s-%s" % (bname, asciify(fname))
                     for (x,y,z, nx,ny,nz, tu,tv) in vt:
                         (x,y,z)=matrix.transform(x,y,z)
-                        (nx,ny,nz)=matrix.rotate(nx,ny,nz)
+                        (nx,ny,nz)=nrmmatrix.rotateAndNormalize(nx,ny,nz)
                         objvt.append((x,y,-z, nx,ny,-nz, tu,tv))
                 else:
+                    # replace materials with palette texture
                     tex=output.palettetex
                     lit=None
                     fname=bname
                     (pu,pv)=rgb2uv(d)
                     for (x,y,z, nx,ny,nz, tu,tv) in vt:
                         (x,y,z)=matrix.transform(x,y,z)
-                        (nx,ny,nz)=matrix.rotate(nx,ny,nz)
+                        (nx,ny,nz)=nrmmatrix.rotateAndNormalize(nx,ny,nz)
                         objvt.append((x,y,-z, nx,ny,-nz, pu,pv))
                 if not vbase:
                     objidx.extend(idx)	# common case

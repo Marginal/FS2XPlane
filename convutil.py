@@ -1,4 +1,4 @@
-from math import sin, cos, tan, asin, acos, atan, atan2, fmod, pi, degrees, radians
+from math import sin, cos, tan, asin, acos, atan, atan2, fmod, pi, degrees, radians, sqrt
 from locale import getpreferredencoding
 import os	# for startfile
 from os import listdir, mkdir, popen3, stat, unlink
@@ -201,6 +201,31 @@ class Matrix:
         return (m[0][0]*x + m[1][0]*y + m[2][0]*z,
                 m[0][1]*x + m[1][1]*y + m[2][1]*z,
                 m[0][2]*x + m[1][2]*y + m[2][2]*z)
+
+    def rotateAndNormalize(self, x, y, z):
+        m=self.m
+        x1=m[0][0]*x + m[1][0]*y + m[2][0]*z
+        y1=m[0][1]*x + m[1][1]*y + m[2][1]*z
+        z1=m[0][2]*x + m[1][2]*y + m[2][2]*z
+        hyp=1/sqrt(x1*x1 + y1*y1 + z1*z1)
+        return (x1*hyp, y1*hyp, z1*hyp)
+
+
+    # Matrix adjoint/adjugate for obtaining normals - see
+    # http://www.worldserver.com/turk/computergraphics/NormalTransformations.pdf
+    # Note that vectors produced using this matrix will need renormalizing
+    def adjoint(self):
+        m=self.m
+        return Matrix([[m[1][1]*m[2][2] - m[1][2]*m[2][1],
+                        m[1][2]*m[2][0] - m[1][0]*m[2][2],
+                        m[1][0]*m[2][1] - m[1][1]*m[2][0], 0],
+                       [m[2][1]*m[0][2] - m[2][2]*m[0][1],
+                        m[2][2]*m[0][0] - m[2][0]*m[0][2],
+                        m[2][0]*m[0][1] - m[2][1]*m[0][0], 0],
+                       [m[0][1]*m[1][2] - m[0][2]*m[1][1],
+                        m[0][2]*m[1][0] - m[0][0]*m[1][2],
+                        m[0][0]*m[1][1] - m[0][1]*m[1][0], 0],
+                       [0,0,0,1]])
 
     def heading(self):
         # Derive heading from matrix, assuming no pitch or bank

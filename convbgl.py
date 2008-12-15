@@ -382,6 +382,7 @@ class ProcScen:
               0x3b:self.VInstance,
               0x3c:self.Position,
               0x3e:self.FaceT,
+              0x40:self.ShadowVPosition,
               0x42:self.TextureRunway,
               0x43:self.Texture2,
               0x44:self.TextureRunway,
@@ -1044,6 +1045,9 @@ class ProcScen:
             if self.debug: self.debug.write("!Bogus Location %s\n" % Point(lat,lon))
         self.checkmsl()
 
+    def ShadowVPosition(self):	# 40
+        self.bgl.read(10)	# ignore
+        
     def TextureRunway(self):	# 42: PolygonRunway, 44:TextureRunway
         # ignored - info should now be in FS2004-style BGL
         #self.old=True
@@ -2560,24 +2564,34 @@ class ProcScen:
                 # Sort to minimise attribute changes
                 #self.objdat[lkey].sort()
                 for (m, vtx, i, dbl) in self.objdat[lkey]:
-
-                    # replace materials with palette texture
-                    if tex==self.output.palettetex:
-                        (pu,pv)=rgb2uv(m[0])
                     
                     vbase=len(vt)
                     firsttri=len(idx)
-    
-                    for v in vtx:
-                        (x,y,z,nx,ny,nz,tu,tv)=v
-                        if newmatrix:
-                            (x,y,z)=newmatrix.transform(x,y,z)
-                            (nx,ny,nz)=newmatrix.rotate(nx,ny,nz)
-                        # replace materials with palette texture
+
+                    # Break out common cases for speed
+                    if newmatrix:
+                        nrmmatrix=newmatrix.adjoint()
                         if tex==self.output.palettetex:
-                            tu=pu
-                            tv=pv
-                        vt.append([x*scale,alt+y*scale,-z*scale, nx,ny,-nz, tu,tv])
+                            (pu,pv)=rgb2uv(m[0])
+                            for v in vtx:
+                                (x,y,z,nx,ny,nz,tu,tv)=v
+                                (x,y,z)=newmatrix.transform(x,y,z)
+                                (nx,ny,nz)=nrmmatrix.rotateAndNormalize(nx,ny,nz)
+                                # replace materials with palette texture
+                                vt.append([x*scale,alt+y*scale,-z*scale, nx,ny,-nz, pu,pv])
+                        else:
+                            for v in vtx:
+                                (x,y,z,nx,ny,nz,tu,tv)=v
+                                (x,y,z)=newmatrix.transform(x,y,z)
+                                (nx,ny,nz)=nrmmatrix.rotateAndNormalize(nx,ny,nz)
+                                vt.append([x*scale,alt+y*scale,-z*scale, nx,ny,-nz, tu,tv])
+                    else:
+                        for v in vtx:
+                            (x,y,z,nx,ny,nz,tu,tv)=v
+                            if tex==self.output.palettetex:
+                                # replace materials with palette texture
+                                (tu,tv)=rgb2uv(m[0])
+                            vt.append([x*scale,alt+y*scale,-z*scale, nx,ny,-nz, tu,tv])
                         
                     # Reverse order of tris
                     for j in range(0,len(i),3):
