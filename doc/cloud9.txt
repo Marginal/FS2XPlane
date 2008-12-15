@@ -1,0 +1,31 @@
+register key				install path	uninstall key
+
+FS9:
+HKCU\Software\Cloud9\F104	
+HKCU\Software\Cloud9\Aviano	
+HKCU\Software\Cloud9\Fly the lakes!	
+HKCU\Software\Cloud9\Amsterdam		cloud9\AMSTERDAM
+HKCU\Software\Cloud9\Pisa	
+HKCU\Software\Cloud9\Frecce Tricolori	
+HKCU\Software\Cloud9\Rivolto	
+HKCU\Software\Cloud9\Los Angeles	cloud9\LOSANGELES
+HKCU\Software\Cloud9\Washington	
+HKCU\Software\Cloud9\Phantom	
+HKCU\Software\Cloud9\Bergen FS9		cloud9\BERGEN	\SOFTWARE\cloud9\Bergen (FS9)
+HKCU\Software\Virtuali\Honolulu	
+HKCU\Software\Virtuali\Maldives	
+HKCU\Software\Virtuali\Hurghada	
+HKCU\Software\Virtuali\Punta Cana	
+HKCU\Software\FSDreamTeam\Zurich	FSdreamteam\Zurich
+
+FSX:
+HKCU\Software\Cloud9\Phantom
+HKCU\Software\Cloud9\Orlando International
+HKCU\Software\Cloud9\Bergen
+HKCU\Software\Cloud9\Xcity Rome
+HKCU\Software\Virtuali\Honolulu	
+HKCU\Software\Virtuali\Maldives	
+HKCU\Software\Virtuali\Hurghada	
+HKCU\Software\Virtuali\Punta Cana	
+HKCU\Software\FSDreamTeam\ZurichX	FSdreamteam\Zurich
+HKCU\Software\FSDreamTeam\Chicago Ohare	FSdreamteam\OHareX

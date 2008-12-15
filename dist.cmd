@@ -89,12 +89,9 @@ move /y FS2XPlane.app\Contents\MacOS\*.png FS2XPlane.app\Contents\Resources\ |fi
 zip -r FS2XPlane_%VER%_mac.zip FS2XPlane.app |findstr -vc:"adding:"
 
 :win32
+if exist build rd /s /q build
 "C:\Program Files\Python24\python.exe" -OO win32\setup.py -q py2exe
-REM @set cwd="%CD%"
-REM cd dist
-REM zip -r ..\FS2XPlane_%VER%_win32.zip * |findstr -vc:"adding:"
 "C:\Program Files\NSIS\makensis.exe" /nocd /v2 win32\FS2XPlane.nsi
-REM @cd %cwd%
-rd  /s /q build
+REM rd  /s /q build
 
 :end

@@ -4,8 +4,8 @@ setlocal
 set FS9=C:\Program Files\Microsoft Games\Flight Simulator 9\Addon Scenery
 set FSX=C:\Program Files\Microsoft Games\Microsoft Flight Simulator X\Addon Scenery
 set LB=-l "%FS9%"
-set XP=C:\Games\X-Plane\Custom Scenery
-set XP9=C:\Games\X-Plane 9.00\Custom Scenery
+set XP=C:\Games\X-Plane 864\Custom Scenery
+set XP9=C:\Games\X-Plane\Custom Scenery
 set SN=-sSummer
 
 REM set SOURCE="C:\Program Files\Microsoft Games\Flight Simulator 9\Scenery\Generic"
@@ -338,9 +338,9 @@ REM set SOURCE="%FS9%\KLAX"
 REM set TARGET="%XP%\KLAX"
 REM set LB=
 
-set SOURCE="%FS9%\LAX_Central"
-set TARGET="%XP9%\LAX"
-set LB=-9
+REM set SOURCE="%FS9%\LAX_Central"
+REM set TARGET="%XP9%\LAX"
+REM set LB=-9
 
 REM set SOURCE="%FS9%\PHX2007_HR_1"
 REM set TARGET="%XP%\Phoenix"
@@ -402,9 +402,9 @@ REM set SOURCE="%FS9%\..\Aerosoft\London Heathrow 2008\Scenery"
 REM set TARGET="%XP%\Aerosoft EGLL"
 REM set LB=
 
-REM set SOURCE="%FS9%\Test"
-REM set TARGET="%XP9%\Test"
-REM set LB=
+set SOURCE="%FS9%\Test"
+set TARGET="%XP9%\Test"
+set LB=-x
 
 REM set SOURCE="%FSX%"
 REM set TARGET="%XP%\JustFlight demo"

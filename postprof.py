@@ -1,4 +1,3 @@
-import profile
 import pstats
 import os.path
 import sys
