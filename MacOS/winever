@@ -14,22 +14,33 @@ fi
 WINES=$($LS -dump | awk '!match($0, "\.Trash") && match($0, "/.*/CrossOver.*\.app$") { print substr($0, RSTART) "/Contents/SharedSupport/CrossOver/bin/wine" }' | sort -u)
 for I in $WINES; do
     if [ -x "$I" ]; then
-	export WINELOADER="$I"
-	break;
+        export WINELOADER="$I"
+        break;
     fi;
 done
 if [ ! "$WINELOADER" ]; then
     WINES=$($LS -dump | awk '!match($0, "\.Trash") && match($0, "/.*/Wine\.bundle") { print substr($0, RSTART) "/Contents/bin/wine" }' | sort -u)
     for I in $WINES; do
-	if [ -x "$I" ]; then
-	    export WINELOADER="$I"
-	    break;
-	fi;
+        if [ -x "$I" ]; then
+            export WINELOADER="$I"
+            break;
+        fi;
     done
     if [ ! "$WINELOADER" ]; then
-	echo Not installed
-	exit 1;
+        echo Not installed
+        exit 1;
     fi;
+fi
+
+# If one bottle, make it the default bottle
+if [ -d ~/Library/Application\ Support/CrossOver/Bottles ] && [ ! -d ~/Library/Application\ Support/CrossOver/Bottles/default ]; then
+    pushd ~/Library/Application\ Support/CrossOver/Bottles >/dev/null
+    shopt -s nullglob
+    BOTTLES=(*)
+    if [ ${#BOTTLES[*]} -eq 1 ]; then
+        ln -s "${BOTTLES[0]}" default
+    fi
+    popd >/dev/null;
 fi
 
 unset DISPLAY
