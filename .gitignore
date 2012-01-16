@@ -1,6 +1,10 @@
 dist
 FS2XPlane.app
+
+*.bak
 *.pyc
 *.pyo
 *.zip
-foo*
+
+.DS_Store
+Thumbs.db
