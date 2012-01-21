@@ -117,10 +117,8 @@ class Output:
 
         if platform.lower().startswith('linux'):
             # check for win32 executables under wine
-            for exe in [join(curdir,'win32','DSFTool.exe'),
-                        join(curdir,'win32','bglunzip.exe')]:
-                if not exists(exe):
-                    raise FS2XError("Can't find \"%s\"" % exe)
+            if not exists(join(curdir,'win32','bglunzip.exe')):
+                raise FS2XError("Can't find \"%s\"" % exe)
 
         path=join('Resources', 'library objects.txt')
         try:
