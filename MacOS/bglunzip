@@ -1,37 +1,34 @@
 #!/bin/bash
 
+IFS='
+'
+
 LS=/System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/LaunchServices.framework/Versions/A/Support/lsregister	# MacOS 10.5
 if [ ! -x $LS ]; then
-    # From http://developer.apple.com/documentation/Carbon/Conceptual/MDImporters/Concepts/Troubleshooting.html
-    LS=/System/Library/Frameworks/ApplicationServices.framework/Versions/A/Frameworks/LaunchServices.framework/Versions/A/Support/lsregister	# MacOS 10.3 & 10.4
-    if [ ! -x $LS ]; then
-        echo Can\'t find the lsregister tool!
-        exit 1;
-    fi;
+	# From http://developer.apple.com/documentation/Carbon/Conceptual/MDImporters/Concepts/Troubleshooting.html
+	LS=/System/Library/Frameworks/ApplicationServices.framework/Versions/A/Frameworks/LaunchServices.framework/Versions/A/Support/lsregister	# MacOS 10.3 & 10.4
+	if [ ! -x $LS ]; then
+		echo Can\'t find the lsregister tool!
+		exit 1;
+	fi;
 fi
 
 # Candidate application locations
-WINES=$($LS -dump | awk '!match($0, "\.Trash") && match($0, "/.*/CrossOver.*\.app$") { print substr($0, RSTART) "/Contents/SharedSupport/CrossOver/bin/wine" }' | sort -u)
-for I in $WINES; do
-    if [ -x "$I" ]; then
-	export WINELOADER="$I"
-	break;
-    fi;
-done
-if [ ! "$WINELOADER" ]; then
-    WINES=$($LS -dump | awk '!match($0, "\.Trash") && match($0, "/.*/Wine\.bundle") { print substr($0, RSTART) "/Contents/bin/wine" }' | sort -u)
-    for I in $WINES; do
-	if [ -x "$I" ]; then
-	    export WINELOADER="$I"
-	    break;
+for I in $($LS -dump | grep -v .Trash | grep -oE "/.+/CrossOver.*\.app" | sort -u); do
+	if [ -d "$I" ]; then
+		for J in $(find "$I" -type f -name wineloader); do
+			if [ -x "$J" ]; then
+				export WINELOADER="$J"
+				break 2;
+			fi;
+		done;
 	fi;
-    done
-    if [ ! "$WINELOADER" ]; then
+done
+
+if [ ! "$WINELOADER" ]; then
 	echo Not installed
 	exit 1;
-    fi;
 fi
 
 unset DISPLAY
-export WINESERVER="${WINELOADER}server"
 "$WINELOADER" ./MacOS/win32/bglunzip.exe "$1" "$2"

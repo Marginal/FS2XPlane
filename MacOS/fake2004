@@ -1,5 +1,8 @@
 #!/bin/bash
 
+IFS='
+'
+
 LS=/System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/LaunchServices.framework/Versions/A/Support/lsregister	# MacOS 10.5
 if [ ! -x $LS ]; then
     # From http://developer.apple.com/documentation/Carbon/Conceptual/MDImporters/Concepts/Troubleshooting.html
@@ -11,59 +14,56 @@ if [ ! -x $LS ]; then
 fi
 
 # Candidate application locations
-WINES=$($LS -dump | awk '!match($0, "\.Trash") && match($0, "/.*/CrossOver.*\.app$") { print substr($0, RSTART) "/Contents/SharedSupport/CrossOver/bin/wine" }' | sort -u)
-for I in $WINES; do
-    if [ -x "$I" ]; then
-	export WINELOADER="$I"
-	break;
-    fi;
-done
-if [ ! "$WINELOADER" ]; then
-    WINES=$($LS -dump | awk '!match($0, "\.Trash") && match($0, "/.*/Wine\.bundle") { print substr($0, RSTART) "/Contents/bin/wine" }' | sort -u)
-    for I in $WINES; do
-	if [ -x "$I" ]; then
-	    export WINELOADER="$I"
-	    break;
+for I in $($LS -dump | grep -v .Trash | grep -oE "/.+/CrossOver.*\.app" | sort -u); do
+	if [ -d "$I" ]; then
+		for J in $(find "$I" -type f -name wineloader); do
+			if [ -x "$J" ]; then
+				export WINELOADER="$J"
+				break 2;
+			fi;
+		done;
 	fi;
-    done
-    if [ ! "$WINELOADER" ]; then
+done
+
+if [ ! "$WINELOADER" ]; then
 	echo Not installed
 	exit 1;
-    fi;
 fi
 
 unset DISPLAY
-export WINESERVER="${WINELOADER}server"
 "$WINELOADER" ./MacOS/win32/fake2004.exe
 
-if [ -e ~/Library/Application\ Support/CrossOver/Bottles/default/dosdevices/c:/Program\ Files ]; then
-    if [ ! -e ~/Library/Application\ Support/CrossOver/Bottles/default/dosdevices/c:/Program\ Files/Microsoft\ Games/Flight\ Simulator\ 9 ]; then
-	mkdir -p ~/Library/Application\ Support/CrossOver/Bottles/default/dosdevices/c:/Program\ Files/Microsoft\ Games
-	ln -s ~/FS2004  ~/Library/Application\ Support/CrossOver/Bottles/default/dosdevices/c:/Program\ Files/Microsoft\ Games/Flight\ Simulator\ 9;
-    fi
-    if [ ! -e ~/Library/Application\ Support/CrossOver/Bottles/default/dosdevices/c:/Program\ Files/Microsoft\ Games/Microsoft\ Flight\ Simulator\ X ]; then
-	mkdir -p ~/Library/Application\ Support/CrossOver/Bottles/default/dosdevices/c:/Program\ Files/Microsoft\ Games
-	ln -s ~/FS2004  ~/Library/Application\ Support/CrossOver/Bottles/default/dosdevices/c:/Program\ Files/Microsoft\ Games/Microsoft\ Flight\ Simulator\ X
-	touch ~/FS2004/fsx.exe;	# may not exist if upgrading
-    fi;
-fi
-if [ -e  ~/Library/Application\ Support/CrossOver/Bottles/default/dosdevices/c:/windows/profiles/All\ Users/Application\ Data ] && [ ! -e ~/FS2004 ~/Library/Application\ Support/CrossOver/Bottles/default/dosdevices/c:/windows/profiles/All\ Users/Application\ Data/Microsoft/FSX ]; then
-    mkdir -p ~/Library/Application\ Support/CrossOver/Bottles/default/dosdevices/c:/windows/profiles/All\ Users/Application\ Data/Microsoft
-    ln -s ~/FS2004 ~/Library/Application\ Support/CrossOver/Bottles/default/dosdevices/c:/windows/profiles/All\ Users/Application\ Data/Microsoft/FSX;
+
+# Make a default bottle
+for I in $(find ~/Library/Application\ Support -type d -name "CrossOver*"); do
+	if [ -d "$I/Bottles" ]; then
+		if [ -a "$I/Bottles/default" ]; then
+			BOTTLE="$I/Bottles/default"
+			break;
+		else
+			for J in $(find "$I/Bottles" -type d -depth 1); do
+				BOTTLE="$I/Bottles/default"
+				ln -s "$J" $BOTTLE
+				break 2;
+			done;
+		fi
+	fi;
+done;
+
+if [ ! "$BOTTLE" ]; then
+	exit;
 fi
 
-if [ -e ~/.wine/dosdevices/c:/Program\ Files ]; then
-    if [ ! -e ~/.wine/dosdevices/c:/Program\ Files/Microsoft\ Games/Flight\ Simulator\ 9 ]; then
-	mkdir -p ~/.wine/dosdevices/c:/Program\ Files/Microsoft\ Games
-	ln -s ~/FS2004  ~/.wine/dosdevices/c:/Program\ Files/Microsoft\ Games/Flight\ Simulator\ 9;
-    fi
-    if [ ! -e ~/.wine/dosdevices/c:/Program\ Files/Microsoft\ Games/Microsoft\ Flight\ Simulator\ X ]; then
-	mkdir -p ~/.wine/dosdevices/c:/Program\ Files/Microsoft\ Games
-	ln -s ~/FS2004  ~/.wine/dosdevices/c:/Program\ Files/Microsoft\ Games/Microsoft\ Flight\ Simulator\ X
-	touch ~/FS2004/fsx.exe;	# may not exist if upgrading
+
+# Link fake 2004 into default bottle
+if [ -e "$BOTTLE/dosdevices/c:/Program Files" ]; then
+	if [ ! -e "$BOTTLE/dosdevices/c:/Program Files/Microsoft Games/Flight Simulator 9" ]; then
+		mkdir -p "$BOTTLE/dosdevices/c:/Program Files/Microsoft Games"
+		ln -s ~/FS2004 "$BOTTLE/dosdevices/c:/Program Files/Microsoft Games/Flight Simulator 9";
+	fi
+	if [ ! -e "$BOTTLE/dosdevices/c:/Program Files/Microsoft Games/Microsoft Flight Simulator X" ]; then
+		mkdir -p "$BOTTLE/dosdevices/c:/Program Files/Microsoft Games"
+		ln -s ~/FS2004 "$BOTTLE/dosdevices/c:/Program Files/Microsoft Games/Microsoft Flight Simulator X";
+		touch ~/FS2004/fsx.exe;	# may not exist if upgrading
     fi;
-fi
-if [ -e ~/.wine/dosdevices/c:/windows/profiles/All\ Users/Application\ Data ] && [ ! -e ~/.wine/dosdevices/c:/windows/profiles/All\ Users/Application\ Data/Microsoft/FSX ]; then
-    mkdir -p ~/.wine/dosdevices/c:/windows/profiles/All\ Users/Application\ Data/Microsoft
-    ln -s ~/FS2004 ~/.wine/dosdevices/c:/windows/profiles/All\ Users/Application\ Data/Microsoft/FSX;
 fi
