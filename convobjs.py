@@ -525,7 +525,7 @@ def friendlytxt(filename, friendly, names):
         h=codecs.open(filename, 'rU', 'latin1')
         for line in h:
             line=line.strip()
-            if line or line[0] in [';', '#']:
+            if not line or line[0] in [';', '#']:
                 continue
             uid=line.split()[0].lower()
             if len(uid)!=32 or not isalnum(uid):

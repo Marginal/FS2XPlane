@@ -3009,4 +3009,4 @@ def findtex(name, thistexdir, addtexdir, dropmissing=False):
     if dropmissing:
         return None
     else:
-        return join(texdir, s+e)	# make lower-case to prevent dupes
+        return join(texdir, sa+e)	# make lower-case to prevent dupes

@@ -218,18 +218,18 @@ def tesscombine(coords, vertex, weight, data):
         # normal join
         (loc1, cnt1, blank1, dummy1, code1)=vertex[0]
         (loc2, cnt2, blank2, dummy2, code2)=vertex[1]
-        if __debug__: print "Join", Point(coords[2], coords[0]), cnt1, cnt2, blank1, blank2, '"%s" "%s"' % (code1, code2)
+        #if __debug__: print "Join", Point(coords[2], coords[0]), cnt1, cnt2, blank1, blank2, '"%s" "%s"' % (code1, code2)
         if code1==None or code2==None:
             code=''	# override
         else:
             code=code1 or code2
         return (loc1, cnt1 and cnt2, blank1|blank2, 0, code)
-    if __debug__:
-        print "Combine", Point(coords[2], coords[0])
-        for i in range(len(weight)):
-            if weight[i]:
-                (loc, cnt, blank, dummy, code)=vertex[i]
-                print loc, cnt, blank, dummy, code, round(weight[i],3)
+    #if __debug__:
+    #    print "Combine", Point(coords[2], coords[0])
+    #    for i in range(len(weight)):
+    #        if weight[i]:
+    #            (loc, cnt, blank, dummy, code)=vertex[i]
+    #            print loc, cnt, blank, dummy, code, round(weight[i],3)
     loc=Point(round(coords[2],6), round(coords[0],6))
     code=''
     for i in range(len(weight)):

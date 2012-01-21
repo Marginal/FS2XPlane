@@ -2,6 +2,7 @@ FSX new custom terrain textures
 hard surfaces
 
 v9.? apt.dat: including jetways & fences
+v10: taxiways, other ATC?
 
 safedock (LIMC, LIRF?)
 Real, not overlay orthophotos
