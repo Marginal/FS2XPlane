@@ -1,9 +1,14 @@
 #!/usr/bin/python
 
-from convutil import appname, appversion
 from distutils.core import setup
-from os import listdir, name
+from os import getcwd, listdir, name
 from sys import platform
+from glob import glob
+
+import sys
+sys.path.insert(0, getcwd())
+
+from convutil import appname, appversion
 
 
 # bogus crud to get WinXP "Visual Styles"
@@ -15,7 +20,7 @@ manifest=('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'+
           '    name="%s"\n' % appname +
           '    type="win32"\n'+
           '/>\n'+
-          '<description>Convert FS2004 sceneries to X-Plane.</description>\n'+
+          '<description>MSFS add-on scenery converter for X-Plane.</description>\n'+
           '<dependency>\n'+
           '    <dependentAssembly>\n'+
           '        <assemblyIdentity\n'+
@@ -28,8 +33,19 @@ manifest=('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'+
           '        />\n'+
           '    </dependentAssembly>\n'+
           '</dependency>\n'+
+          '<dependency>\n'+
+          '    <dependentAssembly>\n'+
+          '        <assemblyIdentity\n'+
+          '            type="win32"\n'+
+          '            name="Microsoft.VC90.CRT"\n'+
+          '            version="9.0.30729.1"\n'+
+          '            processorArchitecture="X86"\n'+
+          '            publicKeyToken="1fc8b3b9a1e18e3b"\n'+
+          '            language="*"\n'+
+          '        />\n'+
+          '    </dependentAssembly>\n'+
+          '</dependency>\n'+
           '</assembly>\n')
-
 
 if platform=='win32':
     # http://www.py2exe.org/  Invoke with: setup.py py2exe
@@ -40,7 +56,11 @@ if platform=='win32':
                 'win32/bmp2dds.exe',
                 'win32/bmp2png.exe',
                 'win32/DSFTool.exe',
-                ])
+                ]),
+              #('Microsoft.VC90.CRT',
+              # glob(r'C:\Program Files\Microsoft Visual Studio 9.0\VC\redist\x86\Microsoft.VC90.CRT\*.*')),
+              ('',
+               [r'C:\Program Files\Microsoft Visual Studio 9.0\VC\redist\x86\Microsoft.VC90.CRT\msvcr90.dll']),
               ]
 
 elif platform.lower().startswith('darwin'):
@@ -64,7 +84,7 @@ for f in listdir('Resources'):
     
 setup(name='FS2XPlane',
       version=("%4.2f" % appversion),
-      description='Convert FS2004 sceneries to X-Plane',
+      description='MSFS add-on scenery converter for X-Plane',
       author='Jonathan Harris',
       author_email='x-plane@marginal.org.uk',
       url='http://marginal.org.uk/xplanescenery',
@@ -79,10 +99,25 @@ setup(name='FS2XPlane',
 
       options = {'py2exe': {'ascii':True,
                             #'dll_excludes':['w9xpopen.exe'],
+                            'dll_excludes':['MSVCP90.dll'],	# py2exe comes up with this spurious dependency
                             'bundle_files':True,
                             'compressed':True,
+                            'includes':['OpenGL.platform.win32',
+                                        'OpenGL.arrays',
+                                        'OpenGL.arrays.ctypesarrays',
+                                        'OpenGL.arrays.ctypesparameters',
+                                        'OpenGL.arrays.ctypespointers',
+                                        'OpenGL.arrays.lists',
+                                        'OpenGL.arrays.nones',
+                                        'OpenGL.arrays.numarrays',
+                                        'OpenGL.arrays.numbers',
+                                        'OpenGL.arrays.numeric',
+                                        'OpenGL.arrays.numericnames',
+                                        'OpenGL.arrays.numpymodule',
+                                        #'OpenGL.arrays.strings',	# gives runtime error
+                                        'OpenGL.arrays.vbo'],
                             'excludes':['Carbon', 'tcl', 'Tkinter', 'mx', 'socket', 'urllib', 'webbrowser'],
-                            'packages':['encodings.ascii','encodings.mbcs','encodings.latin_1','encodings.utf_8'],
+                            'packages':['encodings.ascii','encodings.mbcs','encodings.latin_1','encodings.utf_8','encodings.cp437'],
                             'optimize':2,
                             },
                  'py2app': {'argv_emulation':False,

@@ -95,7 +95,8 @@ def myMessageBox(message, caption, style=wx.OK, parent=None):
     panel0.SetSizerAndFit(grid)
 
     dlg.SetClientSize(panel0.GetMinSize())
-    #dlg.CenterOnParent()	# crashes on wxMac 2.8.6 when display asleep
+    if wx.VERSION>=(2,9):	# crashes on wxMac 2.8 (and earlier?) when display asleep
+        dlg.CenterOnParent()	# see http://trac.wxwidgets.org/ticket/11557
     wx.EVT_BUTTON(dlg, wx.ID_OK, OnButton)
     wx.EVT_BUTTON(dlg, wx.ID_SAVE, OnButton)    
     wx.EVT_BUTTON(dlg, wx.ID_NO, OnButton)
@@ -122,7 +123,7 @@ def AboutBox(parent=None):
     ver=wx.StaticText(panel0, -1, "Version %4.2f" % appversion)
     ver.SetWindowVariant(wx.WINDOW_VARIANT_SMALL)
 
-    blurb=wx.StaticText(panel0, -1, "Copyright 2006 Jonathan Harris")
+    blurb=wx.StaticText(panel0, -1, "Copyright 2007-2012 Jonathan Harris")
     blurb.SetWindowVariant(wx.WINDOW_VARIANT_SMALL)
 
     box=wx.BoxSizer(wx.VERTICAL)

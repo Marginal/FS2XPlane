@@ -1,34 +1,24 @@
 Summary: MSFS add-on scenery converter for X-Plane
 Name: fs2xplane
-License: Creative Commons Attribution-ShareAlike 2.5
+Version: %{version}
+Release: %{release}
+License: Creative Commons Attribution-NonCommercial-ShareAlike 3.0
 Group: Amusements/Games
 URL: http://marginal.org.uk/x-planescenery
-Icon: fs2xplane.xpm
 Vendor: Jonathan Harris <x-plane@marginal.org.uk>
 Prefix: /usr/local
-Requires: bash, python >= 2.4, wxPython >= 2.6, python-opengl >= 2.0, python-opengl < 3, wine
+Requires: bash, python >= 2.4, wxPython >= 2.6, python-opengl >= 3.0.1, wine
+BuildArch: noarch
 
 %description
-This application converts MS Flight Simulator 2004 add-on scenery packages to X-Plane DSF overlay scenery packages for X-Plane 8.60 or later.
+This application converts MS Flight Simulator 2004 and FSX add-on scenery packages to X-Plane DSF overlay scenery packages for X-Plane 8.64 or later.
 
 %files
-%defattr(644,root,root,755)
+%defattr(-,root,root,-)
 %attr(755,root,root) /usr/local/bin/fs2xp
 %attr(755,root,root) /usr/local/bin/fs2xplane
 /usr/local/lib/fs2xplane
 %doc /usr/local/lib/fs2xplane/FS2XPlane.html
-%attr(755,root,root) /usr/local/lib/fs2xplane/linux/bglunzip
-%attr(755,root,root) /usr/local/lib/fs2xplane/win32/bglunzip.exe
-%attr(755,root,root) /usr/local/lib/fs2xplane/linux/bglxml
-%attr(755,root,root) /usr/local/lib/fs2xplane/linux/bmp2png
-%attr(755,root,root) /usr/local/lib/fs2xplane/linux/fake2004
-%attr(755,root,root) /usr/local/lib/fs2xplane/win32/fake2004.exe
-%attr(755,root,root) /usr/local/lib/fs2xplane/linux/DSFTool
-%attr(755,root,root) /usr/local/lib/fs2xplane/win32/DSFTool.exe
-# doesn't always look in /usr/local/share/applications
-#/usr/share/applications/fs2xplane.desktop
-#/usr/share/icons/hicolor/48x48/apps/fs2xplane.png
-
 
 %post
 # see http://standards.freedesktop.org/basedir-spec/latest/ar01s03.html

@@ -1,10 +1,14 @@
 dist
-FS2XPlane.app
+build
 
+FS2XPlane.app
+*.exe
 *.bak
 *.pyc
 *.pyo
 *.zip
+*.rpm
+*.deb
 
 .DS_Store
 Thumbs.db

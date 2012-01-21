@@ -64,23 +64,12 @@ MSFS scenery packages tend to use lots of small texture files)</small>.</p>
   <dd>Requires Windows 2000 or later.</dd>
   <dt>&nbsp;</dt>
   <dt><b>Mac OS</b></dt>
-  <dd>Requires Mac OS 10.3.9 or later.<br>
-If you have an Intel Mac and you don't have
-<a target="_blank" href="http://www.codeweavers.com/products/cxmac/">CrossOver Mac</a>,
-then you should install X11 from the your Mac OS
-<a target="_blank" href="http://docs.info.apple.com/article.html?artnum=301229">DVD</a> or
-<a target="_blank" href="http://docs.info.apple.com/article.html?artnum=25735">CD 3</a>,
-and also 
-<a target="_blank" href="http://thisismyinter.net/?p=29">download</a>
-and install Darwine.
-This will allow you to run MSFS scenery package installer programs
-and will also in some cases allow FS2XPlane to produce more complete
-X-Plane scenery.<br>
-If you do have CrossOver, ensure that you have created a "Bottle" from
-the <samp>Configure &rarr; Manage&nbsp;Bottles</samp> menu in CrossOver.
-If you have created more than one Bottle, ensure that you have selected
-a default Bottle.<br>
-Restart FS2XPlane after installing Darwine or CrossOver.</dd>
+  <dd>Requires Mac OS 10.5 (Leopard) or later.<br>
+Users of Mac OS 10.7 (Lion) should first <a target="_blank" href="http://www.wxpython.org/download.php">download</a>
+and install wxPython for Cocoa and Python 2.7 - the lastest version at time of writing is
+<a href="http://downloads.sourceforge.net/wxpython/wxPython2.9-osx-2.9.3.1-cocoa-py2.7.dmg">wxPython2.9-osx-cocoa-py2.7</a>.<br>
+Makes use of <a target="_blank" href="http://www.codeweavers.com/products/cxmac/">CrossOver Mac</a>
+if installed to produce more complete X-Plane scenery in some cases.</dd>
   <dt>&nbsp;</dt>
   <dt><b>Linux</b></dt>
   <dd>Requires "Wine". Wine is shipped with most distros, or you can
@@ -93,53 +82,50 @@ a binary (or just stick with the command-line program).</dd>
 </dl>
 
 <h3><a name="settingup">Setting Up</a></h3>
-<p>Run the <samp>FS2XPlane</samp> application.</p>
 <dl>
   <dt><b>Windows</b></dt>
-  <dd>If you don't have FSX installed then FS2XPlane creates a
-fake FSX installation
-in<code> Program&nbsp;Files\Microsoft&nbsp;Games\Microsoft&nbsp;Flight&nbsp;Simulator&nbsp;X</code>, and sets up the subfolders and registry entries that
-some MSFS scenery package installer programs require.<br>
-If you don't have FS2004 installed then you should install FS2004 add-on
-scenery packages into your real FSX installation (if you have one) or into
-this fake FSX installation (if you don't).</dd>
+  <dd>Run the <samp>FS2XPlane</samp> application.<br>
+If you don't have FSX installed then FS2XPlane creates a fake MSFS installation in
+<code> Program&nbsp;Files\Microsoft&nbsp;Games\Microsoft&nbsp;Flight&nbsp;Simulator&nbsp;X</code>,
+and sets up the subfolders and registry entries that some MSFS scenery package installer programs require.<br>
+You should install scenery packages that you want to convert under your real FSX installation (if you have one)
+or under this fake FSX installation (if you don't).</dd>
   <dt>&nbsp;</dt>
   <dt><b>Mac OS</b> and <b>Linux</b></dt>
-  <dd>FS2XPlane creates a combined fake FS2004 &amp; FSX installation in the
-folder <code>FS2004</code> inside of your home folder, and sets up the
-subfolders and Wine registry entries that some MSFS scenery package installer
+  <dd>If you have <a target="_blank" href="http://www.codeweavers.com/products/cxmac/">CrossOver Mac</a> then
+first set up a "default" bottle in which to run MSFS scenery installer programs:
+    <ul><li>Run CrossOver, choose <samp>Configure &rarr; Manage&nbsp;Bottles</samp>, <samp>Advanced</samp> tab, <samp>Make This the Default Bottle</samp>.</li></ul>
+Run the <samp>FS2XPlane</samp> application.<br>
+FS2XPlane creates a fake MSFS installation in the folder <code>FS2004</code> inside of your home folder,
+and sets up the subfolders and CrossOver/Wine registry entries that some MSFS scenery package installer
 programs require.<br>
-You should install FS2004 &amp; FSX add-on scenery packages into this fake
-MSFS installation.</dd>
+You should install scenery packages that you want to convert under this <code>FS2004</code> folder.</dd>
   </dd>
 </dl>
 
 <h3><a name="usage"></a>Usage</h3>
-<p>FS2XPlane can operate in one of two ways - it can convert a MSFS add-on
-scenery package or it can extract all the objects in MSFS add-on scenery
-libraries.<p>
 
 <h4>Converting a scenery package</h4>
 <ul>
   <li>Run the <samp>FS2XPlane</samp> application.</li>
-  <li>Download the scenery package that you want to convert. There are
+  <li>Download the MSFS scenery package that you want to convert. There are
 two kinds of scenery packages; those that are supplied as an installer program
 (<code>.exe</code> file) and those that you install manually
 (<code>.zip</code> file):</li>
     <dl>
       <dt>Installer program (<code>.exe</code>):</dt>
-      <dd>Double-click on the installer program to run it
-      <small>(unless you have a PPC Mac, in which case you can't use this
-      scenery package)</small>.<br>
+      <dd>You can only use an installer program if you're running on Windows,
+      or if you have CrossOver or Wine installed.<br>
+      Double-click on the installer program to run it.<br>
       Let the program put the scenery in the default location.<br>
       The installer program puts the scenery in a folder somewhere inside of
       your MSFS installation. Find this folder (it may be under
       the<code> Addon&nbsp;Scenery </code> folder).</dd>
       <dt>Manual installation (<code>.zip</code>):</dt>
       <dd>Read the installation notes for the scenery package. Most
-      packages require you to unzip the package into a new folder under
+      packages require you to create a new folder under
       the<code> Addon&nbsp;Scenery </code> folder inside of your MSFS
-      installation.</dd>
+      installation and unzip the scenery package into the new folder.</dd>
     </dl>
   <li>Read the installation notes for the scenery package. Look for:</li>
   <ul>
@@ -159,19 +145,18 @@ installation notes). If so, the installation notes may advise you to copy
 one of these files to the<code> scenery </code>folder inside the
 installed package.</li>
   </ul>
-  <li>In FS2XPlane, supply the location of the folder that contains the MSFS scenery package.</li>
+  <li>Once you've installed the MSFS scenery package and any dependecies,
+in FS2XPlane supply the location of the folder that contains the MSFS scenery package.</li>
   <li>Supply the location of any additional MSFS libraries that the
 package depends on. Leave this as the<code> Addon&nbsp;Scenery </code>folder to
 have FS2XPlane search through all installed libraries (recommended),
 or make this blank for none.</li>
   <li>Specify the location for the new X-Plane scenery package.
-This should be a non-existent or empty folder directly under
-X-Plane's<code> Custom&nbsp;Scenery </code>folder.</li>
+This should be a new folder directly under X-Plane's
+<code> Custom&nbsp;Scenery </code>folder.</li>
   <li>Select the X-Plane version that you're targetting. X-Plane v9
 supports DDS textures and (from 9.20) "paging" of photoscenery textures;
-both these features result in faster loading times and use less video RAM.
-<small>(If the author has chosen not to compress a texture it will still be
-converted as a PNG texture).</small></li>
+both these features result in faster loading times and use less video RAM.</li>
   <li>Select the season for converted textures.
 <small>(Not all MSFS scenery packages supply seasonal textures, in
 which case this setting will be ignored).</small></li>
@@ -185,11 +170,11 @@ during the conversion. Otherwise, on completion, the application will say
 This summary is described <a href="FS2XPlane.html#summary">below</a>.</p>
 
 <h4>Extracting library objects</h4>
-<p>FS2XPlane can extract objects from "BGL", "Rwy12" and "EZ-Scenery"
-libraries. It cannot read uncompiled "API", "SBuilder", "SCM" or "MDL" files
+<p>FS2XPlane can also be used to extract objects from "BGL", "Rwy12" and "EZ-Scenery"
+scenery libraries. It cannot read uncompiled "API", "SBuilder", "SCM" or "MDL" files
 (and neither can MSFS).</p>
 <ul>
-  <li>Download the scenery library or libraries that you want to convert.</li>
+  <li>Download the MSFS scenery library or libraries that you want to convert.</li>
   <ul>
     <li>For the "rwy12" library see the notes <a href="#rwy12">below</a>.</li>
     <li>Otherwise follow the installation notes in the scenery library.</li>
@@ -199,7 +184,8 @@ libraries. It cannot read uncompiled "API", "SBuilder", "SCM" or "MDL" files
   <li>Ignore the "MSFS scenery location" - it's not used.</li>
   <li>Supply the location where you put the MSFS scenery libraries.</code></li>
   <li>Specify the location for the new X-Plane scenery objects.
-This should be a non-existent or empty folder.</li>
+This should be a new folder directly under X-Plane's
+<code> Custom&nbsp;Scenery </code>folder.</li>
   <li>Select the X-Plane version that you're targetting.</li>
   <li>Select the season for converted textures. <small>(Not all MSFS
 scenery libraries supply seasonal textures, in which case this setting
@@ -660,7 +646,7 @@ find these notes easier to follow:</p>
 <ol>
   <li>Locate your<code> Addon&nbsp;Scenery </code> folder inside of your
 MSFS installation.</li>
-  <li>Download and open <a target="_blank" href="http://www.simviation.com/cgi-bin/syb.cgi?section=misc&file=rw12_lib1_v12.zip">rwy12_lib1_v1.2.zip</a>.</li>
+  <li>Download and open <a target="_blank" href="http://www.flightsimworld.com/downloads/viewfile/504.html">rwy12_lib1_v1.2.zip</a>.</li>
   <li>Copy the folder<code> Static&nbsp;Objects&nbsp;Library </code>into
 your<code> Addon&nbsp;Scenery </code>folder.</li>
   <li>Close rwy12_lib1_v1.2.</code>
@@ -668,14 +654,14 @@ your<code> Addon&nbsp;Scenery </code>folder.</li>
 Static&nbsp;Objects&nbsp;Library </code>folder that you just created.
 You should see two sub-folders called<code> scenery </code>and<code>
 texture</code>.</li>
-  <li>Download and open <a target="_blank" href="http://www.simviation.com/cgi-bin/syb.cgi?section=misc&file=rw12_lib2_v12.zip">rwy12_lib2_v1.2.zip</a>.
+  <li>Download and open <a target="_blank" href="http://www.flightsimworld.com/downloads/viewfile/505.html">rwy12_lib2_v1.2.zip</a>.
 Amongst other things it contains folders called<code> scenery&nbsp;files </code>and<code> texture&nbsp;files</code>.</li>
   <ul>
     <li>Open the<code> scenery&nbsp;files </code>folder. Select all the files and copy them to the<code> scenery </code>folder inside the<code>&nbsp;Static&nbsp;Objects&nbsp;Library </code>folder that you just created.</li>
     <li>Open the<code> texture&nbsp;files </code>folder. Select all the files and copy them to the<code> texture </code>folder inside the<code>&nbsp;Static&nbsp;Objects&nbsp;Library </code>folder that you just created.
 You may be asked whether to overwrite some files; say yes.</li>
   </ul>
-  <li>Download and open <a target="_blank" href="http://www.simviation.com/cgi-bin/syb.cgi?section=misc&file=rw12_lib3_v12.zip">rwy12_lib3_v1.2.zip</a> and repeat step 6.</li>
+  <li>Download and open <a target="_blank" href="http://www.flightsimworld.com/downloads/viewfile/506.html">rwy12_lib3_v1.2.zip</a> and repeat step 6.</li>
 </ol>
 
 <h3><a name="problems">Problems</a></h3>

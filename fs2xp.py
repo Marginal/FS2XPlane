@@ -32,10 +32,16 @@
 #
 
 from getopt import getopt, GetoptError
-from os import chdir, mkdir
+from os import chdir, listdir, mkdir
 from os.path import abspath, normpath, basename, dirname, pardir, exists, isdir, join
-from sys import exit, argv
+import sys	# for path
+from sys import exit, argv, platform, version
 from traceback import print_exc
+
+if platform=='darwin':
+    mypath=sys.path[0]
+    for f in listdir(mypath):
+        if f.endswith('-py%s.egg' % version[:3]): sys.path.insert(0, join(mypath,f))
 
 from convmain import Output
 from convutil import FS2XError, viewer

@@ -1,7 +1,7 @@
 #!/usr/bin/pythonw
 
 #
-# Copyright (c) 2006,2007 Jonathan Harris
+# Copyright (c) 2006-2012 Jonathan Harris
 # 
 # Mail: <x-plane@marginal.org.uk>
 # Web:  http://marginal.org.uk/x-planescenery/
@@ -32,7 +32,7 @@
 #
 
 import os	# for startfile
-from os import chdir, getenv, listdir, mkdir, makedirs
+from os import chdir, getenv, listdir, mkdir, makedirs, getcwd
 from os.path import abspath, basename, curdir, dirname, expanduser, exists, isdir, join, normpath, pardir, sep
 import sys	# for path
 from sys import argv, executable, exit, platform, version
@@ -42,28 +42,24 @@ if platform.lower().startswith('linux') and not getenv("DISPLAY"):
     print "Can't run: DISPLAY is not set"
     exit(1)
 elif platform=='darwin':
-    sys.path.insert(0, join(sys.path[0], version[:3]))
-    
+    mypath=sys.path[0]
+    for f in listdir(mypath):
+        if f.endswith('-py%s.egg' % version[:3]): sys.path.insert(0, join(mypath,f))
+
 try:
     import wx
 except:
-    if platform=='darwin':
-        from EasyDialogs import Message
-        Message("wxPython is not installed. This application requires\nwxPython 2.5.3 or later, built for Python %s." % version[:3])
-    else:	# linux
-        import tkMessageBox
-        tkMessageBox._show("Error", "wxPython is not installed. This application\nrequires python wxgtk2.5.3 or later.", icon="error", type="ok")
+    import Tkinter, tkMessageBox
+    Tkinter.Tk().withdraw()
+    tkMessageBox.showerror("Error", "wxPython is not installed.\nThis application requires wxPython 2.5.3 or later.")
     exit(1)
 
 try:
     import OpenGL
 except:
-    if platform=='darwin':
-        from EasyDialogs import Message
-        Message("PyOpenGL is not installed. This application\nrequires PyOpenGL 2 or later.")
-    else:	# linux
-        import tkMessageBox
-        tkMessageBox._show("Error", "PyOpenGL is not installed. This application\nrequires PyOpenGL 2 or later.", icon="error", type="ok")
+    import Tkinter, tkMessageBox
+    Tkinter.Tk().withdraw()
+    tkMessageBox.showerror("Error", "PyOpenGL is not installed.\nThis application\nrequires PyOpenGL 3.0.1 or later.")
     exit(1)
 
 from convmain import Output
@@ -88,7 +84,7 @@ else:
 mypath=dirname(abspath(argv[0]))
 if not isdir(mypath):
     myMessageBox('"%s" is not a folder' % mypath,
-                  "Can't run", wx.ICON_ERROR|wx.CANCEL)
+                  "Can't run", wx.ICON_ERROR|wx.OK)
     exit(1)
 if basename(mypath)=='MacOS':
     chdir(normpath(join(mypath,pardir)))	# Starts in MacOS folder
@@ -163,7 +159,7 @@ if platform=='win32':
             v='\\'.join(dirs)
         if t in [REG_SZ,REG_EXPAND_SZ] and isdir(v):
             v=join(v.rstrip('\0').strip(), 'Addon Scenery')
-            dirs=[i for i in listdir(v) if isdir(join(v,i))]
+            dirs=[i for i in listdir(v) if isdir(join(v,i)) and i.lower() not in ['scenery','texture']]
             sortfolded(dirs)
             if dirs:
                 fspath=join(v, dirs[0])
@@ -174,27 +170,31 @@ if platform=='win32':
         pass
 
 else:	# Mac & linux
-    from os import uname	# not defined in win32 builds
-    sysdesc+="System:\t%s %s %s\n" % (uname()[0], uname()[2], uname()[4])
+    if platform=='darwin':
+        from platform import mac_ver
+        sysdesc+="System:\tMacOS %s %s\n" % (mac_ver()[0], mac_ver()[2])
+    else:
+        from os import uname	# not defined in win32 builds
+        sysdesc+="System:\t%s %s %s\n" % (uname()[0], uname()[2], uname()[4])
     home=unicodeify(expanduser('~'))	# Unicode so paths listed as unicode
     for xppath in [join(home, 'Desktop', 'X-Plane', 'Custom Scenery'),
                    join(home, 'X-Plane', 'Custom Scenery')]:
         if isdir(xppath): break
     else:
-        xppath=''
+        xppath=home
     fsroot=join(home, "FS2004")
     try:
         if platform.lower().startswith('linux'):
-            helper(join(curdir,'linux','fake2004'))
             sysdesc+="Wine:\t%s\n\n" % helper(join(curdir,'linux','winever'))
+            helper(join(curdir,'linux','fake2004'))
         else:
-            helper(join(curdir,'MacOS','fake2004'))
             sysdesc+="Wine:\t%s\n\n" % helper(join(curdir,'MacOS','winever'))
+            helper(join(curdir,'MacOS','fake2004'))
     except:
         pass
     v=join(fsroot, "Addon Scenery")
     if isdir(v):
-        dirs=[i for i in listdir(v) if isdir(join(v,i))]
+        dirs=[i for i in listdir(v) if isdir(join(v,i)) and i.lower() not in ['scenery','texture']]
         sortfolded(dirs)
         if dirs:
             fspath=join(v, dirs[0])
@@ -204,13 +204,12 @@ else:	# Mac & linux
     else:
         # Create fake FS2004 installation if no Addon Scenery folder
         newfsroot=fsroot
-        lbpath=join(newfsroot,"Addon Scenery")
-        fspath=join(lbpath,"scenery")
+        fspath=lbpath=join(newfsroot,"Addon Scenery")
         try:
             if not isdir(newfsroot): makedirs(newfsroot)
-            mkdir(lbpath)
             mkdir(fspath)
-            mkdir(join(lbpath,"texture"))
+            mkdir(join(fspath,"scenery"))
+            mkdir(join(fspath,"texture"))
             mkdir(join(newfsroot,"Effects"))
             mkdir(join(newfsroot,"Flights"))
             mkdir(join(newfsroot,"SimObjects"))
@@ -262,7 +261,7 @@ class MainWindow(wx.Frame):
         self.lbbrowse=wx.Button(panel1, LBBROWSE, browse)
         self.xppath=wx.TextCtrl(panel1, -1, xppath)
         self.xpbrowse=wx.Button(panel1, XPBROWSE, browse)
-        grid1 = wx.FlexGridSizer(2, 3, 7, 7)
+        grid1 = wx.FlexGridSizer(3, 3, 7, 7)
         grid1.AddGrowableCol(1,proportion=1)
         grid1.SetFlexibleDirection(wx.HORIZONTAL)
         grid1.Add(wx.StaticText(panel1, -1, "MSFS scenery location: "), 0,
@@ -290,8 +289,9 @@ class MainWindow(wx.Frame):
         wx.EVT_BUTTON(self, XPBROWSE, self.onXPbrowse)
 
         # 2nd panel
-        self.xpver  = wx.RadioBox(panel2,-1, "X-Plane version:",
-                                  choices=["v8 (PNG)", "v9 (DDS)"])
+        self.xpver  = wx.RadioBox(panel2,-1, "X-Plane minimum version:",
+                                  choices=["v8", "v9"])
+        self.xpver.SetSelection(1)	# v9 default
         self.season = wx.RadioBox(panel2,-1, "Season:",
                                   choices=["Spring", "Summer",
                                            "Autumn", "Winter"])
@@ -425,14 +425,14 @@ class MainWindow(wx.Frame):
         xppath=self.xppath.GetValue().strip()
         if not xppath:
             myMessageBox('You must specify an X-Plane scenery location',
-                         "Can't convert.", wx.ICON_ERROR|wx.CANCEL, self)
+                         "Can't convert.", wx.ICON_ERROR|wx.OK, self)
             return
         xppath=abspath(xppath)
 
         if not dumplib:
             if not fspath:
                 myMessageBox('You must specify a MSFS scenery location',
-                             "Can't convert.", wx.ICON_ERROR|wx.CANCEL, self)
+                             "Can't convert.", wx.ICON_ERROR|wx.OK, self)
                 return
             fspath=abspath(fspath)
             if not lbpath:
@@ -445,7 +445,7 @@ class MainWindow(wx.Frame):
             fspath=None
             if not lbpath:
                 myMessageBox('You must specify a MSFS library location',
-                             "Can't convert.", wx.ICON_ERROR|wx.CANCEL, self)
+                             "Can't convert.", wx.ICON_ERROR|wx.OK, self)
                 return
             lbpath=abspath(lbpath)
             if basename(xppath).lower()=='custom scenery':
@@ -479,7 +479,7 @@ class MainWindow(wx.Frame):
                 logfile=file(self.logname, 'at')
                 logfile.write('%s\n' % e.msg.encode("latin1",'replace'))
                 logfile.close()
-            myMessageBox(e.msg, 'Error during conversion.', wx.ICON_ERROR|wx.CANCEL, self)
+            myMessageBox(e.msg, 'Error during conversion.', wx.ICON_ERROR|wx.OK, self)
 
         except:
             if not isdir(dirname(self.logname)):
@@ -492,7 +492,7 @@ class MainWindow(wx.Frame):
             logfile.close()
             viewer(self.logname)
             myMessageBox('Please report error in log\n"%s"'%(self.logname),
-                         'Internal error.', wx.ICON_ERROR|wx.CANCEL, self)
+                         'Internal error.', wx.ICON_ERROR|wx.OK, self)
 
         if self.progress:
             self.progress.Destroy()
@@ -500,7 +500,7 @@ class MainWindow(wx.Frame):
 
 
 # main
-app=wx.PySimpleApp()
+app=wx.App()
 if platform=='win32':
     if app.GetComCtl32Version()>=600 and wx.DisplayDepth()>=32:
         wx.SystemOptions.SetOptionInt('msw.remap', 2)
