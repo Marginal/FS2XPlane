@@ -57,10 +57,11 @@ if platform=='win32':
                 'win32/bmp2png.exe',
                 'win32/DSFTool.exe',
                 ]),
-              #('Microsoft.VC90.CRT',
-              # glob(r'C:\Program Files\Microsoft Visual Studio 9.0\VC\redist\x86\Microsoft.VC90.CRT\*.*')),
-              ('',
-               [r'C:\Program Files\Microsoft Visual Studio 9.0\VC\redist\x86\Microsoft.VC90.CRT\msvcr90.dll']),
+              ('Microsoft.VC90.CRT',
+               ['win32/Microsoft.VC90.CRT.manifest',
+                'win32/msvcp90.dll',
+                'win32/msvcr90.dll'
+                ]),
               ]
 
 elif platform.lower().startswith('darwin'):
@@ -99,7 +100,6 @@ setup(name='FS2XPlane',
 
       options = {'py2exe': {'ascii':True,
                             #'dll_excludes':['w9xpopen.exe'],
-                            'dll_excludes':['MSVCP90.dll'],	# py2exe comes up with this spurious dependency
                             'bundle_files':True,
                             'compressed':True,
                             'includes':['OpenGL.platform.win32',
