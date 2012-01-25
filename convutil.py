@@ -643,7 +643,7 @@ def maketex(src, dstdir, output, palno, substituteblank=False):
     tex+='.png'
     dst=join(dstdir,tex)
     try:
-        tmp=None
+        newsrc=src
         if stat(src).st_size>=65536 and stat(src).st_size<65600:
             # Fucking nl2000 guys append crud to eof
             f=file(src, 'rb')
@@ -651,22 +651,23 @@ def maketex(src, dstdir, output, palno, substituteblank=False):
             if c[:2]!='BM' and c!='DDS ':
                 # Not a BMP or DDS. Assume RAW and add standard BMP header
                 f.seek(0)
-                tmp=join(gettempdir(), basename(src))
-                t=file(tmp, 'wb')
+                newsrc=join(gettempdir(), basename(src))
+                t=file(newsrc, 'wb')
                 for x in rawbmphdr:
                     t.write(pack('<H',x))
                 t.write(f.read())
                 t.close()
-                src=tmp
             f.close()
 
         if palno:
-            x=helper(output.pngexe, '-xbrqp%d' % (palno-1), '-o', dst, src)
+            x=helper(output.pngexe, '-xbrqp%d' % (palno-1), '-o', dst, newsrc)
         else:
-            x=helper(output.pngexe, '-xbrq', '-o', dst, src)
-        if tmp: unlink(tmp)
+            x=helper(output.pngexe, '-xbrq', '-o', dst, newsrc)
+        if newsrc!=src: unlink(newsrc)
         if not exists(dst):
             output.log("Can't convert texture %s\n%s" % (basename(src),x))
+        elif output.debug:
+            output.debug.write("PNG:\t%s:\t%s\n" % (src, x))
 
     except IOError:
         output.log("Can't convert texture %s" % basename(src))
