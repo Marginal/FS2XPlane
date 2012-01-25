@@ -123,11 +123,7 @@ def status(percent, msg):
             raise FS2XError('Stopped')
 
 def log(msg):
-    if not isdir(dirname(frame.logname)):
-        mkdir(dirname(frame.logname))
-    newlog=not exists(frame.logname)
     logfile=file(frame.logname, 'at')
-    if newlog: logfile.write(sysdesc)
     logfile.write('%s\n' % msg.encode("latin1",'replace'))
     logfile.close()
 
@@ -139,13 +135,19 @@ def refresh():
 newfsroot=None
 if platform=='win32':
     from sys import getwindowsversion
-    sysdesc+="System:\tWindows %s.%s %s\n\n" % (getwindowsversion()[0], getwindowsversion()[1], getwindowsversion()[4])
+    sysdesc+="System:\tWindows %s.%s %s\n" % (getwindowsversion()[0], getwindowsversion()[1], getwindowsversion()[4])
     from _winreg import OpenKey, QueryValueEx, HKEY_LOCAL_MACHINE, REG_SZ, REG_EXPAND_SZ
-    if isdir('C:\\X-Plane\\Custom Scenery'):
-        xppath='C:\\X-Plane\\Custom Scenery'
-    elif isdir(join(getenv("USERPROFILE", ""), "Desktop", "X-Plane", "Custom Scenery")):
-        xppath=join(getenv("USERPROFILE", ""), "Desktop", "X-Plane", "Custom Scenery")
-
+    progs=getenv("PROGRAMFILES", '\\')
+    for i in listdir(progs):
+        if i.lower().startswith("x-plane") and isdir(join(progs, i, "Custom Scenery")):
+            xppath=join(progs, i, "Custom Scenery")
+            break
+        else:
+            desktop=join(getenv("USERPROFILE", '\\'), "Desktop")
+            for i in listdir(desktop):
+                if i.lower().startswith("x-plane") and isdir(join(desktop, i, "Custom Scenery")):
+                    xppath=join(desktop, i, "Custom Scenery")
+                    break
     fspath=lbpath=join(getenv("ProgramFiles") or "C:\\Program Files","Microsoft Games","Microsoft Flight Simulator X","Addon Scenery")	# fallback
     try:
         handle=OpenKey(HKEY_LOCAL_MACHINE, 'SOFTWARE\\Microsoft\\Microsoft Games\\Flight Simulator\\10.0')
@@ -177,18 +179,25 @@ else:	# Mac & linux
         from os import uname	# not defined in win32 builds
         sysdesc+="System:\t%s %s %s\n" % (uname()[0], uname()[2], uname()[4])
     home=unicodeify(expanduser('~'))	# Unicode so paths listed as unicode
-    for xppath in [join(home, 'Desktop', 'X-Plane', 'Custom Scenery'),
-                   join(home, 'X-Plane', 'Custom Scenery')]:
-        if isdir(xppath): break
+    desktop=join(home, "Desktop")
+    for i in listdir(desktop):
+        if i.lower().startswith("x-plane") and isdir(join(desktop, i, "Custom Scenery")):
+            xppath=join(desktop, i, "Custom Scenery")
+            break
     else:
-        xppath=home
+        for i in listdir(home):
+            if i.lower().startswith("x-plane") and isdir(join(home, i, "Custom Scenery")):
+                xppath=join(home, i, "Custom Scenery")
+                break
+        else:
+            xppath=home
     fsroot=join(home, "FS2004")
     try:
         if platform.lower().startswith('linux'):
-            sysdesc+="Wine:\t%s\n\n" % helper(join(curdir,'linux','winever'))
+            sysdesc+="Wine:\t%s\n" % helper(join(curdir,'linux','winever'))
             helper(join(curdir,'linux','fake2004'))
         else:
-            sysdesc+="Wine:\t%s\n\n" % helper(join(curdir,'MacOS','winever'))
+            sysdesc+="Wine:\t%s\n" % helper(join(curdir,'MacOS','winever'))
             helper(join(curdir,'MacOS','fake2004'))
     except:
         pass
@@ -289,9 +298,9 @@ class MainWindow(wx.Frame):
         wx.EVT_BUTTON(self, XPBROWSE, self.onXPbrowse)
 
         # 2nd panel
-        self.xpver  = wx.RadioBox(panel2,-1, "X-Plane minimum version:",
-                                  choices=["v8", "v9"])
-        self.xpver.SetSelection(1)	# v9 default
+        self.xpver  = wx.RadioBox(panel2,-1, "Minimum X-Plane version:",
+                                  choices=["v8", "v9", "v10"])
+        self.xpver.SetSelection(2)	# v10 default
         self.season = wx.RadioBox(panel2,-1, "Season:",
                                   choices=["Spring", "Summer",
                                            "Autumn", "Winter"])
@@ -451,12 +460,23 @@ class MainWindow(wx.Frame):
             if basename(xppath).lower()=='custom scenery':
                 xppath=join(xppath, asciify(basename(lbpath)))
             
-        self.logname=abspath(join(xppath, 'summary.txt'))
         season=self.season.GetSelection()	# zero-based
-        dds=self.xpver.GetSelection()		# zero-based
+        xpver=self.xpver.GetSelection()+8	# zero-based
 
         try:
-            output=Output(fspath, lbpath, xppath, dumplib, season, dds,
+            self.logname=abspath(join(xppath, 'summary.txt'))
+            if not isdir(dirname(self.logname)):
+                mkdir(dirname(self.logname))
+            logfile=file(self.logname, 'wt')
+            logfile.write("%sTarget:\tX-Plane %d\n\n" % (sysdesc,xpver))
+            logfile.close()
+        except (IOError, WindowsError), e:
+            myMessageBox('Can\'t write to folder\n"%s"' % xppath,
+                         e.strerror, wx.ICON_ERROR|wx.OK, self)
+            return
+
+        try:
+            output=Output(fspath, lbpath, xppath, dumplib, season, xpver,
                           status,log,refresh, False)
             output.scanlibs()
             output.process()
@@ -469,7 +489,7 @@ class MainWindow(wx.Frame):
             if output.debug: output.debug.close()
             if exists(self.logname):
                 viewer(self.logname)
-                myMessageBox('Displaying summary "%s"' %(
+                myMessageBox('Displaying summary\n"%s"' %(
                     self.logname), 'Done.', wx.ICON_INFORMATION|wx.OK, self)
             else:
                 myMessageBox('', 'Done.', wx.ICON_INFORMATION|wx.OK, self)
@@ -482,11 +502,7 @@ class MainWindow(wx.Frame):
             myMessageBox(e.msg, 'Error during conversion.', wx.ICON_ERROR|wx.OK, self)
 
         except:
-            if not isdir(dirname(self.logname)):
-                mkdir(dirname(self.logname))
-            newlog=not exists(self.logname)
             logfile=file(self.logname, 'at')
-            if newlog: logfile.write(sysdesc)
             logfile.write('\nInternal error\n')
             print_exc(None, logfile)
             logfile.close()

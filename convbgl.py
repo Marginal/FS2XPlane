@@ -2145,7 +2145,7 @@ class ProcScen:
                 if __debug__:
                     if self.debug: self.debug.write("Too small %s %s\n" % (maxx-minx, maxz-minz))
                 return False	# probably detail
-        else:
+        elif self.output.xpver<9:
             # 8.60 has a bug with polygons at different layers sharing
             # textures, so minimise use of polygons by making this an object
             # if it's small enough to be unlikely to cause Z-buffer issues.

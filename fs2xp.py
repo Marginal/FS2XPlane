@@ -62,7 +62,7 @@ def refresh():
     pass
 
 def usage():
-    exit('\nUsage:\tfs2xp [options] "MSFS scenery location" "X-Plane scenery location"\noptions:\t-l "Additional MSFS library location"\n\t\t-s Spring|Summer|Autumn|Winter\n\t\t-x\n\t\t-9\n')
+    exit('\nUsage:\tfs2xp [options] "MSFS scenery location" "X-Plane scenery location"\noptions:\t-l "Additional MSFS library location"\n\t\t-s Spring|Summer|Autumn|Winter\n\t\t-x\n\t\t-8\n\t\t-9\n')
 
 
 # Path validation
@@ -79,7 +79,7 @@ else:
 lbpath=None
 season=0
 debug=False
-dds=False
+xpver=10
 dumplib=False
 prof=False
 try:
@@ -94,8 +94,10 @@ for (opt, arg) in opts:
         lbpath=abspath(unicode(arg))
     elif opt=='-d':
         debug=True
+    elif opt=='-8':
+        xpver=8
     elif opt=='-9':
-        dds=True
+        xpver=9
     elif opt=='-p':
         prof=True
     elif opt=='-x':
@@ -122,7 +124,7 @@ logname=abspath(join(xppath, 'summary.txt'))
 
 # Main
 try:
-    output=Output(fspath, lbpath, xppath, dumplib, season, dds,
+    output=Output(fspath, lbpath, xppath, dumplib, season, xpver,
                   status, log, refresh, debug and not prof)
     output.scanlibs()
     if prof:

@@ -18,12 +18,10 @@ import convmdl
 import convxml
 
 class Output:
-    def __init__(self, fspath, lbpath, xppath, dumplib, season, dds,
+    def __init__(self, fspath, lbpath, xppath, dumplib, season, xpver,
                  status, log, refresh, debug):
 
         self.dumplib=dumplib
-        self.docomplexity=False
-
         if dumplib:
             self.fspath=None
         else:
@@ -32,7 +30,13 @@ class Output:
         self.xppath=xppath
         self.hemi=0	# 0=N, 1=S
         self.season=season
-        self.dds=dds
+
+        # X-Plane features
+        self.xpver=xpver
+        self.docomplexity=(xpver>=9)
+        self.dds=(xpver>=9)
+        self.draped=(xpver>=10)
+        self.atc=(xpver>=10)
 
         # Callbacks
         self.status=status
