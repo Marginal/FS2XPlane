@@ -35,7 +35,7 @@ NM2m=1852	# 1 international nautical mile [m]
 groundfudge=0.22	# arbitrary: 0.124 used in UNNT, 0.172 in KBOS, 2.19 in LIRP
 planarfudge=0.1	# arbitrary
 
-complexities=3
+complexities=3		# We map to X-plane complexity 1-3 (defauilt, a lot, tons)
 
 apronlightspacing=60.96	# [m] = 200ft
 taxilightspacing=30.48	# [m] = 100ft
@@ -207,8 +207,11 @@ class Matrix:
         x1=m[0][0]*x + m[1][0]*y + m[2][0]*z
         y1=m[0][1]*x + m[1][1]*y + m[2][1]*z
         z1=m[0][2]*x + m[1][2]*y + m[2][2]*z
-        hyp=1/sqrt(x1*x1 + y1*y1 + z1*z1)
-        return (x1*hyp, y1*hyp, z1*hyp)
+        if x1==y1==z1==0:
+            return (0, 0, 0)
+        else:
+            hyp=1/sqrt(x1*x1 + y1*y1 + z1*z1)
+            return (x1*hyp, y1*hyp, z1*hyp)
 
 
     # Matrix adjoint/adjugate for obtaining normals - see
@@ -441,7 +444,10 @@ class Object:
 
             # Maybe a decal
             if self.layer!=None:
-                objfile.write("ATTR_layer_group\t%s\n" % fslayers[self.layer])
+                if self.poly and output.draped:
+                    objfile.write("ATTR_layer_group_draped\t%s\n" % fslayers[self.layer])
+                else:
+                    objfile.write("ATTR_layer_group\t%s\n" % fslayers[self.layer])
             if self.poly:
                 if output.draped:
                     objfile.write("ATTR_draped\n")

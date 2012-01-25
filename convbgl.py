@@ -101,7 +101,6 @@ class Parse:
                         output.log("Can't parse Terrain section in file %s" % name)
                 elif section==58:
                     # OBJECT
-                    areano=0
                     old=False
                     rrt=False
                     anim=False
@@ -127,7 +126,6 @@ class Parse:
                         bgl.seek(secbase+off)
                         while True:
                             # Header
-                            areano+=1                        
                             posa=bgl.tell()
                             if __debug__:
                                 if output.debug: output.debug.write("----\nArea %x\n" % posa)
@@ -161,7 +159,7 @@ class Parse:
                                     if __debug__:
                                         if output.debug: output.debug.write("Animation\n")
                             except:
-                                output.log("Can't parse area #%d in file %s" % (areano, name))
+                                output.log("Can't parse area %x in file %s" % (posa, name))
                                 if output.debug: print_exc(None, output.debug)
                                     
                             bgl.seek(posa+l)

@@ -470,7 +470,11 @@ class MainWindow(wx.Frame):
             logfile=file(self.logname, 'wt')
             logfile.write("%sTarget:\tX-Plane %d\n\n" % (sysdesc,xpver))
             logfile.close()
-        except (IOError, WindowsError), e:
+        except IOError, e:
+            myMessageBox('Can\'t write to folder\n"%s"' % xppath,
+                         e.strerror, wx.ICON_ERROR|wx.OK, self)
+            return
+        except WindowsError, e:
             myMessageBox('Can\'t write to folder\n"%s"' % xppath,
                          e.strerror, wx.ICON_ERROR|wx.OK, self)
             return
