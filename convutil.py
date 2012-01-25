@@ -403,9 +403,13 @@ class Object:
             objfile.write("I\n800\t# %sOBJ\n" % banner)
             objfile.write("\n# %s\n\n" % comment)
             if tex and self.vt:
-                objfile.write("TEXTURE\t\t%s\n" % tex)
-                if lit:
-                    objfile.write("TEXTURE_LIT\t%s\n" % lit)
+                if self.poly and output.draped:
+                    objfile.write("TEXTURE\t\nTEXTURE_DRAPED\t%s\n" % tex)
+                    # lit not supported
+                else:
+                    objfile.write("TEXTURE\t\t%s\n" % tex)
+                    if lit:
+                        objfile.write("TEXTURE_LIT\t%s\n" % lit)
             else:
                 objfile.write("TEXTURE\t\n")
     
@@ -439,9 +443,12 @@ class Object:
             if self.layer!=None:
                 objfile.write("ATTR_layer_group\t%s\n" % fslayers[self.layer])
             if self.poly:
-                objfile.write("ATTR_poly_os\t%d\n\n" % self.poly)
+                if output.draped:
+                    objfile.write("ATTR_draped\n")
+                else:
+                    objfile.write("ATTR_poly_os\t%d\n\n" % self.poly)
             elif self.vt:
-                objfile.write("ATTR_no_blend\n\n")
+                objfile.write("ATTR_no_blend\n\n")	# for fences etc
             #if self.surface:
             #    objfile.write("ATTR_hard\tconcrete\n")
 
