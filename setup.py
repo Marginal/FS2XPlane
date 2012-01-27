@@ -12,7 +12,7 @@ rm -rf FS2XPlane.app
 
 PY='fs2xp.py FS2XPlane.py convbgl.py convmain.py convmdl.py convobjs.py convphoto.py convtaxi.py convutil.py convxml.py MessageBox.py version.py'
 DATA='FS2XPlane.html bglxml.copying.txt Squish_license.txt'
-RSRC='Resources/*.bgl Resources/*.dds Resources/*.obj Resources/*.png Resources/*.txt Resources/Rwy12.xml'
+RSRC='Resources/*.bgl Resources/*.dds Resources/*.obj Resources/*.png Resources/objects.txt Resources/Rwy12.xml'
 
 # linux
 RPM=/tmp/fs2xplane

@@ -124,18 +124,16 @@ class Output:
             if not exists(join(curdir,'win32','bglunzip.exe')):
                 raise FS2XError("Can't find \"%s\"" % exe)
 
-        path=join('Resources', 'library objects.txt')
+        path=join('Resources', 'objects.txt')
         try:
             stock=file(path, 'rU')
         except IOError:
             raise FS2XError("Can't read \"%s\"." % path)
         for line in stock:
             line=line.split()
-            if line and not line[0].startswith(';'):
-                name=line[0]
-                guid=line[1][1:-1]
-                self.stock[guid[:8]+guid[14:18]+guid[9:13]+guid[26:28]+guid[24:26]+guid[21:23]+guid[19:21]+guid[34:36]+guid[32:34]+guid[30:32]+guid[28:30]]=name
-                self.names[name]=True
+            name=line[1]
+            self.stock[line[0]]=name
+            self.names[name]=True
         stock.close()
 
         # Standard Rwy12 mappings

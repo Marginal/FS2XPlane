@@ -127,6 +127,10 @@ try:
     output=Output(fspath, lbpath, xppath, dumplib, season, xpver,
                   status, log, refresh, debug and not prof)
     output.scanlibs()
+    if False:	# just list library uid/names
+        for (uid,(mdlformat, bglname, bglname, off, rcsize, name, scale)) in output.libobj.iteritems():
+            output.debug.write("%s\t%s\t%s\n" % (uid, name, bglname[len(lbpath):]))
+        raise IOError
     if prof:
         from profile import run
         run('output.process()', join(xppath,'profile.dmp'))
