@@ -585,17 +585,18 @@ class Airport:
             surface=surfaces[runway.surface]
 
             for light in runway.lights:
-                if D(light, 'center') and light.center!='NONE':
+                if not E(light, 'center', 'NONE'):
                     centrelights=1
                 if D(light, 'edge'):
                     if light.edge=='NONE':
                         edgelights=0
-                    #elif light.edge=='LOW':
-                    #    edgelights=1	# not supported in 8.50
-                    #elif light.edge=='HIGH':
-                    #    edgelights=3	# not supported in 8.50
                     else:
                         edgelights=2
+                    if output.xpver>8:
+                        if light.edge=='LOW':
+                            edgelights=1	# not supported in 8.50
+                        elif light.edge=='HIGH':
+                            edgelights=3	# not supported in 8.50
 
             for app in runway.approachlights:
                 sys={'ALSF1':1, 'ALSF2':2,
@@ -724,9 +725,9 @@ class Airport:
                     surface=15	# transparent
                     shoulder=centrelights=edgelights=distance=markings[0]=markings[1]=tdzl[0]=tdzl[1]=reil[0]=reil[1]=0 #lights[0]=lights[1]
                 
-                txt="%5.2f %02d %02d %4.2f %d %d %d" % (width, surface, shoulder, smoothing, centrelights, edgelights, distance)
+                txt="%5.2f %2d %d %4.2f %d %d %d" % (width, surface, shoulder, smoothing, centrelights, edgelights, distance)
                 for end in [0,1]:
-                    txt=txt+(" %-3s %10.6f %11.6f %5.1f %5.1f %02d %02d %d %d" % (number[end], loc[end].lat, loc[end].lon, displaced[end], overrun[end], markings[end], lights[end], tdzl[end], reil[end]))
+                    txt=txt+(" %-3s %10.6f %11.6f %5.1f %5.1f %d %2d %d %d" % (number[end], loc[end].lat, loc[end].lon, displaced[end], overrun[end], markings[end], lights[end], tdzl[end], reil[end]))
                 aptdat.append(AptNav(100, txt))
                 
             # VASIs
