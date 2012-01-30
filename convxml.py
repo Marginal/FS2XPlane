@@ -18,6 +18,10 @@ def D(c, v):
 def T(c, v):
     return getattr(c,v,None)=='TRUE'
 
+# member var is defined and equal
+def E(c, v, e):
+    return getattr(c,v,None)==e
+
 # Set up XML parser for new-style scenery
 
 class SceneryObject:
@@ -29,6 +33,7 @@ class SceneryObject:
         self.libraryobject=[]
         self.windsock=[]
         self.beacon=[]
+        self.attachedobject=[]
 
     class BiasXYZ:
         def __init__(self, attrs):
@@ -73,6 +78,18 @@ class SceneryObject:
             for k, v in attrs.iteritems():
                 exec("self.%s=v" % k)
 
+    class AttachedObject:
+        def __init__(self, attrs):
+            for k, v in attrs.iteritems():
+                exec("self.%s=v" % k)
+            self.beacon=[]
+
+        class Beacon:
+            def __init__(self, attrs):
+                for k, v in attrs.iteritems():
+                    exec("self.%s=v" % k)
+
+
     def export(self, parser, output, aptdat=None):
         loc=Point(float(self.lat), float(self.lon))
         alt=float(self.alt)
@@ -92,12 +109,13 @@ class SceneryObject:
             if D(bias, 'biasY'):
                 alt=alt+float(bias.biasY)
 
+        # Unattached beacon
         for b in self.beacon:
-            if D(b, 'baseType') and b.baseType=='SEA_BASE':
+            if E(b, 'baseType', 'SEA_BASE'):
                 lit=2
-            elif D(b, 'baseType') and b.baseType=='HELIPORT':
+            elif E(b, 'baseType', 'HELIPORT'):
                 lit=3
-            elif D(b, 'type') and b.type=='MILITARY':
+            elif E(b, 'type', 'MILITARY'):
                 lit=4
             else:	# civilian land airport
                 lit=1
@@ -214,6 +232,26 @@ class SceneryObject:
                 friendly=output.stock[name]
             else:
                 friendly=name
+
+            # Attached beacon
+            for a in self.attachedobject:
+                for b in a.beacon:
+                    if E(b, 'baseType', 'SEA_BASE'):
+                        lit=2
+                    elif E(b, 'baseType', 'HELIPORT'):
+                        lit=3
+                    elif E(b, 'type', 'MILITARY'):
+                        lit=4
+                    else:	# civilian land airport
+                        lit=1
+                    a=AptNav(18, '%10.6f %11.6f %d Beacon' % (loc.lat, loc.lon, lit))
+                    if aptdat:
+                        aptdat.append(a)
+                    else:
+                        output.misc.append((18, loc, [a]))
+                    # Suppress stock object - X-Plane will draw one
+                    if friendly=='air_beacontower01': return
+
             if D(self, 'altitudeIsAgl') and not T(self, 'altitudeIsAgl'):
                 output.log('Absolute altitude (%sm) for object %s at (%10.6f, %11.6f) in file %s' % (round(alt,2), friendly, loc.lat, loc.lon, parser.filename))
             elif abs(alt)>0.1:
@@ -281,15 +319,13 @@ class Airport:
         self.taxiwaysign=[]
         self.aprons=[]
         self.apronedgelights=[]
+        self.boundaryfence=[]
         
     class Tower:
         def __init__(self, attrs):
             for k, v in attrs.iteritems():
                 exec("self.%s=v" % k)
             self.sceneryobject=[]
-
-        class SceneryObject(SceneryObject):
-            pass
 
     class Com:
         def __init__(self, attrs):
@@ -427,6 +463,19 @@ class Airport:
                 def __init__(self, attrs):
                     for k, v in attrs.iteritems():
                         exec("self.%s=v" % k)
+
+    # XXX TODO: BoundaryFence
+    #class BoundaryFence:
+    #    def __init__(self, attrs):
+    #        for k, v in attrs.iteritems():
+    #            exec("self.%s=v" % k)
+    #        self.vertex=[]
+    #
+    #    class Vertex:
+    #        def __init__(self, attrs):
+    #            for k, v in attrs.iteritems():
+    #                exec("self.%s=v" % k)
+
 
     # Export airport to apt.dat and nav.dat
     def export(self, parser, output):
@@ -805,6 +854,14 @@ class Airport:
             alllinks.pop(i)
 
 
+        # XXX TODO: BoundaryFence
+        #for b in self.boundaryfence:
+        #    if len(b.vertex)>1:
+        #        vert=[Point(v.lat, v.lon) for v in b.vertex]
+        #        if vert[0].equals(vert[-1]):
+        #            output.facplc.append('opensceneryx/facades/fences/chainlink/1/closed.fac', vert[0:-1])
+        #        else:
+        #            output.facplc.append('opensceneryx/facades/fences/chainlink/1/open.fac', vert)
 
         # Tower view location
         if D(self, 'name'):
