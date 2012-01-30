@@ -449,15 +449,26 @@ class Airport:
 
         aptdat=output.apt[ident][1]
             
+        atc=[]
+        for com in self.com:
+            if com.type in ['CLEARANCE', 'CLEARANCE_PRE_TAXI']:
+                if not (com.name, 'del', com.frequency) in atc:
+                    atc.append((com.name, 'del', com.frequency))
+            elif com.type=='GROUND':
+                atc.append((com.name, 'gnd', com.frequency))
+            elif com.type=='TOWER':
+                atc.append((com.name, 'twr', com.frequency))
+        if atc:
+            if ident in output.atc:
+                output.atc.extend(atc)
+            else:
+                output.atc[ident]=atc
+
         # Might just be a placeholder - only create header if it has a name
         if D(self, 'name') :
-            txt=("%5d" % (float(self.alt)*m2f))
-            if self.tower:
-                txt+=" 1"
-            else:
-                txt+=" 0"
-            txt+=(" 0 %s %s" % (ident, asciify(self.name)))
-            aptdat.append(AptNav(1, txt))
+            # airport type may be changed to sea or heli base later on
+            aptdat.append(AptNav(1, "%5d %d 0 %s %s" % (
+                        float(self.alt)*m2f, len(atc)>0, ident, asciify(self.name, False))))
 
         # Runways
         for runway in self.runway:
@@ -789,44 +800,7 @@ class Airport:
                 continue
             alllinks.pop(i)
 
-        taxilayout(allnodes, alllinks, surfaceheading, output, aptdat, ident)
 
-        # Aprons - come after taxiways so that taxiways overlay them
-        for a in self.aprons:
-            for apron in a.apron:
-                if True: # T(apron, 'drawSurface') or T(apron, 'drawDetail'):
-                    # drawSurface & drawDetail ignored in FSX and mostly in FS9
-                    surface=surfaces[apron.surface]
-                    smoothing=0.25
-                    l=[]
-                    for v in apron.vertex:
-                        if D(v, 'lat') and D(v, 'lon'):
-                            loc=Point(float(v.lat), float(v.lon))
-                        elif D(v, 'biasX') and D(v, 'biasZ'):
-                            loc=airloc.biased(float(v.biasX), float(v.biasZ))
-                        if output.excluded(loc): break
-                        l.append(loc)
-                    else:
-                        apronlayout(l, surface, surfaceheading, output, aptdat, ident)
-
-        # ApronEdgeLights
-        for a in self.apronedgelights:
-            for e in a.edgelights:
-                l=[]
-                for v in e.vertex:
-                    if D(v, 'lat') and D(v, 'lon'):
-                        loc=Point(float(v.lat), float(v.lon))
-                    elif D(v, 'biasX') and D(v, 'biasZ'):
-                        loc=airloc.biased(float(v.biasX), float(v.biasZ))
-                    if output.excluded(loc): break
-                    l.append(loc)
-                else:
-                    aptdat.append(AptNav(120, "Apron edge"))
-                    for loc in l:
-                        aptdat.append(AptNav(111, "%10.6f %11.6f %03d" % (
-                            loc.lat, loc.lon, 102)))
-                    aptdat[-1].code=115
-                    aptdat[-1].text=aptdat[-1].text[:22]
 
         # Tower view location
         if D(self, 'name'):
@@ -906,34 +880,75 @@ class Airport:
                'TOWER':54, 'CENTER':54,
                'APPROACH':55,
                'DEPARTURE':56}
-        abbrv={'CLEARANCE':'CLD', 'CLEARANCE_PRE_TAXI':'CLD PRE-TAXI', 'REMOTE_CLEARANCE_DELIVERY':'CLD',
-               'UNICOM':'UNIC',
-               'MULTICOM':'MULT',
+        abrvs={'CLEARANCE':'CLNC DEL', 'CLEARANCE_PRE_TAXI':'PRE TAXI CLNC', 'REMOTE_CLEARANCE_DELIVERY':'CLNC DEL',
                'GROUND':'GND',
                'TOWER':'TWR',
                'CENTER':'CNTR',
                'APPROACH':'APP',
                'DEPARTURE':'DEP'}
-        coms=[]
+        coms={}
         for com in self.com:
-            if com.type=='APPROACH' and com.name.endswith(' DIRECTOR'):
-                ctype='DIR'
-                com.name=com.name[:-9]
-            elif com.type=='CLEARANCE' and com.name.endswith(' DELIVERY'):
-                ctype='CLD'
-                com.name=com.name[:-9]
-            elif com.type in abbrv:
-                ctype=abbrv[com.type]
+            code=codes[com.type]
+            if com.type in abrvs:
+                abrv=abrvs[com.type]
             else:
-                ctype=com.type
-            coms.append(AptNav(codes[com.type], "%5d %s %s" % (
-                float(com.frequency)*100, asciify(com.name), ctype)))
-        coms.sort()
-        aptdat.extend(coms)
+                abrv=com.type
+            if (code,com.frequency) in coms:
+                coms[(code,com.frequency)].append(abrv)
+            else:
+                coms[(code,com.frequency)]=[abrv]
+        comsout=[]
+        for (code,freq),abrv in coms.iteritems():
+            if code==52 and 'CLNC DEL' in abrv and 'PRE TAXI CLNC' in abrv:
+                abrv.remove('CLNC DEL')
+            comsout.append(AptNav(code, "%5d %s" % (
+                        float(freq)*100, '/'.join(abrv))))
+        comsout.sort()
+        aptdat.extend(comsout)
 
         for n in self.ndb:
             # Call top-level Ndb class
             ndb.export(parser, output)
+
+        # Doit
+        taxilayout(allnodes, alllinks, surfaceheading, output, aptdat, ident)
+
+        # Aprons - come after taxiways so that taxiways overlay them
+        for a in self.aprons:
+            for apron in a.apron:
+                if True: # T(apron, 'drawSurface') or T(apron, 'drawDetail'):
+                    # drawSurface & drawDetail ignored in FSX and mostly in FS9
+                    surface=surfaces[apron.surface]
+                    smoothing=0.25
+                    l=[]
+                    for v in apron.vertex:
+                        if D(v, 'lat') and D(v, 'lon'):
+                            loc=Point(float(v.lat), float(v.lon))
+                        elif D(v, 'biasX') and D(v, 'biasZ'):
+                            loc=airloc.biased(float(v.biasX), float(v.biasZ))
+                        if output.excluded(loc): break
+                        l.append(loc)
+                    else:
+                        apronlayout(l, surface, surfaceheading, output, aptdat, ident)
+
+        # ApronEdgeLights
+        for a in self.apronedgelights:
+            for e in a.edgelights:
+                l=[]
+                for v in e.vertex:
+                    if D(v, 'lat') and D(v, 'lon'):
+                        loc=Point(float(v.lat), float(v.lon))
+                    elif D(v, 'biasX') and D(v, 'biasZ'):
+                        loc=airloc.biased(float(v.biasX), float(v.biasZ))
+                    if output.excluded(loc): break
+                    l.append(loc)
+                else:
+                    aptdat.append(AptNav(120, "Apron edge"))
+                    for loc in l:
+                        aptdat.append(AptNav(111, "%10.6f %11.6f %03d" % (
+                            loc.lat, loc.lon, 102)))
+                    aptdat[-1].code=115
+                    aptdat[-1].text=aptdat[-1].text[:22]
 
 
 class Vor:

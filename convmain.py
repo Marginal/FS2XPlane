@@ -36,7 +36,7 @@ class Output:
         self.docomplexity=(xpver>=9)
         self.dds=(xpver>=9)
         self.draped=(xpver>=10)
-        self.atc=(xpver>=10)
+        self.doatc=(xpver>=10)
 
         # Callbacks
         self.status=status
@@ -52,6 +52,7 @@ class Output:
         self.aptfull={}	# version of the above with nothing excluded
         self.nav=[]
         self.misc=[]
+        self.atc={}	# [(name, role, freq)] by ICAO code
         self.done={}	# BGL files that we've already processed
         self.exc=[]	# Exclusion rectangles: (type, bottomleft, topright)
         self.excfac=[]	# Exclusion rectangles for facility data
@@ -809,6 +810,18 @@ class Output:
                 f.write("%s\n" % l)
             f.close()
 
+        if self.atc and self.doatc:
+            path=join(self.xppath, 'Earth nav data')
+            if not isdir(path): mkdir(path)
+            filename=join(path, 'atc.dat')
+            f=file(filename, 'wt')
+            f.write("I\n1000\t# %sATCFILE\n\n" % banner)
+            for icao, roles in self.atc.iteritems():
+                for (name, role, freq) in roles:
+                    f.write('CONTROLLER\nNAME %s\nFACILITY_ID %s\nICAO %s\nROLE %s\nFREQ %5d\nVOICE_DEF lib/atc/voices/default.voc\nCONTROLLER_END\n\n' %
+                            (name, icao, icao, role, float(freq)*100))
+                f.write('\n')
+            f.close()
 
         self.status(-1, 'Writing OBJs')
         # make a list of requested objects and scales
