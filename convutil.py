@@ -101,6 +101,9 @@ class Point:
         self.lat=lat
         self.lon=lon
 
+    def __str__(self):
+        return '%10.6f %11.6f' % (self.lat, self.lon)
+
     def biased(self, biasX, biasZ):
         # biases are in m
         # Approximation

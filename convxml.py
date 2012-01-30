@@ -784,6 +784,10 @@ class Airport:
         i=0
         while i<len(alllinks):
             l=alllinks[i]
+            # Layout assumes no degenerate links (eg node 355 in AIG KSEA)
+            if l.nodes[0]==l.nodes[1]:
+                alllinks.pop(i)
+                continue
             for j in [0,1]:
                 l.nodes[j]=allnodes[l.nodes[j]]
                 # Layout assumes no duplicate links between nodes (eg FS9 EGKA)
@@ -1059,6 +1063,7 @@ class Parse:
         fd.close()
 
     def start_element(self, name, attrs):
+        # dump tree
         #if self.output.debug:
         #    self.output.debug.write("%s%s(%s)\n" % ('  '*len(self.parents), name, attrs))
         try:

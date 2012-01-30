@@ -95,9 +95,12 @@ class Node:
                 self.startup='Ramp'
                 
             if int(point.number):
-                self.startup="%s %d" % (self.startup, int(point.number))
+                self.startup="%s %2d" % (self.startup, int(point.number))
         else:
             self.startup=None
+
+    def __str__(self):
+        return 'Node: %s %s %s' % (self.type, self.startup, self.loc)
 
 
 class Link:	# TaxiwayPath or TaxiwayParking
@@ -136,6 +139,10 @@ class Link:	# TaxiwayPath or TaxiwayParking
             self.surface=15
         self.done=0
         self.intersect=[[None,None],[None,None]]	# start right left, end right left
+
+    def __str__(self):
+        return 'Link: %s %.2dm "%s" [%s, %s] %s' % (
+            self.type, self.width, self.name, self.nodes[0], self.nodes[1], self.intersect)
 
     def findlinked(self, searchspace, found):
         for n in [self.nodes[0],self.nodes[1]]:
@@ -263,7 +270,7 @@ def taxilayout(allnodes, alllinks, surfaceheading, output, aptdat=None, ident="u
 
     # First find all intersections
     for n in allnodes:
-        elinks=[]
+        elinks=[]	# (other node, heading, link) = links from this node, sorted CCW
         for link in n.links:
             for end in [0,1]:
                 o=link.nodes[end]
@@ -283,7 +290,7 @@ def taxilayout(allnodes, alllinks, surfaceheading, output, aptdat=None, ident="u
             for end1 in [0,1]:
                 if link1.nodes[end1]==n: break
             if len(elinks)==1:
-                # Stub
+                # n is a stub
                 w=link1.width/2
                 if link1.type=='RUNWAY':
                     loc1=n.loc.biased(cos(h1)*w, -sin(h1)*w).round()

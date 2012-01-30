@@ -139,8 +139,9 @@ try:
     output.proclibs()
     output.procphotos()
     output.export()
-    if output.debug: output.debug.close()
-    if exists(logname):
+    if output.debug:
+        output.debug.close()
+    elif exists(logname):
         status(-1, 'Displaying summary "%s"' % logname)
         viewer(logname)
     status(-1, 'Done.')
