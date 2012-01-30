@@ -245,7 +245,7 @@ class Ndb:
     # Export to nav.dat
     def export(self, parser, output):
         if D(self, 'name'):
-            name=asciify(self.name)
+            name=asciify(self.name, False)
             if name[-3:].upper()!='NDB': name+=' NDB'
         else:
             name=self.ident+' NDB'
@@ -614,7 +614,7 @@ class Airport:
                 else:
                     end=1
                 if D(ils, 'name'):
-                    name=("%s %s" % (self.ident, asciify(ils.name)))
+                    name=("%s %s" % (self.ident, asciify(ils.name, False)))
                 else:
                     name=('%s %s ILS' % (self.ident, number[end]))
                 if D(ils, 'range'):
@@ -628,7 +628,7 @@ class Airport:
                 for gs in ils.glideslope:
                     angle[end]=float(gs.pitch)
                     if D(ils, 'name'):
-                        name=("%s %s" % (self.ident, asciify(ils.name)))
+                        name=("%s %s" % (self.ident, asciify(ils.name, False)))
                     else:
                         name=('%s %s GS' % (self.ident, number[end]))
                     if D(gs, 'range'):
@@ -642,7 +642,7 @@ class Airport:
 
                 for dme in ils.dme:
                     if D(ils, 'name'):
-                        name=("%s %s" % (self.ident, asciify(ils.name)))
+                        name=("%s %s" % (self.ident, asciify(ils.name, False)))
                     else:
                         name=('%s %s DME-ILS' % (self.ident, number[end]))
                     if D(dme, 'range'):
@@ -804,19 +804,24 @@ class Airport:
 
         # Tower view location
         if D(self, 'name'):
-            view=asciify(self.name)+' Tower'
+            view=asciify(self.name, False)+' Tower'
         else:
             view='Tower Viewpoint'
         for tower in self.tower:
-            aptdat.append(AptNav(14, "%10.6f %11.6f %6.2f 0 %s" % (
-                float(tower.lat), float(tower.lon), (float(tower.alt)-float(self.alt))*m2f, view)))
+            # tower altitude not particularly reliable
+            if float(tower.alt)>2+float(self.alt):
+                alt=(float(tower.alt)-float(self.alt))*m2f
+            else:
+                alt=6	# arbitrary
+            aptdat.append(AptNav(14, "%10.6f %11.6f %4d 0 %s" % (
+                float(tower.lat), float(tower.lon), alt, view)))
 
         # Ramp startup positions
         startups=[]
         for n in allnodes:
             if n.startup:
                 startups.append(AptNav(15, "%10.6f %11.6f %6.2f %s" % (
-                    n.loc.lat, n.loc.lon, n.heading, asciify(n.startup))))
+                    n.loc.lat, n.loc.lon, n.heading, asciify(n.startup, False))))
         startups.sort(lambda x,y: cmp(x.text[30:], y.text[30:]))
         aptdat.extend(startups)
 
@@ -969,7 +974,7 @@ class Vor:
         else:
             dtype='VOR'
         if D(self, 'name'):
-            name=asciify(self.name)
+            name=asciify(self.name, False)
             if name[-3:].upper()!=dtype: name+=(' '+dtype)
         else:
             name=self.ident+' '+dtype
@@ -1015,7 +1020,7 @@ class Marker:
         else:	# 'BACKCOURSE'
             return
         if D(self, 'name'):
-            name=asciify(self.name)
+            name=asciify(self.name, False)
             if name[-3:].upper()!=mtype: name+=(' '+mtype)
         else:
             name=self.ident+' '+mtype
