@@ -1,6 +1,7 @@
 from math import sin, cos, pi, radians, degrees
 from os.path import join
 from sys import maxint
+from copy import copy
 
 from OpenGL.GL import GL_LINE_LOOP, GL_TRUE
 from OpenGL.GLU import *
@@ -37,6 +38,10 @@ def D(c, v):
 def T(c, v):
     return getattr(c,v,None)=='TRUE'
 
+# member var is defined and equal
+def E(c, v, e):
+    return getattr(c,v,None)==e
+
 class Node:
     parking={'E_PARKING':'East ',  'NE_PARKING':'North East ',
              'N_PARKING':'North ', 'NW_PARKING':'North West ',
@@ -55,7 +60,7 @@ class Node:
 
     def __init__(self, point):
         self.type=point.type
-        if D(point, 'orientation') and point.orientation=='REVERSE':
+        if E(point, 'orientation', 'REVERSE'):
             self.reverse=True
         else:
             self.reverse=False
@@ -102,12 +107,38 @@ class Node:
     def __str__(self):
         return 'Node: %s %s %s' % (self.type, self.startup, self.loc)
 
+    def follow(self, l, depth=-1, cb=None):
+        # follow a link until the next junction or change of type,
+        # up to given depth (-1 = unlimited)
+        # callback is called before each (node, next link) is followed
+        # Returns (junction node, last link followed)
+        # Returns (None,None) if junction not found within depth.
+        n=self
+        while depth:
+            if cb: cb(n,l)
+            o=l.othernode(n)
+            if o==self or len(o.links)!=2:
+                return (o,l)
+            # Next link
+            if o.links[0].othernode(o)==n:
+                nextl=o.links[1]
+            else:
+                nextl=o.links[0]
+            if nextl.type!=l.type:
+                return (o,l)
+            depth-=1
+            n=o
+            l=nextl
+        return (None,None)
+
 
 class Link:	# TaxiwayPath or TaxiwayParking
     def __init__(self, path, parkingoffset, taxinames):
         self.type=path.type
         self.width=float(path.width)
+        self.closed=False
         if self.type=='PARKING':
+            # Treat parking *links* like apron paths
             self.type='PATH'
             self.nodes=[int(path.start),int(path.end)+parkingoffset]
         else:
@@ -121,16 +152,19 @@ class Link:	# TaxiwayPath or TaxiwayParking
             if path.designator in designators:
                 self.name+=designators[path.designator]
         else:
-            if self.type in ['PATH','PARKING']:
+            if self.type=='PATH':
                 self.draw=False	# No surface for apron paths
             else:
                 # drawSurface & drawDetail ignored in FSX and mostly in FS9
                 self.draw=True	# not D(path, 'drawSurface') or T(path, 'drawSurface') or not D(path, 'drawDetail') or T(path, 'drawDetail')
+            if self.type=='CLOSED':
+                self.type='TAXI'	# Make closed tesselate with open
+                self.closed=True
             self.centreline=T(path, 'centerLine')
             self.centrelights=T(path, 'centerLineLighted')
             self.lines=[path.rightEdge,path.leftEdge]
             self.lights=[T(path,'rightEdgeLighted'), T(path,'leftEdgeLighted')]
-            self.name=self.type[0]+self.type[1:].lower()
+            self.name=self.type.capitalize()
             if taxinames[int(path.name)].name:
                 self.name+=' '+taxinames[int(path.name)].name
         if self.draw:
@@ -144,6 +178,13 @@ class Link:	# TaxiwayPath or TaxiwayParking
         return 'Link: %s %.2dm "%s" [%s, %s] %s' % (
             self.type, self.width, self.name, self.nodes[0], self.nodes[1], self.intersect)
 
+    def copy(self):
+        # Make a copy, duplicating th Node list but not duplicating the Nodes themselves
+        newlink=copy(self)
+        newlink.nodes=[self.nodes[0],self.nodes[1]]
+        newlink.intersect=[[self.intersect[0][0],self.intersect[0][1]],[self.intersect[1][0],self.intersect[1][1]]]
+        return newlink
+
     def findlinked(self, searchspace, found):
         for n in [self.nodes[0],self.nodes[1]]:
             for link in n.links:
@@ -155,6 +196,14 @@ class Link:	# TaxiwayPath or TaxiwayParking
                         searchspace.remove(link)
                         found.append(link)
                         link.findlinked(searchspace, found)
+
+    # Given a node, return the node at the other end of this link
+    def othernode(self, node):
+        if self.nodes[0]==node:
+            return self.nodes[1]
+        else:
+            assert self.nodes[1]==node, "%s not in %s" % (node, self)
+            return self.nodes[0]
 
 
 # returns taxiway signs for debugging
@@ -272,12 +321,9 @@ def taxilayout(allnodes, alllinks, surfaceheading, output, aptdat=None, ident="u
     for n in allnodes:
         elinks=[]	# (other node, heading, link) = links from this node, sorted CCW
         for link in n.links:
-            for end in [0,1]:
-                o=link.nodes[end]
-                if o!=n: continue
-                o=link.nodes[1-end]
-                h=radians(n.loc.headingto(o.loc))
-                elinks.append((o,h,link))
+            o=link.othernode(n)
+            h=radians(n.loc.headingto(o.loc))
+            elinks.append((o,h,link))
         elinks.sort(lambda (o1,h1,l1),(o2,h2,l2): cmp(h2,h1)) # CCW
         
         if __debug__:
@@ -289,7 +335,15 @@ def taxilayout(allnodes, alllinks, surfaceheading, output, aptdat=None, ident="u
             (n1,h1,link1)=elinks[i]
             for end1 in [0,1]:
                 if link1.nodes[end1]==n: break
-            if len(elinks)==1:
+            for j in range(1,len(elinks)):
+                (n2,h2,link2)=elinks[(i+j)%len(elinks)]
+                if link1.type!=link2.type and (link1.type=='VEHICLE' or link2.type=='VEHICLE'):
+                    # Good practice in MSFS is for intersecting roads and parking paths to intersect
+                    # at a shared node. But we ignore that since it screws up centrelines.
+                    continue
+                else:
+                    break
+            else:
                 # n is a stub
                 w=link1.width/2
                 if link1.type=='RUNWAY':
@@ -305,8 +359,7 @@ def taxilayout(allnodes, alllinks, surfaceheading, output, aptdat=None, ident="u
                         output.debug.write("%s stub %d\n" % (loc2, i))
                         interfile.write("%.6f\t%.6f\n" % (loc1.lon, loc1.lat))
                         interfile.write("%.6f\t%.6f\n" % (loc2.lon, loc2.lat))
-                break
-            (n2,h2,link2)=elinks[(i+1)%len(elinks)]
+                continue
             for end2 in [0,1]:
                 if link2.nodes[end2]==n: break
             angle=(h1-pi-h2)%twopi
@@ -429,7 +482,7 @@ def taxilayout(allnodes, alllinks, surfaceheading, output, aptdat=None, ident="u
 
     # Candidates
     for surface in range(1,16):
-        for (t,name) in [('TAXI','Taxiway'), ('CLOSED','Closed taxiway'), ('PATH','Apron path'), ('VEHICLE','Road')]:
+        for (t,name) in [('TAXI','Taxiway'), ('PATH','Apron path'), ('VEHICLE','Road')]:
             newpoints=[]
             debez=[]
             gluTessBeginPolygon(tessObj, (newpoints, debez))
@@ -439,7 +492,7 @@ def taxilayout(allnodes, alllinks, surfaceheading, output, aptdat=None, ident="u
                 if link.type==t and link.surface==surface and link.width>1 and (link.draw or link.lights[0] or link.lights[1] or link.lines[0]!='NONE' or link.lines[1]!='NONE') and (not aptdat or not (output.excluded(link.nodes[0].loc) and output.excluded(link.nodes[1].loc))):
                     gluTessBeginContour(tessObj)
                     if __debug__:
-                        if output.debug: output.debug.write("Link\n")
+                        if output.debug: output.debug.write("%s\n" % link)
                     for end in [0,1]:
                         (loc,bez,bad)=link.intersect[end][1]	# left
                         if bad:
@@ -482,6 +535,7 @@ def taxilayout(allnodes, alllinks, surfaceheading, output, aptdat=None, ident="u
                 if aptdat and output.excluded(node.loc): continue
                 if len(node.links)<=1: continue	# nothing to do for stubs
                 for link in node.links:
+                    # Render if one link is drawable and matches type and surface
                     if link.type==t and link.surface==surface and link.width>1 and (link.draw or link.lights[0] or link.lights[1] or link.lines[0]!='NONE' or link.lines[1]!='NONE'):
                         break
                 else:
@@ -496,14 +550,6 @@ def taxilayout(allnodes, alllinks, surfaceheading, output, aptdat=None, ident="u
                         h=radians(node.loc.headingto(o.loc))
                         elinks.append((o,h,link,end))
                 elinks.sort(lambda (o1,h1,l1,e1),(o2,h2,l2,e2): cmp(h2,h1)) # CCW
-
-                if len(node.links)==2:
-                    (n1,h1,link1,end1)=elinks[0]
-                    (n2,h2,link2,end2)=elinks[1]
-                    angle=(h1-pi-h2)%twopi
-                    if angle<0.1 or angle>twopi-0.1 or abs(h1-h2)<0.1:
-                        # straight - nothing to do
-                        continue
                     
                 # Points at this node
                 gluTessBeginContour(tessObj)
@@ -511,11 +557,41 @@ def taxilayout(allnodes, alllinks, surfaceheading, output, aptdat=None, ident="u
                 if __debug__:
                     if output.debug: output.debug.write("node@ %s #links=%d %s %s)\n" % (node.loc, n,t,surface))
                 for i in range(n):
-                    (n0,h0,link0,end0)=elinks[(i-1)%n]
                     (n1,h1,link1,end1)=elinks[i]	# this one
-                    (n2,h2,link2,end2)=elinks[(i+1)%n]
+                    if (link1.type!=t and (link1.type=='VEHICLE' or t=='VEHICLE')):
+                        continue
+                    for j in range(-1,-len(elinks),-1):
+                        (n0,h0,link0,end0)=elinks[(i+j)%n]
+                        if link1.type!=link0.type and (link1.type=='VEHICLE' or link0.type=='VEHICLE'):
+                            continue
+                        else:
+                            break
+                    else:
+                        if __debug__:
+                            if output.debug: output.debug.write("is a stub0\n")
+                        break	# Do nothing for stubs
+                    for j in range(1,len(elinks)):
+                        (n2,h2,link2,end2)=elinks[(i+j)%n]
+                        if link1.type!=link2.type and (link1.type=='VEHICLE' or link2.type=='VEHICLE'):
+                            continue
+                        else:
+                            break
+                    else:
+                        if __debug__:
+                            if output.debug: output.debug.write("is a stub2\n")
+                        break	# Do nothing for stubs
+
                     if __debug__:
                         if output.debug: output.debug.write("link to %s %s %s\n" % (link1.nodes[1-end1].loc, link1.type, link1.surface))
+
+                    if n0==n2:
+                        angle=(h1-pi-h2)%twopi
+                        if angle<0.1 or angle>twopi-0.1 or abs(h1-h2)<0.1:
+                            # straight - nothing to do
+                            if __debug__:
+                                if output.debug: output.debug.write("is straight\n")
+                            break
+
                     (loc1,bez1,bad1)=link1.intersect[end1][0]	# right
                     (loc2,bez2,bad2)=link1.intersect[end1][1]	# left
                     code1=edgefeature(link1, end1, link0, 1-end0)
@@ -538,6 +614,8 @@ def taxilayout(allnodes, alllinks, surfaceheading, output, aptdat=None, ident="u
                                     loc2=node.loc
                                     bez2=None
                                     code2=''
+                            if __debug__:
+                                if output.debug: output.debug.write("fillets\n")
                         else:
                             # do simplified pavement
                             (loc0,bez0,bad0)=link0.intersect[end0][1]	# left
@@ -551,6 +629,8 @@ def taxilayout(allnodes, alllinks, surfaceheading, output, aptdat=None, ident="u
                             if bez3: debez.append(loc2)
                             bez1=bez2=None
                             code1=code2=''
+                            if __debug__:
+                                if output.debug: output.debug.write("simplified\n")
                             
                     if bez1:
                         if (h0-h1)%twopi>pi:
@@ -710,7 +790,12 @@ def taxilayout(allnodes, alllinks, surfaceheading, output, aptdat=None, ident="u
                             out.append(AptNav(111, "%10.6f %11.6f %s" % (pt.lat, pt.lon, code)))
                         if blank==1 and bez:	# start of blank
                             out.append(AptNav(111, "%10.6f %11.6f" % (pt.lat, pt.lon)))
-                    assert(out[-1].code!=110)
+                    if out[-1].code==110:
+                        if output.debug:
+                            output.debug.write("Empty polygon %s\n" % out.pop())
+                        else:
+                            out.pop()
+                    #assert(out[-1].code!=110)
                     out[-1].code+=2		# Terminate last
 
             if not outpoints:
@@ -740,6 +825,10 @@ def taxilayout(allnodes, alllinks, surfaceheading, output, aptdat=None, ident="u
                             if n!=n.links[j].nodes[end] and len(n.links[j].nodes[end].links)>1: break	# no cross for runway end
                         else:
                             continue
+                    elif n.links[i].type!=n.links[j].type and (n.links[i].type=='VEHICLE' or n.links[j].type=='VEHICLE'):
+                        # Good practice in MSFS is for intersecting roads and parking paths to intersect
+                        # at a shared node. But we ignore that since it screws up centrelines.
+                        continue
                     n.donecross[i][j]=n.donecross[j][i]=False
 
     # First do proper links, opportunistically adding crosses

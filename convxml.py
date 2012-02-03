@@ -704,8 +704,10 @@ class Airport:
                         float(dme.lat), float(dme.lon), m2f*float(dme.alt), float(ils.frequency)*100, rng,
                         0, ils.ident, name)))
 
-            if length<=1 or width<=1:
-                continue	# X-Plane considers size<1m to be an error.
+            if length<11 or width<11:
+                # X-Plane considers size<1m to be an error. Also some "XWind"
+                # hacks for FSX ATC involve creating spurious 10m runways.
+                continue
                     
             #if len(number)<3: number+='x'
             # XXX
@@ -853,6 +855,147 @@ class Airport:
                 i+=1
                 continue
             alllinks.pop(i)
+
+        # Try and detect and eliminate bogus ATC hacks documented at
+        # http://www.scruffyduck.org.uk/filemanager/navega.php?dir=.%2FTutorials%2FAirport%20Design
+        # First look for "Overlay" - a node on a runway with exactly two taxi links, both of whose
+        # opposite nodes are hold shorts and link directly together, eg node 678 in AIG KSEA
+        i=0
+        while i<len(allnodes):
+            n=allnodes[i]
+            isrunway=False
+            links=[]
+            for l in n.links:
+                if l.type=='RUNWAY':
+                    isrunway=True
+                elif l.type=='TAXI':
+                    links.append(l)
+            if not isrunway or len(links)!=2:
+                i+=1
+                continue
+            n0=links[0].othernode(n)
+            n1=links[1].othernode(n)
+            if ('HOLD_SHORT' not in n0.type) or ('HOLD_SHORT' not in n1.type):
+                i+=1
+                continue
+            for l in n0.links:
+                if l.nodes[0]==n1 or l.nodes[1]==n1:
+                    if output.debug: output.debug.write('Removed ATC hack "Overlay" link over %s\n' % n)
+                    n0.links.remove(l)
+                    n1.links.remove(l)
+                    alllinks.remove(l)
+                    break
+            else:
+                i+=1
+                continue
+
+        # Next look for "Diamond" - a node not on a runway, with two links, both of which lead within
+        # 2 nodes to a hold short, and where both hold shorts are also connected together via
+        # 2 sets of links which include runway nodes. , eg nodes 651 (simple) & 648 (extra nodes) in AIG KSEA
+        for n in allnodes:
+            if len(n.links)!=2 or 'HOLD_SHORT' in n.type or n.links[0].type!='TAXI' or n.links[1].type!='TAXI': continue
+            n0=n.links[0].othernode(n)
+            n1=n.links[1].othernode(n)
+            if not (len(n0.links)==len(n1.links)==4): continue
+            for l in n0.links:
+                h0=l.othernode(n0)
+                if 'HOLD_SHORT' in h0.type:
+                    break
+            else:
+                continue
+            for l in n1.links:
+                h1=l.othernode(n1)
+                if 'HOLD_SHORT' in h1.type:
+                    break
+            else:
+                continue
+            # So both n0 and n1 have 4 links, 1 link each points to the common node n, and 1 link each
+            # points to a hold short. Now test that the remaing 2 links each meet each other at a runway.
+            for l0 in n0.links:
+                if l0.othernode(n0) not in [n,h0]: break	# find 1 of the 2 remaining links
+
+            # Find first runway node
+            (o,m)=n0.follow(l0, 3)
+            if not o: continue
+            isrunway=False
+            links=[]
+            for l in o.links:
+                if l.type=='RUNWAY':
+                    isrunway=True
+                elif l.type=='TAXI':
+                    links.append(l)
+                    if l!=m: l1=l
+            if not isrunway or len(links)!=2:
+                continue
+            r0=o
+
+            # Find n1
+            (o,m)=r0.follow(l1, 3)
+            if not o or o!=n1: continue
+            for l2 in n1.links:
+                if l2.othernode(n1) not in [n,h1] and l2!=m: break	# find remaining link
+
+            # Find second runway node
+            (o,m)=n1.follow(l2, 3)
+            if not o: continue
+            runwaylink=None
+            links=[]
+            for l in o.links:
+                if l.type=='RUNWAY' and l.othernode(o)==r0:
+                    runwaylink=l
+                elif l.type=='TAXI':
+                    links.append(l)
+                    if l!=m: l3=l
+            if not runwaylink or len(links)!=2:
+                continue
+            r1=o
+
+            # Back to n0
+            (o,m)=r1.follow(l3, 3)
+            if not o or o!=n0: continue
+
+            if False:	# This tends to render badly
+                # Now do it again, marking each taxi link as closed
+                n0.follow(l0, cb=lambda o,l: setattr(l,'closed',True))
+                r0.follow(l1, cb=lambda o,l: setattr(l,'closed',True))
+                n1.follow(l2, cb=lambda o,l: setattr(l,'closed',True))
+                r1.follow(l3, cb=lambda o,l: setattr(l,'closed',True))
+
+                # Move the original Node onto the runway centreline
+                # http://paulbourke.net/geometry/pointline/
+                dlat=(r1.loc.lat-r0.loc.lat)
+                dlon=(r1.loc.lon-r0.loc.lon)
+                m = dlat*dlat + dlon*dlon
+                if m==0:
+                    n.loc=r0.loc
+                else:
+                    u = ((n.loc.lat-r0.loc.lat)*dlat + (n.loc.lon-r0.loc.lon)*dlon) / m
+                    n.loc=Point(r0.loc.lat + u*dlat, r0.loc.lon + u*dlon)
+
+                # Split the runway centreline to add this point
+                newlink=runwaylink.copy()
+                alllinks.append(newlink)
+                n.links.extend([runwaylink,newlink])
+                r1.links.remove(runwaylink)
+                r1.links.append(newlink)
+                if newlink.nodes[0]==r0:
+                    newlink.nodes[0]=n
+                    runwaylink.nodes[1]=n
+                else:
+                    newlink.nodes[1]=n
+                    runwaylink.nodes[0]=n
+            else:
+                # Delete the original Node and the links that skipp the runway
+                allnodes.remove(n)
+                alllinks.remove(n.links[0])
+                n0.links.remove(n.links[0])
+                alllinks.remove(n.links[1])
+                n1.links.remove(n.links[1])
+                # Relabel surviving links
+                n0.follow(l0, cb=lambda o,l: setattr(l,'name',n.links[0].name))
+                r0.follow(l1, cb=lambda o,l: setattr(l,'name',n.links[1].name))
+                n1.follow(l2, cb=lambda o,l: setattr(l,'name',n.links[1].name))
+                r1.follow(l3, cb=lambda o,l: setattr(l,'name',n.links[0].name))
 
 
         # XXX TODO: BoundaryFence
