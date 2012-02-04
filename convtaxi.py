@@ -209,14 +209,14 @@ class Link:	# TaxiwayPath or TaxiwayParking
 # returns taxiway signs for debugging
 def bezpt(out, this, next, ratio, brat, code, deb):
     brat=brat*ratio/3.0
-    out.append(AptNav(112, "%10.6f %11.6f %10.6f %11.6f %s" % (
+    out.append(AptNav(112, "%12.8f %13.8f %12.8f %13.8f %s" % (
         this.lat+ratio*(next.lat-this.lat), this.lon+ratio*(next.lon-this.lon),
         this.lat+brat *(next.lat-this.lat), this.lon+brat *(next.lon-this.lon),
         code)))
-    return [AptNav(20, "%10.6f %11.6f 0 0 5 {@R}%s" % (
+    return [AptNav(20, "%12.8f %13.8f 0 0 5 {@R}%s" % (
         this.lat+ratio*(next.lat-this.lat), this.lon+ratio*(next.lon-this.lon),
         deb)),
-            AptNav(20, "%10.6f %11.6f 0 0 5 {@Y}%s" % (
+            AptNav(20, "%12.8f %13.8f 0 0 5 {@Y}%s" % (
         this.lat+brat *(next.lat-this.lat), this.lon+brat *(next.lon-this.lon),
         deb))]
 
@@ -783,13 +783,13 @@ def taxilayout(allnodes, alllinks, surfaceheading, output, aptdat=None, ident="u
                             blank=0
                             
                         if blank==2 and bez:	# end of blank
-                            out.append(AptNav(111, "%10.6f %11.6f" % (pt.lat, pt.lon)))
+                            out.append(AptNav(111, "%12.8f %13.8f" % (pt.lat, pt.lon)))
                         if bez:
-                            out.append(AptNav(112, "%10.6f %11.6f %10.6f %11.6f %s" % (pt.lat, pt.lon, bez.lat, bez.lon, code)))
+                            out.append(AptNav(112, "%12.8f %13.8f %12.8f %13.8f %s" % (pt.lat, pt.lon, bez.lat, bez.lon, code)))
                         else:
-                            out.append(AptNav(111, "%10.6f %11.6f %s" % (pt.lat, pt.lon, code)))
+                            out.append(AptNav(111, "%12.8f %13.8f %s" % (pt.lat, pt.lon, code)))
                         if blank==1 and bez:	# start of blank
-                            out.append(AptNav(111, "%10.6f %11.6f" % (pt.lat, pt.lon)))
+                            out.append(AptNav(111, "%12.8f %13.8f" % (pt.lat, pt.lon)))
                     if out[-1].code==110:
                         if output.debug:
                             output.debug.write("Empty polygon %s\n" % out.pop())
@@ -903,27 +903,27 @@ def taxilayout(allnodes, alllinks, surfaceheading, output, aptdat=None, ident="u
             o=link.nodes[1-startend]	# next node
             length=n.loc.distanceto(o.loc)
             if len(n.links)==len(o.links)==1:
-                out.append(AptNav(111, "%10.6f %11.6f %s" % (
+                out.append(AptNav(111, "%12.8f %13.8f %s" % (
                     n.loc.lat, n.loc.lon, code)))
-                stuff.append(AptNav(20, "%10.6f %11.6f 0 0 5 %s" % (
+                stuff.append(AptNav(20, "%12.8f %13.8f 0 0 5 %s" % (
                     n.loc.lat, n.loc.lon, "{@R}1")))
-                out.append(AptNav(111, "%10.6f %11.6f %s" % (
+                out.append(AptNav(111, "%12.8f %13.8f %s" % (
                     o.loc.lat, o.loc.lon, code)))
-                stuff.append(AptNav(20, "%10.6f %11.6f 0 0 5 %s" % (
+                stuff.append(AptNav(20, "%12.8f %13.8f 0 0 5 %s" % (
                     o.loc.lat, o.loc.lon, "{@R}2")))
             elif len(n.links)==1:
                 if length>link.width:
-                    out.append(AptNav(111, "%10.6f %11.6f %s" % (
+                    out.append(AptNav(111, "%12.8f %13.8f %s" % (
                         n.loc.lat, n.loc.lon, code)))
-                    stuff.append(AptNav(20, "%10.6f %11.6f 0 0 5 %s" %(
+                    stuff.append(AptNav(20, "%12.8f %13.8f 0 0 5 %s" %(
                         n.loc.lat, n.loc.lon, "{@R}3")))
                 stuff.extend(bezpt(out, o.loc, n.loc, min(1,link.width/length), 1, code, "4"))
             elif len(o.links)==1:
                 stuff.extend(bezpt(out, n.loc, o.loc, min(1,link.width/length), 5, code, "5"))
                 if length>link.width:
-                    out.append(AptNav(111, "%10.6f %11.6f %s" % (
+                    out.append(AptNav(111, "%12.8f %13.8f %s" % (
                         o.loc.lat, o.loc.lon, code)))
-                    stuff.append(AptNav(20, "%10.6f %11.6f 0 0 5 %s" %(
+                    stuff.append(AptNav(20, "%12.8f %13.8f 0 0 5 %s" %(
                         o.loc.lat, o.loc.lon, "{@R}6")))
             elif length>2*link.width:
                 stuff.extend(bezpt(out, n.loc, o.loc, link.width/length, 5, code, "7"))
@@ -970,18 +970,18 @@ def taxilayout(allnodes, alllinks, surfaceheading, output, aptdat=None, ident="u
         # Terminate last
         if out[-1].code==111:
             out[-1].code=115
-            out[-1].text=out[-1].text[:22]
+            out[-1].text=out[-1].text[:26]
         else:
             out[-1].code=116
-            out[-1].text=out[-1].text[:45]
+            out[-1].text=out[-1].text[:53]
         if aptdat:
             aptdat.extend(out)
         else:
             output.misc.append((120, n.loc, out))
 
         if False:	# debug
-            stuff[0].text=stuff[0].text[:31]+'B'+stuff[0].text[32:]
-            stuff[-1].text=stuff[-1].text[:31]+'L'+stuff[-1].text[32:]
+            stuff[0].text=stuff[0].text[:26]+'B'+stuff[0].text[27:]
+            stuff[-1].text=stuff[-1].text[:26]+'L'+stuff[-1].text[27:]
             if aptdat:
                 aptdat.extend(stuff)
             else:
@@ -1032,7 +1032,7 @@ def taxilayout(allnodes, alllinks, surfaceheading, output, aptdat=None, ident="u
                     stuff.extend(bezpt(out, n.loc, o.loc, ctrl, z, code, "X"))
                 # Terminate last
                 out[-1].code=116
-                out[-1].text=out[-1].text[:45]
+                out[-1].text=out[-1].text[:53]
                 if aptdat:
                     aptdat.extend(out)
                 else:
@@ -1069,10 +1069,10 @@ def taxilayout(allnodes, alllinks, surfaceheading, output, aptdat=None, ident="u
             else:
                 code="56 103"
             loc=n.loc.biased(-cos(h)*w, sin(h)*w)
-            out.append(AptNav(111, "%10.6f %11.6f %s" % (
+            out.append(AptNav(111, "%12.8f %13.8f %s" % (
                 loc.lat, loc.lon, code)))
             loc=n.loc.biased(cos(h)*w, -sin(h)*w)
-            out.append(AptNav(115, "%10.6f %11.6f" % (
+            out.append(AptNav(115, "%12.8f %13.8f" % (
                 loc.lat, loc.lon)))
             if aptdat:
                 aptdat.extend(out)
@@ -1096,10 +1096,10 @@ def taxilayout(allnodes, alllinks, surfaceheading, output, aptdat=None, ident="u
                 else:
                     code="51"
                 loc=n.loc.biased(-cos(h)*w, sin(h)*w)
-                out.append(AptNav(111, "%10.6f %11.6f %s" % (
+                out.append(AptNav(111, "%12.8f %13.8f %s" % (
                     loc.lat, loc.lon, code)))
                 loc=n.loc.biased(cos(h)*w, -sin(h)*w)
-                out.append(AptNav(115, "%10.6f %11.6f" % (
+                out.append(AptNav(115, "%12.8f %13.8f" % (
                     loc.lat, loc.lon)))
                 if aptdat:
                     aptdat.extend(out)
@@ -1205,7 +1205,7 @@ def apronlayout(points, surface, surfaceheading, output, aptdat=None, ident="unk
         for points in tw:
             n=len(points)
             for i in range(n):
-                out.append(AptNav(111, "%10.6f %11.6f" % (points[i].lat, points[i].lon)))
+                out.append(AptNav(111, "%12.8f %13.8f" % (points[i].lat, points[i].lon)))
             assert(out[-1].code!=110)
             out[-1].code+=2		# Terminate last
 

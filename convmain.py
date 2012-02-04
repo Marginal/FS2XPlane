@@ -676,7 +676,7 @@ class Output:
                 else:
                     name="taxiway"
                 if distance>=16000:	# X-Plane limit is 10 miles
-                    self.log("Can't find an airport for %s at (%10.6f, %11.6f)" % (name, loc.lat, loc.lon))
+                    self.log("Can't find an airport for %s at (%12.8f, %13.8f)" % (name, loc.lat, loc.lon))
                 elif code==100:		# runway
                     # Find and update matching XML-defined runway
                     # Presence of a BGL-defined duplicate runway implies that
@@ -724,7 +724,7 @@ class Output:
                                 base=end
                             # Dimensions from XML.
                             # Lights from either, BGL takes precedence
-                            txt=txt+(" %-3s %10.6f %11.6f %5.1f %5.1f %02d %02d %d %d" % (c[end+7], float(c[end+8]), float(c[end+9]), float(c[end+10]), float(c[end+11]), int(d[base+12]), int(d[base+13]) or int(c[end+13]), int(d[base+14]) or int(c[end+14]), int(d[base+15]) or int(c[end+15])))
+                            txt=txt+(" %-3s %12.8f %13.8f %5.1f %5.1f %02d %02d %d %d" % (c[end+7], float(c[end+8]), float(c[end+9]), float(c[end+10]), float(c[end+11]), int(d[base+12]), int(d[base+13]) or int(c[end+13]), int(d[base+14]) or int(c[end+14]), int(d[base+15]) or int(c[end+15])))
                         lines[i].text=txt
                         break
                     else:
@@ -734,7 +734,7 @@ class Output:
                             self.apt[airport][1].insert(1,data[0])
                             if self.aptfull: self.aptfull[airport][1].insert(1,data[0])
                         else:
-                            self.log("Can't find an airport for %s at (%10.6f, %11.6f)" % (name, loc.lat, loc.lon))
+                            self.log("Can't find an airport for %s at (%12.8f, %13.8f)" % (name, loc.lat, loc.lon))
                             if self.debug: self.debug.write('Can\'t place runway "%s"\n' % data[0])
                 elif code==110:
                     # Add taxiways and roads before aprons so overlay them
@@ -752,8 +752,20 @@ class Output:
                         else:
                             self.aptfull[airport][1].extend(data)
                 else:
-                    self.apt[airport][1].extend(data)
-                    if self.aptfull: self.aptfull[airport][1].extend(data)
+                    # Add taxiways and roads before aprons so overlay them
+                    for i in range(len(self.apt[airport][1])):
+                        if self.apt[airport][1][i].code>code and self.apt[airport][1][i].code not in [21,100,101,102]:
+                            self.apt[airport]=(self.apt[airport][0],self.apt[airport][1][:i]+data+self.apt[airport][1][i:])
+                            break
+                    else:
+                        self.apt[airport][1].extend(data)
+                    if self.aptfull:
+                        for i in range(len(self.aptfull[airport][1])):
+                            if self.aptfull[airport][1][i].code>code and self.aptfull[airport][1][i].code not in [21,100,101,102]:
+                                self.aptfull[airport]=(self.aptfull[airport][0],self.aptfull[airport][1][:i]+data+self.aptfull[airport][1][i:])
+                                break
+                        else:
+                            self.aptfull[airport][1].extend(data)
 
             # Export apt.dat
             path=join(self.xppath, 'Earth nav data')
@@ -1033,7 +1045,7 @@ class Output:
             for exc in self.exc:
                 (typ, bl,tr)=exc
                 if bl.within(sw,ne) or tr.within(sw,ne):
-                    dst.write('PROPERTY sim/exclude_%s\t%11.6f/%10.6f/%11.6f/%10.6f\n' % (typ, bl.lon,bl.lat, tr.lon,tr.lat))
+                    dst.write('PROPERTY sim/exclude_%s\t%13.8f/%12.8f/%13.8f/%12.8f\n' % (typ, bl.lon,bl.lat, tr.lon,tr.lat))
             dst.write('PROPERTY sim/creation_agent\t%s' % banner)
             # Following must be the last properties
             dst.write('PROPERTY sim/west\t%d\n' %  sw.lon)
@@ -1054,7 +1066,7 @@ class Output:
             for i in range(complexities-1,-1,-1):
                 for plc in objplcs[i]:
                     (idx,lon,lat,heading)=plc
-                    dst.write('OBJECT %3d %11.6f %10.6f %6.2f\n' % (
+                    dst.write('OBJECT %3d %13.8f %12.8f %6.2f\n' % (
                         base[i]+idx, lon, lat, heading))
             dst.write('\n')
 
@@ -1062,13 +1074,13 @@ class Output:
                 if heading==65535:	# have UVs
                     dst.write('BEGIN_POLYGON %d 65535 4\nBEGIN_WINDING\n' %idx)
                     for p in points:
-                        dst.write('POLYGON_POINT %11.6f %10.6f %9.4f %8.4f\n'%(
+                        dst.write('POLYGON_POINT %13.8f %12.8f %9.4f %8.4f\n'%(
                             p[0].lon, p[0].lat, p[1], p[2]))
                             #p[0].lon, p[0].lat, sw.lon+p[1], sw.lat+p[2]))
                 else:
                     dst.write('BEGIN_POLYGON %d %d 2\nBEGIN_WINDING\n' % (idx, heading))
                     for p in points:
-                        dst.write('POLYGON_POINT %11.6f %10.6f\n' % (
+                        dst.write('POLYGON_POINT %13.8f %12.8f\n' % (
                             p[0].lon, p[0].lat))
                 dst.write('END_WINDING\nEND_POLYGON\n')
             if polyplcs: dst.write('\n')

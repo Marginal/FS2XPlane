@@ -102,7 +102,7 @@ class Point:
         self.lon=lon
 
     def __str__(self):
-        return '%10.6f %11.6f' % (self.lat, self.lon)
+        return '%12.8f %13.8f' % (self.lat, self.lon)
 
     def biased(self, biasX, biasZ):
         # biases are in m
@@ -143,7 +143,7 @@ class Point:
                 self.lon>=bl.lon and self.lon<=tr.lon)
     
     def __str__(self):
-        return "%10.6f %11.6f" % (self.lat, self.lon)
+        return "%12.8f %13.8f" % (self.lat, self.lon)
 
     def __add__(self, other):
         return Point(self.lat+other.lat, self.lon+other.lon)
@@ -312,10 +312,10 @@ class AptNav:
         self.text=text
 
     def __repr__(self):
-        return '"%-3d %s"' % (self.code, self.text)
+        return '"%-4d %s"' % (self.code, self.text)
 
     def __str__(self):
-        return "%-3d %s" % (self.code, self.text)
+        return "%-4d %s" % (self.code, self.text)
 
     def __cmp__(self, other):
         # Just sort on code
@@ -554,7 +554,7 @@ class Polygon:
                 objfile.write("LAYER_GROUP\t%s\n" % fslayers[self.layer])
             if self.paging:
                 (lat, lon, pixels)=self.paging
-                objfile.write("LOAD_CENTER\t%10.6f %11.6f %d %d\n" % (
+                objfile.write("LOAD_CENTER\t%12.8f %13.8f %d %d\n" % (
                     lat, lon, int(self.scale*1.414), pixels))
             if self.surface:
                 objfile.write("SURFACE\t\tconcrete\n")

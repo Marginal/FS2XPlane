@@ -1132,7 +1132,7 @@ class ProcScen:
                            cos(radians(heading))*clen)
         txt="%5.2f %02d %02d %4.2f %d %d %d" % (width, surface, shoulder, smoothing, centrelights, edgelights, distance)
         for end in [0,1]:
-            txt=txt+(" %-3s %10.6f %11.6f %5.1f %5.1f %02d %02d %d %d" % (number[end], loc[end].lat, loc[end].lon, displaced[end], overrun[end], markings[end], lights[end], tdzl[end], reil[end]))
+            txt=txt+(" %-3s %12.8f %13.8f %5.1f %5.1f %02d %02d %d %d" % (number[end], loc[end].lat, loc[end].lon, displaced[end], overrun[end], markings[end], lights[end], tdzl[end], reil[end]))
         self.output.misc.append((100, cloc, [AptNav(100, txt)]))
 
     def Texture2(self):		# 43
@@ -1308,9 +1308,9 @@ class ProcScen:
         self.output.objplc.append((loc, heading, self.complexity,
                                    name, round(scale,2)))
         if self.altmsl:
-            self.output.log('Absolute altitude (%sm) for object %s at (%10.6f, %11.6f) in %s' % (round(self.altmsl,2), friendly, self.loc.lat, self.loc.lon, self.comment))
+            self.output.log('Absolute altitude (%sm) for object %s at (%12.8f, %13.8f) in %s' % (round(self.altmsl,2), friendly, self.loc.lat, self.loc.lon, self.comment))
         elif self.alt:
-            self.output.log('Non-zero altitude (%sm) for object %s at (%10.6f, %11.6f) in %s' % (round(self.alt,2), friendly, self.loc.lat, self.loc.lon, self.comment))
+            self.output.log('Non-zero altitude (%sm) for object %s at (%12.8f, %13.8f) in %s' % (round(self.alt,2), friendly, self.loc.lat, self.loc.lon, self.comment))
 
     def RoadStart(self):	# 69
         (width,x,y,z)=unpack('<hhhh', self.bgl.read(8))
@@ -1516,14 +1516,14 @@ class ProcScen:
             self.bgl.seek(size-8,1)
             (lit,)=unpack('<H', self.bgl.read(2))
             if lit: lit=1
-            self.output.misc.append((19, self.loc, [AptNav(19, '%10.6f %11.6f %d Windsock' %(self.loc.lat, self.loc.lon, lit))]))
+            self.output.misc.append((19, self.loc, [AptNav(19, '%12.8f %13.8f %d Windsock' %(self.loc.lat, self.loc.lon, lit))]))
             return
         elif typ==0x26c:
             # effect
             end=self.bgl.tell()+size-6
             name=self.bgl.read(80).strip('\0').lower()
             if not name in effects:
-                self.output.log('Unsupported effect "%s" at (%10.6f, %11.6f) in %s' % (name, self.loc.lat, self.loc.lon, self.comment))
+                self.output.log('Unsupported effect "%s" at (%12.8f, %13.8f) in %s' % (name, self.loc.lat, self.loc.lon, self.comment))
             else:
                 (key,mat)=self.makekey(False)
                 if not mat: return
@@ -1533,7 +1533,7 @@ class ProcScen:
             self.bgl.seek(end)
             return
         else:
-            self.output.log('Unsupported effect at (%10.6f, %11.6f) in %s' % (self.loc.lat, self.loc.lon, self.comment))
+            self.output.log('Unsupported effect at (%12.8f, %13.8f) in %s' % (self.loc.lat, self.loc.lon, self.comment))
             self.bgl.seek(size-6,1)
             return
 
@@ -1567,9 +1567,9 @@ class ProcScen:
         self.output.objplc.append((loc, heading, self.complexity, name, 1))
         if self.altmsl:
             pass
-            #self.output.log('Absolute altitude (%sm) for generic building %s at (%10.6f, %11.6f) in %s' % (round(self.altmsl,2), name, self.loc.lat, self.loc.lon, self.comment))
+            #self.output.log('Absolute altitude (%sm) for generic building %s at (%12.8f, %13.8f) in %s' % (round(self.altmsl,2), name, self.loc.lat, self.loc.lon, self.comment))
         elif self.alt:
-            self.output.log('Non-zero altitude (%sm) for generic building %s at (%10.6f, %11.6f) in %s' % (round(self.alt,2), name, self.loc.lat, self.loc.lon, self.comment))
+            self.output.log('Non-zero altitude (%sm) for generic building %s at (%12.8f, %13.8f) in %s' % (round(self.alt,2), name, self.loc.lat, self.loc.lon, self.comment))
 
     def SpriteVICall(self):	# a7
         (off,x,y,z,p,b,h,vp,vb,vh)=unpack('<4h6H', self.bgl.read(20))
@@ -1722,7 +1722,7 @@ class ProcScen:
                            cos(radians(heading))*clen)
         txt="%5.2f %02d %02d %4.2f %d %d %d" % (width, surface, shoulder, smoothing, centrelights, edgelights, distance)
         for end in [0,1]:
-            txt=txt+(" %-3s %10.6f %11.6f %5.1f %5.1f %02d %02d %d %d" % (number[end], loc[end].lat, loc[end].lon, displaced[end], overrun[end], markings[end], lights[end], tdzl[end], reil[end]))
+            txt=txt+(" %-3s %12.8f %13.8f %5.1f %5.1f %02d %02d %d %d" % (number[end], loc[end].lat, loc[end].lon, displaced[end], overrun[end], markings[end], lights[end], tdzl[end], reil[end]))
         self.output.misc.append((100, cloc, [AptNav(100, txt)]))
 
     def ZBias(self):	# ac
@@ -2699,7 +2699,7 @@ class ProcScen:
     def checkmsl(self):
         return self.altmsl
         if self.altmsl:
-            self.output.log('Absolute altitude (%sm) for object at (%10.6f, %11.6f) in %s' % (round(self.altmsl,2), self.loc.lat, self.loc.lon, self.comment))
+            self.output.log('Absolute altitude (%sm) for object at (%12.8f, %13.8f) in %s' % (round(self.altmsl,2), self.loc.lat, self.loc.lon, self.comment))
             #if self.altmsl>0: self.altmsl=False	# Don't report again for this object
             return True
         else:
@@ -2867,7 +2867,7 @@ class ProcMisc:
         if area2<0: l.reverse()
         a=[AptNav(130, 'Flatten')]
         for i in range(n):
-            a.append(AptNav(111, "%10.6f %11.6f" % (l[i].lat, l[i].lon)))
+            a.append(AptNav(111, "%12.8f %13.8f" % (l[i].lat, l[i].lon)))
         a[-1].code=113
         if op==5:	# Flatten
             self.output.misc.append((130, l[0], a))

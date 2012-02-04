@@ -119,7 +119,7 @@ class SceneryObject:
                 lit=4
             else:	# civilian land airport
                 lit=1
-            a=AptNav(18, '%10.6f %11.6f %d Beacon' % (loc.lat, loc.lon, lit))
+            a=AptNav(18, '%12.8f %13.8f %d Beacon' % (loc.lat, loc.lon, lit))
             if aptdat:
                 aptdat.append(a)
             else:
@@ -128,7 +128,7 @@ class SceneryObject:
         for w in self.windsock:
             lit=0
             if T(w, 'lighted'): lit=1
-            a=AptNav(19, '%10.6f %11.6f %d Windsock' %(loc.lat, loc.lon, lit))
+            a=AptNav(19, '%12.8f %13.8f %d Windsock' %(loc.lat, loc.lon, lit))
             if aptdat:
                 aptdat.append(a)
             else:
@@ -141,11 +141,11 @@ class SceneryObject:
             scale=1.0
             if D(l, 'scale'): scale=round(float(l.scale),2)
             if D(self, 'altitudeIsAgl') and not T(self, 'altitudeIsAgl'):
-                output.log('Absolute altitude (%sm) for generic building at (%10.6f, %11.6f) in file %s' % (round(alt,2), loc.lat, loc.lon, parser.filename))
+                output.log('Absolute altitude (%sm) for generic building at (%12.8f, %13.8f) in file %s' % (round(alt,2), loc.lat, loc.lon, parser.filename))
             elif abs(alt)>0.1:
-                output.log('Non-zero altitude (%sm) for generic building at (%10.6f, %11.6f) in file %s' % (round(alt,2), loc.lat, loc.lon, parser.filename))
+                output.log('Non-zero altitude (%sm) for generic building at (%12.8f, %13.8f) in file %s' % (round(alt,2), loc.lat, loc.lon, parser.filename))
             if pitch or bank:
-                output.log('Non-zero pitch/bank (%s/%s) for generic building at (%10.6f, %11.6f) in file %s' % (pitch, bank, loc.lat, loc.lon, parser.filename))
+                output.log('Non-zero pitch/bank (%s/%s) for generic building at (%12.8f, %13.8f) in file %s' % (pitch, bank, loc.lat, loc.lon, parser.filename))
             texs=(int(l.bottomTexture), int(l.windowTexture),
                   int(l.topTexture), int(l.roofTexture))
 
@@ -244,7 +244,7 @@ class SceneryObject:
                         lit=4
                     else:	# civilian land airport
                         lit=1
-                    a=AptNav(18, '%10.6f %11.6f %d Beacon' % (loc.lat, loc.lon, lit))
+                    a=AptNav(18, '%12.8f %13.8f %d Beacon' % (loc.lat, loc.lon, lit))
                     if aptdat:
                         aptdat.append(a)
                     else:
@@ -253,11 +253,11 @@ class SceneryObject:
                     if friendly=='air_beacontower01': return
 
             if D(self, 'altitudeIsAgl') and not T(self, 'altitudeIsAgl'):
-                output.log('Absolute altitude (%sm) for object %s at (%10.6f, %11.6f) in file %s' % (round(alt,2), friendly, loc.lat, loc.lon, parser.filename))
+                output.log('Absolute altitude (%sm) for object %s at (%12.8f, %13.8f) in file %s' % (round(alt,2), friendly, loc.lat, loc.lon, parser.filename))
             elif abs(alt)>0.1:
-                output.log('Non-zero altitude (%sm) for object %s at (%10.6f, %11.6f) in file %s' % (round(alt,2), friendly, loc.lat, loc.lon, parser.filename))
+                output.log('Non-zero altitude (%sm) for object %s at (%12.8f, %13.8f) in file %s' % (round(alt,2), friendly, loc.lat, loc.lon, parser.filename))
             if pitch or bank:
-                output.log('Non-zero pitch/bank (%s/%s) for object %s at (%10.6f, %11.6f) in file %s' % (pitch, bank, friendly, loc.lat, loc.lon, parser.filename))
+                output.log('Non-zero pitch/bank (%s/%s) for object %s at (%12.8f, %13.8f) in file %s' % (pitch, bank, friendly, loc.lat, loc.lon, parser.filename))
             output.objplc.append((loc, heading, cmplx, name, scale))
 
 
@@ -297,7 +297,7 @@ class Ndb:
             rng=75
         else:	   # 'H'
             rng=50
-        output.nav.append(AptNav(2, "%10.6f %11.6f %6d %-5d %3d %11.3f %-5s %s" % (
+        output.nav.append(AptNav(2, "%12.8f %13.8f %6d %-5d %3d %11.3f %-5s %s" % (
             float(self.lat), float(self.lon),
             m2f*float(self.alt), float(self.frequency), rng,
             0, self.ident, name)))
@@ -671,7 +671,7 @@ class Airport:
                     rng=float(ils.range)/NM2m
                 else:
                     rng=18
-                output.nav.append(AptNav(4, "%10.6f %11.6f %6d %05d %3d %11.3f %-5s %s" % (
+                output.nav.append(AptNav(4, "%12.8f %13.8f %6d %05d %3d %11.3f %-5s %s" % (
                     float(ils.lat), float(ils.lon), m2f*float(ils.alt), float(ils.frequency)*100, rng,
                     float(ils.heading), ils.ident, name)))
                 
@@ -685,7 +685,7 @@ class Airport:
                         rng=float(gs.range)/NM2m
                     else:
                         rng=10
-                    output.nav.append(AptNav(6, "%10.6f %11.6f %6d %05d %3d %11.3f %-5s %s" % (
+                    output.nav.append(AptNav(6, "%12.8f %13.8f %6d %05d %3d %11.3f %-5s %s" % (
                         float(gs.lat), float(gs.lon), m2f*float(gs.alt), float(ils.frequency)*100, rng,
                         float(ils.heading)+100000*round(float(gs.pitch),2),
                         '---', name)))
@@ -699,7 +699,7 @@ class Airport:
                         rng=float(dme.range)/NM2m
                     else:
                         rng=18
-                    output.nav.append(AptNav(12, "%10.6f %11.6f %6d %05d %3d %11.3f %-5s %s" % (
+                    output.nav.append(AptNav(12, "%12.8f %13.8f %6d %05d %3d %11.3f %-5s %s" % (
                         
                         float(dme.lat), float(dme.lon), m2f*float(dme.alt), float(ils.frequency)*100, rng,
                         0, ils.ident, name)))
@@ -718,7 +718,7 @@ class Airport:
             if runway.surface=='WATER':
                 txt="%5.2f %d" %(width, distance or markings[0] or markings[1])
                 for end in [0,1]:
-                    txt=txt+(" %-3s %10.6f %11.6f" % (
+                    txt=txt+(" %-3s %12.8f %13.8f" % (
                         number[end], loc[end].lat, loc[end].lon))
                 aptdat.append(AptNav(101, txt))
             else:
@@ -729,7 +729,7 @@ class Airport:
                 
                 txt="%5.2f %2d %d %4.2f %d %d %d" % (width, surface, shoulder, smoothing, centrelights, edgelights, distance)
                 for end in [0,1]:
-                    txt=txt+(" %-3s %10.6f %11.6f %5.1f %5.1f %d %2d %d %d" % (number[end], loc[end].lat, loc[end].lon, displaced[end], overrun[end], markings[end], lights[end], tdzl[end], reil[end]))
+                    txt=txt+(" %-3s %12.8f %13.8f %5.1f %5.1f %d %2d %d %d" % (number[end], loc[end].lat, loc[end].lon, displaced[end], overrun[end], markings[end], lights[end], tdzl[end], reil[end]))
                 aptdat.append(AptNav(100, txt))
                 
             # VASIs
@@ -767,7 +767,7 @@ class Airport:
                 h=radians(vheading)
                 vloc=cloc.biased(-cos(h)*x-sin(h)*z, sin(h)*x-cos(h)*z)
                 # was: not output.excluded(vloc), but keep VASI info
-                aptdat.append(AptNav(21, '%10.6f %11.6f %d %6.2f %3.1f %s' % (
+                aptdat.append(AptNav(21, '%12.8f %13.8f %d %6.2f %3.1f %s' % (
                     vloc.lat, vloc.lon, vtype, vheading, vangle, number[end])))
 
         # Helipads
@@ -817,7 +817,7 @@ class Airport:
                 # Make X-Plane happy by creating runways
                 surface=15	# transparent
                 markings=shoulder=lights=0
-            aptdat.append(AptNav(102, "H%0d %10.6f %11.6f %6.2f %4.2f %4.2f %02d %02d %02d %4.2f %d" % (
+            aptdat.append(AptNav(102, "H%0d %12.8f %13.8f %6.2f %4.2f %4.2f %02d %02d %02d %4.2f %d" % (
                 hno, loc.lat, loc.lon, heading, length, width,
                 surface, markings, shoulder, smoothing, lights)))
 
@@ -1018,7 +1018,7 @@ class Airport:
                 alt=(float(tower.alt)-float(self.alt))*m2f
             else:
                 alt=6	# arbitrary
-            aptdat.append(AptNav(14, "%10.6f %11.6f %4d 0 %s" % (
+            aptdat.append(AptNav(14, "%12.8f %13.8f %4d 0 %s" % (
                 float(tower.lat), float(tower.lon), alt, view)))
 
         # Ramp startup positions
@@ -1079,7 +1079,7 @@ class Airport:
                         text+=label[0]
                         label=label[1:]
                 
-            aptdat.append(AptNav(20, "%10.6f %11.6f %6.2f %d %d %s" % (
+            aptdat.append(AptNav(20, "%12.8f %13.8f %6.2f %d %d %s" % (
                 loc.lat, loc.lon, heading, 0, size, text)))
 
         # ATC
@@ -1155,10 +1155,10 @@ class Airport:
                 else:
                     aptdat.append(AptNav(120, "Apron edge"))
                     for loc in l:
-                        aptdat.append(AptNav(111, "%10.6f %11.6f %03d" % (
+                        aptdat.append(AptNav(111, "%12.8f %13.8f %03d" % (
                             loc.lat, loc.lon, 102)))
                     aptdat[-1].code=115
-                    aptdat[-1].text=aptdat[-1].text[:22]
+                    aptdat[-1].text=aptdat[-1].text[:26]
 
 
 class Vor:
@@ -1192,7 +1192,7 @@ class Vor:
         else: # 'LOW'
             rng=40
         if (not D(self, 'nav') or T(self, 'nav')) and not T(self, 'dmeOnly'):
-            output.nav.append(AptNav(3, "%10.6f %11.6f %6d %05d %3d %11.3f %-5s %s" % (
+            output.nav.append(AptNav(3, "%12.8f %13.8f %6d %05d %3d %11.3f %-5s %s" % (
                 float(self.lat), float(self.lon),
                 m2f*float(self.alt), float(self.frequency)*100, rng,
                 0, self.ident, name)))
@@ -1200,7 +1200,7 @@ class Vor:
         for dme in self.dme:
             if D(self, 'range'):
                 rng=float(dme.range)/NM2m
-            output.nav.append(AptNav(12, "%10.6f %11.6f %6d %05d %3d %11.3f %-5s %s" % (
+            output.nav.append(AptNav(12, "%12.8f %13.8f %6d %05d %3d %11.3f %-5s %s" % (
                 float(dme.lat), float(dme.lon),
                 m2f*float(dme.alt), float(self.frequency)*100, rng,
                 0, self.ident, name)))
@@ -1229,7 +1229,7 @@ class Marker:
             if name[-3:].upper()!=mtype: name+=(' '+mtype)
         else:
             name=self.ident+' '+mtype
-        output.nav.append(AptNav(code, "%10.6f %11.6f %6d %05d %3d %11.3f %-5s %s" % (
+        output.nav.append(AptNav(code, "%12.8f %13.8f %6d %05d %3d %11.3f %-5s %s" % (
             float(self.lat), float(self.lon),
             m2f*float(self.alt), 0, 0,
             float(self.heading), '---', name)))
