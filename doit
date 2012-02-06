@@ -1,0 +1,29 @@
+#!/bin/sh
+
+FS="$HOME/FS2004/Addon Scenery"
+LB=$FS
+XP="$HOME/Desktop/X-Plane 10/Custom Scenery"
+
+
+#SCN=rjgg151b
+SCN=KSEA
+
+
+if [ -z "$SCN" ]; then
+	echo No source and/or target !!!
+	exit 1;
+fi
+SRC="$FS/$SCN"
+DST="$XP/$SCN"
+if [ -d "$DST" ]; then
+	rm -rf "$DST/Earth nav data"
+	rm -rf "$DST/objects"
+	rm -rf "$DST/textures";
+	rm -f  "$DST"/*
+else
+	mkdir "$DST";
+fi
+
+PYTHONPATH=./MacOS/PyOpenGL-3.0.1-py2.7.egg ./fs2xp.py -d -l "$LB" "$SRC" "$DST"
+#@for %%I in (%TARGET%) do @if exist "%%~fI\profile.dmp" postprof.py "%%~fI\profile.dmp" > "%%~fI\profile.txt"
+#@for %%I in (%TARGET%) do @if exist "%%~fI\Earth nav data\apt.dat" postproc.py "%%~fI\Earth nav data\apt.dat"
