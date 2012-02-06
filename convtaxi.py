@@ -12,7 +12,7 @@ except NameError:
     from OpenGL import GLU
     gluTessVertex = GLU._gluTessVertex
 
-from convutil import AptNav, Point
+from convutil import AptNav, Point, D, T, E
 
 twopi=pi+pi
 
@@ -30,28 +30,12 @@ surfaces={'ASPHALT':1, 'BITUMINOUS':1, 'MACADAM':1,
 
 designators={'C':'C', 'CENTER':'C', 'L':'L', 'LEFT':'L', 'R':'R', 'RIGHT':'R'}
 
-# member var is defined
-def D(c, v):
-    return getattr(c,v,None)
-
-# member var is defined and true
-def T(c, v):
-    return getattr(c,v,None)=='TRUE'
-
-# member var is defined and equal
-def E(c, v, e):
-    return getattr(c,v,None)==e
-
 class Node:
     parking={'E_PARKING':'East ',  'NE_PARKING':'North East ',
              'N_PARKING':'North ', 'NW_PARKING':'North West ',
              'SE_PARKING':'South East ', 'S_PARKING':'South ',
              'SW_PARKING':'South West ', 'W_PARKING':'West ',
              'PARKING':''}
-    types={'RAMP_CARGO':'Cargo ',
-           'RAMP_GA':'GA ',        'RAMP_GA_LARGE':'GA ',
-           'RAMP_GA_MEDIUM':'GA ', 'RAMP_GA_SMALL':'GA ',
-           'RAMP_MIL_CARGO':'Mil Cargo ', 'RAMP_MIL_COMBAT':'Military '}
     gates=['GATE_A', 'GATE_B', 'GATE_C', 'GATE_D', 'GATE_E', 'GATE_F',
            'GATE_G', 'GATE_H', 'GATE_I', 'GATE_J', 'GATE_K', 'GATE_L',
            'GATE_M', 'GATE_N', 'GATE_O', 'GATE_P', 'GATE_Q', 'GATE_R',
@@ -67,42 +51,77 @@ class Node:
         self.loc=Point(float(point.lat), float(point.lon))
         self.links=[]
         self.donecross=[[]]
-        if D(point, 'name'):	# TaxiwayParking
+        self.id=0		# ATC taxi node id
+        self.parking=False	# Draw parking marks?
+        self.startup=None	# X-Plane startup position?
+        self.name=''
+        self.holdshort=False	# Hold short for the purposes of ATC
+
+        if point.type.startswith('ILS_HOLD_SHORT'):
+            self.name='ILS hold short'
+            # Ignore for the purposes of ATC; can be far from corresponding runway so no
+            # way to reliably tie to runway. Anyway, FSX ignores them.
+            #self.holdshort=True
+        elif point.type.startswith('HOLD_SHORT'):
+            self.name='Hold short'
+            self.holdshort=True
+        elif D(point, 'name'):	# TaxiwayParking
             self.parking=True
-        else:
-            self.parking=False
-        
-        if self.parking and self.type not in ['VEHICLE','FUEL']:
-            # Plane parking spot
+            # X-Plane startup spot - ignoring vehicles, fuel and seaplane docks
+            # http://www.flightsim2004-fanatics.com/FlightSim/FSXWingSpanValues.htm
+            # http://www.flightsim2004-fanatics.com/FlightSim/FSXBizJetWingSpanValues.htm
+            if point.type=='GATE_HEAVY':
+                self.startup=''		# 'Gate' is redundant
+                self.startuptype='gate'
+                self.startuptraffic='heavy|jets|turboprops'
+            elif point.type=='GATE_MEDIUM':
+                self.startup=''
+                self.startuptype='gate'
+                self.startuptraffic='jets|turboprops'
+            elif point.type=='GATE_SMALL':	# in FSX includes A320 & B737
+                self.startup=''
+                self.startuptype='gate'
+                self.startuptraffic='jets|turboprops'
+            elif point.type=='RAMP_GA':		# in FSX equates to >RAMP_GA_LARGE but <GATE_SMALL
+                self.startup='GA Ramp '
+                self.startuptype='misc'
+                self.startuptraffic='turboprops|props'
+            elif point.type=='RAMP_GA_LARGE':
+                self.startup='GA Ramp '
+                self.startuptype='misc'
+                self.startuptraffic='turboprops|props'
+            elif point.type=='RAMP_GA_MEDIUM':
+                self.startup='GA Ramp '
+                self.startuptype='misc'
+                self.startuptraffic='props|helos'
+            elif point.type=='RAMP_GA_SMALL':
+                self.startup='GA Ramp '
+                self.startuptype='misc'
+                self.startuptraffic='props|helos'
+            elif point.type=='RAMP_CARGO':
+                self.startup='Cargo Ramp '
+                self.startuptype='misc'
+                self.startuptraffic='heavy|jets|turboprops'
+            elif point.type=='RAMP_MIL_CARGO':
+                self.startup='Mil Cargo Ramp '
+                self.startuptype='misc'
+                self.startuptraffic='heavy|jets|turboprops'
+            elif point.type=='RAMP_MIL_COMBAT':
+                self.startup='Military Ramp '
+                self.startuptype='misc'
+                self.startuptraffic='jets|helos'
+
+        if self.startup!=None:
             self.heading=float(point.heading)
-            
-            # type appears to be secondary to name
             if point.name in Node.gates:
-                self.startup='Gate '+point.name[5]
-            elif point.name=='GATE':
-                self.startup='Gate'
-            elif point.name=='DOCK':
-                self.startup='Dock'
-            elif point.name in Node.parking:
-                self.startup=Node.parking[point.name]
-                if point.type in Node.types:
-                    self.startup+=Node.types[point.type]
-                self.startup+='Ramp'
-            # No name
-            elif point.type.startswith('GATE'):
-                self.startup='Gate'
-            elif point.type=='DOC_GA':
-                self.startup='Dock'
-            elif point.type in Node.types:
-                self.startup=Node.types[point.type]+'Ramp'
-            # wtf
+                self.startup="%s%s" % (self.startup, point.name[-1])
             else:
-                self.startup='Ramp'
-                
+                if point.name in Node.parking:
+                    self.startup=Node.parking[point.name]+self.startup
             if int(point.number):
-                self.startup="%s %2d" % (self.startup, int(point.number))
-        else:
-            self.startup=None
+                self.startup="%s%2d" % (self.startup, int(point.number))
+            self.name=self.startup
+
 
     def __str__(self):
         return 'Node: %s %s %s' % (self.type, self.startup, self.loc)
@@ -131,12 +150,37 @@ class Node:
             l=nextl
         return (None,None)
 
+    def runwaylinks(self, origin, hotness, searchspace, distance):
+        # Follow links until we hit a runway matching numbers,
+        # up to given distance
+        # Returns list of intervening links, or [] if runway not found within distance.
+        hotlinks=[]
+        for l in self.links:
+            if l.type=='RUNWAY':
+                if l.hotness==hotness:
+                    return [l]	# Found it
+                else:
+                    return []	# Found a different runway!
+        for l in self.links:
+            if l in searchspace:
+                n=l.othernode(self)
+                # stop at hitting another hold short (to avoid backtracking) or if too far
+                if n.type=='NORMAL' and n.loc.distanceto(origin.loc)<=distance:
+                    s=searchspace[:]
+                    s.remove(l)
+                    h=n.runwaylinks(origin, hotness, s, distance)
+                    if h:
+                        hotlinks.append(l)
+                        hotlinks.extend(h)
+        return hotlinks
+
 
 class Link:	# TaxiwayPath or TaxiwayParking
-    def __init__(self, path, parkingoffset, taxinames):
-        self.type=path.type
+    def __init__(self, path, parkingoffset, taxinames, runways):
+        self.type=path.type	# PATH, VEHICLE, RUNWAY
         self.width=float(path.width)
         self.closed=False
+        self.hotness=None	# Between a hold short and the runway for the purposes of ATC
         if self.type=='PARKING':
             # Treat parking *links* like apron paths
             self.type='PATH'
@@ -148,9 +192,17 @@ class Link:	# TaxiwayPath or TaxiwayParking
             self.draw=self.centreline=self.centrelights=False
             self.lines=['NONE','NONE']
             self.lights=[False,False]
-            self.name='Runway '+path.number
+            self.name=path.number
             if path.designator in designators:
                 self.name+=designators[path.designator]
+            self.hotness=self.name
+            # Rename link with both runway ends
+            for r in runways:
+                if self.name in r.numbers:
+                    self.name="%s/%s" % (r.numbers[0], r.numbers[1])
+                    self.hotness="%s,%s" % (r.numbers[0], r.numbers[1])
+                    break
+            self.name='Runway '+self.name
         else:
             if self.type=='PATH':
                 self.draw=False	# No surface for apron paths
@@ -185,17 +237,22 @@ class Link:	# TaxiwayPath or TaxiwayParking
         newlink.intersect=[[self.intersect[0][0],self.intersect[0][1]],[self.intersect[1][0],self.intersect[1][1]]]
         return newlink
 
-    def findlinked(self, searchspace, found):
-        for n in [self.nodes[0],self.nodes[1]]:
+    def findlinked(self, searchspace, dir=0):
+        # String this link together with adjacent ones with same name
+        # Returns list of links in sequential order
+        searchspace.remove(self)
+        path=[self]
+        for end in [0,1]:
+            n=self.nodes[end]
             for link in n.links:
-                if link.type=='RUNWAY':
-                    break	# split graph at runways for easier editing
-            else:
-                for link in n.links:
-                    if link.surface==self.surface and link in searchspace:
-                        searchspace.remove(link)
-                        found.append(link)
-                        link.findlinked(searchspace, found)
+                if link.name==self.name and link in searchspace:
+                    # At first link (dir==0) add in both directions
+                    if dir>0 or (not dir and end):
+                        path.extend(link.findlinked(searchspace, 1))
+                    else:
+                        path=link.findlinked(searchspace, -1)+path
+                    break
+        return path
 
     # Given a node, return the node at the other end of this link
     def othernode(self, node):

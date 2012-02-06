@@ -773,7 +773,7 @@ class Output:
             for (filename, apt) in [(join(path, 'apt.dat'), self.apt), (join(path, 'fullapt.dat'), self.aptfull)]:
                 if not apt: break
                 f=file(filename, 'wt')
-                f.write("I\n850\t# %s\n\n" % banner)
+                f.write("I\n%d\t# %s\n\n" % (self.doatc and 1000 or 850, banner))
                 keys=apt.keys()
                 keys.sort()
                 for k in keys:

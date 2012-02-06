@@ -79,6 +79,18 @@ effects={'cntrl_bldstm':	('smoke_white', 2.5),	# avg of next 3
          'fx_steam1':		('smoke_white', 3.0),
          'fx_steam2':		('smoke_white', 3.0),}
 
+# member var is defined
+def D(c, v):
+    return getattr(c,v,None)
+
+# member var is defined and true
+def T(c, v):
+    return getattr(c,v,None) in ['TRUE','YES']
+
+# member var is defined and equal
+def E(c, v, e):
+    return getattr(c,v,None)==e
+
 # 2.3 version of case-insensitive sort
 # 2.4-only version is faster: sort(cmp=lambda x,y: cmp(x.lower(), y.lower()))
 def sortfolded(seq):

@@ -5,22 +5,11 @@ from sys import maxint
 import xml.parsers.expat
 from tempfile import gettempdir
 
-from convutil import m2f, NM2m, complexity, asciify, AptNav, Object, Point, Matrix, FS2XError
+from convutil import m2f, NM2m, complexity, asciify, AptNav, Object, Point, Matrix, FS2XError, D, T, E
 from convobjs import makegenquad, makegenmulti
 from convtaxi import apronlayout, designators, surfaces, taxilayout, Node, Link
+from convatc  import atclayout
 
-
-# member var is defined
-def D(c, v):
-    return getattr(c,v,None)
-
-# member var is defined and true
-def T(c, v):
-    return getattr(c,v,None)=='TRUE'
-
-# member var is defined and equal
-def E(c, v, e):
-    return getattr(c,v,None)==e
 
 # Set up XML parser for new-style scenery
 
@@ -320,7 +309,7 @@ class Airport:
         self.aprons=[]
         self.apronedgelights=[]
         self.boundaryfence=[]
-        
+
     class Tower:
         def __init__(self, attrs):
             for k, v in attrs.iteritems():
@@ -344,6 +333,28 @@ class Airport:
             self.approachlights=[]
             self.vasi=[]
             self.ils=[]
+            self.numbers=['XXX','XXX']
+
+            nos={'EAST':9, 'NORTH':36, 'NORTHEAST':4, 'NORTHWEST':31,
+                 'SOUTH':18, 'SOUTHEAST':13, 'SOUTHWEST':22, 'WEST':27}
+            opp={'C':'C', 'CENTER':'C', 'L':'R', 'LEFT':'R', 'R':'L', 'RIGHT':'L'}
+            if nos.has_key(self.number):
+                self.numbers[0]=("%02d" % nos[self.number])
+                self.numbers[1]=("%02d" % ((18+nos[self.number])%36))
+            else:
+                self.numbers[0]=("%02d" % int(self.number))
+                self.numbers[1]=("%02d" % ((18+int(self.number))%36))
+            if self.numbers[0]=='00': self.numbers[0]='36'
+            if self.numbers[1]=='00': self.numbers[1]='36'
+            if D(self, 'designator'):
+                if self.designator in designators:
+                    self.numbers[0]+=designators[self.designator]
+                    self.numbers[1]+=opp[self.designator]
+            else:
+                if D(self, 'primaryDesignator') and self.primaryDesignator in designators:
+                    self.numbers[0]+=designators[self.primaryDesignator]
+                if D(self, 'secondaryDesignator') and self.secondaryDesignator in designators:
+                    self.numbers[1]+=designators[self.secondaryDesignator]
 
         class Markings:
             def __init__(self, attrs):
@@ -535,33 +546,11 @@ class Airport:
             edgelights=0
             distance=0
             loc=[None,None]
-            number=['XXX','XXX']
             angle=[3,3]
             markings=[0,0]
             lights=[0,0]
             tdzl=[0,0]
             reil=[0,0]
-
-            nos={'EAST':9, 'NORTH':36, 'NORTHEAST':4, 'NORTHWEST':31,
-                 'SOUTH':18, 'SOUTHEAST':13, 'SOUTHWEST':22, 'WEST':27}
-            opp={'C':'C', 'CENTER':'C', 'L':'R', 'LEFT':'R', 'R':'L', 'RIGHT':'L'}
-            if nos.has_key(runway.number):
-                number[0]=("%02d" % nos[runway.number])
-                number[1]=("%02d" % ((18+nos[runway.number])%36))
-            else:
-                number[0]=("%02d" % int(runway.number))
-                number[1]=("%02d" % ((18+int(runway.number))%36))
-            if number[0]=='00': number[0]='36'
-            if number[1]=='00': number[1]='36'
-            if D(runway, 'designator'):
-                if runway.designator in designators:
-                    number[0]+=designators[runway.designator]
-                    number[1]+=opp[runway.designator]
-            else:
-                if D(runway, 'primaryDesignator') and runway.primaryDesignator in designators:
-                    number[0]+=designators[runway.primaryDesignator]
-                if D(runway, 'secondaryDesignator') and runway.secondaryDesignator in designators:
-                    number[1]+=designators[runway.secondaryDesignator]
 
             loc[0]=cloc.biased(-sin(radians(heading))*length/2,
                                -cos(radians(heading))*length/2)
@@ -666,7 +655,7 @@ class Airport:
                 if D(ils, 'name'):
                     name=("%s %s" % (self.ident, asciify(ils.name, False)))
                 else:
-                    name=('%s %s ILS' % (self.ident, number[end]))
+                    name=('%s %s ILS' % (self.ident, runways.numbers[end]))
                 if D(ils, 'range'):
                     rng=float(ils.range)/NM2m
                 else:
@@ -680,7 +669,7 @@ class Airport:
                     if D(ils, 'name'):
                         name=("%s %s" % (self.ident, asciify(ils.name, False)))
                     else:
-                        name=('%s %s GS' % (self.ident, number[end]))
+                        name=('%s %s GS' % (self.ident, runway.numbers[end]))
                     if D(gs, 'range'):
                         rng=float(gs.range)/NM2m
                     else:
@@ -694,7 +683,7 @@ class Airport:
                     if D(ils, 'name'):
                         name=("%s %s" % (self.ident, asciify(ils.name, False)))
                     else:
-                        name=('%s %s DME-ILS' % (self.ident, number[end]))
+                        name=('%s %s DME-ILS' % (self.ident, runway.numbers[end]))
                     if D(dme, 'range'):
                         rng=float(dme.range)/NM2m
                     else:
@@ -719,7 +708,7 @@ class Airport:
                 txt="%5.2f %d" %(width, distance or markings[0] or markings[1])
                 for end in [0,1]:
                     txt=txt+(" %-3s %12.8f %13.8f" % (
-                        number[end], loc[end].lat, loc[end].lon))
+                        runway.numbers[end], loc[end].lat, loc[end].lon))
                 aptdat.append(AptNav(101, txt))
             else:
                 if output.excluded(cloc):
@@ -729,7 +718,7 @@ class Airport:
                 
                 txt="%5.2f %2d %d %4.2f %d %d %d" % (width, surface, shoulder, smoothing, centrelights, edgelights, distance)
                 for end in [0,1]:
-                    txt=txt+(" %-3s %12.8f %13.8f %5.1f %5.1f %d %2d %d %d" % (number[end], loc[end].lat, loc[end].lon, displaced[end], overrun[end], markings[end], lights[end], tdzl[end], reil[end]))
+                    txt=txt+(" %-3s %12.8f %13.8f %5.1f %5.1f %d %2d %d %d" % (runway.numbers[end], loc[end].lat, loc[end].lon, displaced[end], overrun[end], markings[end], lights[end], tdzl[end], reil[end]))
                 aptdat.append(AptNav(100, txt))
                 
             # VASIs
@@ -768,7 +757,7 @@ class Airport:
                 vloc=cloc.biased(-cos(h)*x-sin(h)*z, sin(h)*x-cos(h)*z)
                 # was: not output.excluded(vloc), but keep VASI info
                 aptdat.append(AptNav(21, '%12.8f %13.8f %d %6.2f %3.1f %s' % (
-                    vloc.lat, vloc.lon, vtype, vheading, vangle, number[end])))
+                    vloc.lat, vloc.lon, vtype, vheading, vangle, runway.numbers[end])))
 
         # Helipads
         hno=0
@@ -831,7 +820,7 @@ class Airport:
         allnodes = [Node(t) for t in self.taxiwaypoint]
         parkingoffset=len(allnodes)
         allnodes.extend([Node(t) for t in self.taxiwayparking])
-        alllinks = [Link(p, parkingoffset, self.taxiname) for p in self.taxiwaypath]
+        alllinks = [Link(p, parkingoffset, self.taxiname, self.runway) for p in self.taxiwaypath]
         # replace indices with references, and setup node links
         i=0
         while i<len(alllinks):
@@ -954,6 +943,7 @@ class Airport:
             (o,m)=r1.follow(l3, 3)
             if not o or o!=n0: continue
 
+            if output.debug: output.debug.write('Removed ATC hack "Diamond" link over %s\n' % n)
             if False:	# This tends to render badly
                 # Now do it again, marking each taxi link as closed
                 n0.follow(l0, cb=lambda o,l: setattr(l,'closed',True))
@@ -985,17 +975,50 @@ class Airport:
                     newlink.nodes[1]=n
                     runwaylink.nodes[0]=n
             else:
-                # Delete the original Node and the links that skipp the runway
+                # Delete the original Node and the links that skip the runway
                 allnodes.remove(n)
                 alllinks.remove(n.links[0])
                 n0.links.remove(n.links[0])
                 alllinks.remove(n.links[1])
                 n1.links.remove(n.links[1])
-                # Relabel surviving links
-                n0.follow(l0, cb=lambda o,l: setattr(l,'name',n.links[0].name))
-                r0.follow(l1, cb=lambda o,l: setattr(l,'name',n.links[1].name))
-                n1.follow(l2, cb=lambda o,l: setattr(l,'name',n.links[1].name))
-                r1.follow(l3, cb=lambda o,l: setattr(l,'name',n.links[0].name))
+                # Relabel surviving links as runway for better ATC directions
+                n0.follow(l0, cb=lambda o,l: setattr(l,'name',runwaylink.name))
+                r0.follow(l1, cb=lambda o,l: setattr(l,'name',runwaylink.name))
+                n1.follow(l2, cb=lambda o,l: setattr(l,'name',runwaylink.name))
+                r1.follow(l3, cb=lambda o,l: setattr(l,'name',runwaylink.name))
+
+
+        # Find closest runway to each hold short, and label intervening links as 'hot'.
+        for n in allnodes:
+            if not n.holdshort: continue
+            distance=16000
+            runway=None
+            for l in alllinks:
+                if l.type=='RUNWAY':
+                    d=min(n.loc.distanceto(l.nodes[0].loc), n.loc.distanceto(l.nodes[1].loc))
+                    if d<distance:
+                        runway=l
+                        distance=d
+            if distance>=16000:
+                if output.debug:
+                    output.debug.write("Can't find a runway for hold short at (%12.8f, %13.8f)\n" % (n.loc.lat, n.loc.lon))
+                continue	# WTF - ignore
+            else:
+                n.name="%s hold short" % runway.name.split()[1]
+            # Find and mark intervening links between hold short and corresponding runway nodes.
+            # In FSX hold shorts must be within ~70m of runway *edge* to function reliably
+            # (but can be further depending on angle relative to runway).
+            # We'll cut off search at (arbitrary) 150m from runway *node*.
+            hotlinks=n.runwaylinks(n, runway.hotness, [l for l in alllinks if l.type in ['TAXI','PATH']], 150)
+            if output.debug and not hotlinks:
+                output.debug.write("Can't find links to runway %s for hold short at (%12.8f, %13.8f)\n"  % (runway.hotness, n.loc.lat, n.loc.lon))
+            #if output.debug:	#XXX
+            #    print runway.hotness, n
+            #    for l in hotlinks:
+            #        print l
+            #    print
+            for l in hotlinks:
+                l.hotness=runway.hotness
 
 
         # XXX TODO: BoundaryFence
@@ -1023,11 +1046,19 @@ class Airport:
 
         # Ramp startup positions
         startups=[]
-        for n in allnodes:
-            if n.startup:
-                startups.append(AptNav(15, "%10.6f %11.6f %6.2f %s" % (
-                    n.loc.lat, n.loc.lon, n.heading, asciify(n.startup, False))))
-        startups.sort(lambda x,y: cmp(x.text[30:], y.text[30:]))
+        if output.doatc:
+            for n in allnodes:
+                if n.startup:
+                    startups.append(AptNav(1300, "%12.8f %13.8f %6.2f %s %s %s" % (
+                                n.loc.lat, n.loc.lon, n.heading,
+                                n.startuptype, n.startuptraffic, n.startup)))
+            startups.sort(lambda x,y: cmp(x.text.split()[3],y.text.split()[3]) or cmp(x.text[34:].split(' ')[2:], y.text[34:].split(' ')[2:]))	# gate before misc
+        else:	# X-Plane<=9
+            for n in allnodes:
+                if n.startup:
+                    startups.append(AptNav(15, "%12.8f %13.8f %6.2f %s" % (
+                                n.loc.lat, n.loc.lon, n.heading, n.startup)))
+            startups.sort(lambda x,y: cmp(x.text[34:], y.text[34:]))
         aptdat.extend(startups)
 
         # Tower attached objects, beacons and windsocks
@@ -1107,18 +1138,23 @@ class Airport:
                 coms[(code,com.frequency)].append(abrv)
             else:
                 coms[(code,com.frequency)]=[abrv]
+        coms=coms.items()
+        coms.sort()	 # Python 2.3 doesn't support sorted()
         comsout=[]
-        for (code,freq),abrv in coms.iteritems():
+        for (code,freq),abrv in coms:
             if code==52 and 'CLNC DEL' in abrv and 'PRE TAXI CLNC' in abrv:
                 abrv.remove('CLNC DEL')
             comsout.append(AptNav(code, "%5d %s" % (
                         float(freq)*100, '/'.join(abrv))))
-        comsout.sort()
         aptdat.extend(comsout)
 
         for n in self.ndb:
             # Call top-level Ndb class
             ndb.export(parser, output)
+
+        # Doit
+        if output.doatc:
+            atclayout(allnodes, alllinks, self.runway, self.helipad, self.com, output, aptdat, ident)
 
         # Doit
         taxilayout(allnodes, alllinks, surfaceheading, output, aptdat, ident)
