@@ -7,44 +7,10 @@ import xml.parsers.expat
 from convutil import asciify, Object, rgb2uv
 
 # X-Plane automatically generates versions of these from nav.dat data 
-ignorestock=['air_localizerantenna01', 'air_ndb_dmeantenna','air_ndb_dmeshack','air_ndb_dmetower','gen_dme','gen_ndb01','gen_tacan','ndb','ndbhigh','sco_gen_checkershed','sco_gen_ilstransmitter','sco_gen_radarshackb','sco_gen_radarshackbaseb','sco_gen_radarshackdish','sco_gen_vor03','sco_gen_vor03dme','sco_gen_vorsmall','sco_gen_vorsmall2','sco_gen_vorsmall2dme','sco_gen_vorsmalldme']
+ignorestock=['air_beacontower01', 'air_localizerantenna01', 'air_ndb_dmeantenna','air_ndb_dmeshack','air_ndb_dmetower','gen_dme','gen_ndb01','gen_tacan','ndb','ndbhigh','sco_gen_checkershed','sco_gen_ilstransmitter','sco_gen_radarshackb','sco_gen_radarshackbaseb','sco_gen_radarshackdish','sco_gen_vor03','sco_gen_vor03dme','sco_gen_vorsmall','sco_gen_vorsmall2','sco_gen_vorsmall2dme','sco_gen_vorsmalldme']
 
-# Stock MSFS objects that are close enough to stock X-Plane objects
-libobjs={'ag_building_1':		'ins/church.obj',
-         'ag_factory':			'/lib/global8/us/ind_irr_60_30r.obj',
-         'ag_gas_2':			'trans/truckstop.obj',
-         'ag_gas_3':			'ind/truckstop.obj',
-         'gen_aviator01':		'lib/cars/car.obj',
-         'gen_oilrig01':		'lib/ships/OilPlatform.obj',
-         'gen_rig01':			'lib/ships/OilPlatform.obj',	
-         'sailboat_big_down':		'lib/ships/SailBoat.obj',
-         'sailboat_big_up':		'lib/ships/SailBoat.obj',
-         'sailboat_s_down':		'lib/ships/SailBoat.obj',
-         'sailboat_s_up':		'lib/ships/SailBoat.obj',
-         'veh_carrier1':		'lib/ships/Carrier.obj',
-         'veh_carrier2':		'lib/ships/Carrier.obj',
-         'VEH_carrier01':		'lib/ships/Carrier.obj',
-         'VEH_carrier01_high_detail':	'lib/ships/Carrier.obj',
-         'VEH_cruiser01':		'lib/ships/Frigate.obj',
-         'VEH_destroyer01':		'lib/ships/Frigate.obj',
-         'veh_water_eastcoastcarrier1':	'lib/ships/Carrier.obj',
-         'veh_water_eastcoastcarrier2':	'lib/ships/Carrier.obj',
-         'veh_water_sailboat1':		'lib/ships/SailBoat.obj',
-         'veh_water_sailboat2':		'lib/ships/SailBoat.obj',
-         'veh_water_sailboat3':		'lib/ships/SailBoat.obj',
-         'veh_water_sailboat4':		'lib/ships/SailBoat.obj',
-         'veh_water_sailboat5':		'lib/ships/SailBoat.obj',
-         'veh_water_smallboat1':	'lib/ships/SailBoat.obj',
-         'veh_water_smallboat2':	'lib/ships/SailBoat.obj',
-         'veh_water_smallboat3':	'lib/ships/SailBoat.obj',
-         'veh_water_smallboat4':	'lib/ships/SailBoat.obj',
-         }
-
-def makestock(output, uid, name):
-    if name in libobjs:
-        return Object(libobjs[name], "X-Plane library object", None,None,None,None,
-                      None, None, None, None, None, None, 0)
-    
+def makestock(output, name):
+    if name in output.subst: return None
     objname=name+'.obj'
     #defaultobj=Object(objname, "Placeholder for built-in object %s (%s)" %
     #                  (uid, name), None, None, None, [],[],[],[],[],[],[],0)

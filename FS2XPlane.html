@@ -80,6 +80,8 @@ The GUI application additionally requires the wxPython runtime. wxPython
 <a target="_blank" href="http://www.wxpython.org/download.php#binaries">download</a>
 a binary (or just stick with the command-line program).</dd>
 </dl>
+<p>Makes use of objects from the <a target="_blank" href="http://www.opensceneryx.com/">OpenSceneryX</a>
+library; for best results install this library before using the converted scenery package.</p>
 
 <h3><a name="settingup">Setting Up</a></h3>
 <dl>
@@ -154,9 +156,10 @@ or make this blank for none.</li>
   <li>Specify the location for the new X-Plane scenery package.
 This should be a new folder directly under X-Plane's
 <code> Custom&nbsp;Scenery </code>folder.</li>
-  <li>Select the X-Plane version that you're targetting. X-Plane v9
-supports DDS textures and (from 9.20) "paging" of photoscenery textures;
-both these features result in faster loading times and use less video RAM.</li>
+  <li>Select the X-Plane version that you're targetting. Choosing v9 makes FS2Xplane
+generate DDS textures and to "page" photoscenery textures which result in
+faster loading times and more efficient use of video RAM in X-Plane;
+Choosing v10 adds ATC.</li>
   <li>Select the season for converted textures.
 <small>(Not all MSFS scenery packages supply seasonal textures, in
 which case this setting will be ignored).</small></li>
@@ -545,8 +548,8 @@ The object is omitted.</td>
       <td style="background-color: white;">The scenery package used a
 library object that was not included in the scenery package.<br>
 You should read the installation notes that came with the scenery package
-to identify the missing library that supplies the object. Then copy the
-missing library into the scenery package and run the application again.</td>
+to identify the missing library that supplies the object. Then install the
+missing library into the MSFS<code> Addon&nbsp;Scenery</code> folder.
     </tr>
     <tr>
       <td style="background-color: white; vertical-align: top;">Shortened ICAO airport code from &lt;code1&gt; to &lt;code2&gt;</td>
@@ -615,17 +618,18 @@ This data is ignored.</td>
     <tr>
       <td style="background-color: white; vertical-align: top;">Texture
 &lt;filename&gt; not found</td>
-      <td style="background-color: white;">The scenery package used a
+      <td style="background-color: white;">The scenery package uses a
 texture file that was not included in the scenery package. Either:<br>
       <ul>
         <li>This scenery package relies on a collection of texture files.<br>
 Read the installation notes that came with this scenery package to identify
 the missing collection. Download the collection and copy the <code>.bmp</code>
-files into the <code>texture</code> folder inside of the<code> Addon&nbsp;Scenery</code> folder. Then run this application again.</li>
+files into the <code>texture</code> folder inside of the MSFS<code> Addon&nbsp;Scenery</code> folder.
+Then run this application again.</li>
         <li>The file is one of the "stock" textures that are bundled
 with the MSFS program.<br>
-Objects that use this texture will appear grey in
-X-Plane. You can fix this by providing a replacement for this texture.</li>
+Objects that use this texture will appear grey in X-Plane.
+You can fix this by providing a replacement for this texture.</li>
       </ul>
       </td>
     </tr>
@@ -635,6 +639,15 @@ request for object &lt;id1&gt; within object &lt;id2&gt; in file
 &lt;filename&gt;</td>
       <td style="background-color: white; vertical-align: top;">X-Plane doesn't support objects nested within other objects.<br>
 The nested object &lt;id1&gt; is ignored.</td>
+    </tr>
+    <tr>
+      <td style="background-color: white; vertical-align: top;">Using
+objects from the OpenSceneryX library</td>
+      <td style="background-color: white; vertical-align: top;">The
+scenery package uses one or more built-in "stock" MSFS scenery objects.
+These objects have been replaced with objects from the
+<a target="_blank" href="http://www.opensceneryx.com/">OpenSceneryX</a> library.<br>
+For best results install this library before using the converted scenery package.</td>
     </tr>
   </tbody>
 </table>
@@ -688,7 +701,11 @@ FS2XPlane creates in
       <td class="banner">Version 3.12 &copy; 2007-2012
 <a href="mailto:Jonathan Harris <x-plane@marginal.org.uk>">Jonathan Harris</a>
 <a rel="license" href="http://creativecommons.org/licenses/by-nc-sa/3.0/">
-<img alt="Creative Commons License" style="border: 0px solid ; width: 88px; height: 31px; vertical-align: text-bottom;" src="http://i.creativecommons.org/l/by-nc-sa/3.0/88x31.png"></a></td>
+<img alt="Creative Commons License" style="border: none ; width: 88px; height: 31px; vertical-align: text-bottom;" src="http://i.creativecommons.org/l/by-nc-sa/3.0/88x31.png"></a>
+      <span style="float:right">
+<a href="http://www.opensceneryx.com">
+<img src="Resources/enhancedby_opensceneryx_logo.png" alt="Enhanced by OpenSceneryX" style="border: none;" /></a></span>
+      </td>
     </tr>
   </tbody>
 </table>

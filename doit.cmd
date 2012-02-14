@@ -17,6 +17,7 @@ set DST=%XP%\%SCN%
 if exist "%DST%" (
 	if exist "%DST%\Earth nav data" rd /s /q "%DST%\Earth nav data"
 	if exist "%DST%\objects" rd /s /q "%DST%\objects"
+	if exist "%DST%\opensceneryx" rd /s /q "%DST%\opensceneryx"
 	if exist "%DST%\textures" rd /s /q "%DST%\textures"
 	del /q  "%DST%\*"
 ) else (

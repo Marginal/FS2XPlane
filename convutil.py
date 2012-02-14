@@ -117,8 +117,7 @@ class Point:
         return '%12.8f %13.8f' % (self.lat, self.lon)
 
     def biased(self, biasX, biasZ):
-        # biases are in m
-        # Approximation
+        # Biases are in m. Z is North. Approximation.
         return Point(self.lat+biasZ*360.0/cirp,
                      self.lon+biasX*360.0/(cire*cos(radians(self.lat))))
 
@@ -381,7 +380,7 @@ class Object:
                 self.poly==o.poly)
 
     def export(self, scale, output, fslayers):
-        if self.comment=="X-Plane library object": return
+        if not self.comment: return		# Nothing to do for library objects
         if scale!=1:
             comment="%s scaled x%s" % (self.comment, scale)
             filename="%s_%02d%02d.obj" % (

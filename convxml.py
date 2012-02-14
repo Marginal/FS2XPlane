@@ -221,6 +221,12 @@ class SceneryObject:
                 friendly=output.stock[name]
             else:
                 friendly=name
+            if friendly in output.subst:
+                (name, biasX, biasZ, biasH)=output.subst[friendly]
+                h1=radians(heading)
+                loc=loc.biased(cos(h1)*biasX+sin(h1)*biasZ,
+                               cos(h1)*biasZ-sin(h1)*biasX)
+                heading=(heading+biasH)%360
 
             # Attached beacon
             for a in self.attachedobject:
@@ -238,8 +244,6 @@ class SceneryObject:
                         aptdat.append(a)
                     else:
                         output.misc.append((18, loc, [a]))
-                    # Suppress stock object - X-Plane will draw one
-                    if friendly=='air_beacontower01': return
 
             if D(self, 'altitudeIsAgl') and not T(self, 'altitudeIsAgl'):
                 output.log('Absolute altitude (%sm) for object %s at (%12.8f, %13.8f) in file %s' % (round(alt,2), friendly, loc.lat, loc.lon, parser.filename))
@@ -981,11 +985,11 @@ class Airport:
                 n0.links.remove(n.links[0])
                 alllinks.remove(n.links[1])
                 n1.links.remove(n.links[1])
-                # Relabel surviving links as runway for better ATC directions
-                n0.follow(l0, cb=lambda o,l: setattr(l,'name',runwaylink.name))
-                r0.follow(l1, cb=lambda o,l: setattr(l,'name',runwaylink.name))
-                n1.follow(l2, cb=lambda o,l: setattr(l,'name',runwaylink.name))
-                r1.follow(l3, cb=lambda o,l: setattr(l,'name',runwaylink.name))
+                # Relabel surviving links for better ATC directions
+                n0.follow(l0, cb=lambda o,l: setattr(l,'name',n.links[0].name))
+                r0.follow(l1, cb=lambda o,l: setattr(l,'name',n.links[1].name))
+                n1.follow(l2, cb=lambda o,l: setattr(l,'name',n.links[1].name))
+                r1.follow(l3, cb=lambda o,l: setattr(l,'name',n.links[0].name))
 
 
         # Find closest runway to each hold short, and label intervening links as 'hot'.
@@ -1113,7 +1117,7 @@ class Airport:
             aptdat.append(AptNav(20, "%12.8f %13.8f %6.2f %d %d %s" % (
                 loc.lat, loc.lon, heading, 0, size, text)))
 
-        # ATC
+        # Radio
         codes={'AWOS':50, 'ASOS':50, 'ATIS':50, 'FSS':50,
                'UNICOM':51, 'MULTICOM':51, 'CTAF':51,
                'CLEARANCE':52, 'CLEARANCE_PRE_TAXI':52, 'REMOTE_CLEARANCE_DELIVERY':52,

@@ -1,0 +1,594 @@
+# MSFS stock object	(ver)	X-Plane library object						BiasX	BiasZ	BiasH
+
+#
+# airport_objects.bgl (partial)
+#
+#AIR_Jetway01
+air_largetower1a	10	lib/airport/Modern_Airports/Control_Towers/Modern_Tower_1.agp	0	0	90
+air_largetower1b	10	lib/airport/Modern_Airports/Control_Towers/Modern_Tower_1.agp	0	0	90
+air_largetower2			opensceneryx/objects/buildings/airport/towers/concrete/1.obj	0	0	0
+air_largetower2		10	lib/airport/Modern_Airports/Control_Towers/Classic_Tower_3.agp	0	0	0
+air_largetower3			opensceneryx/objects/buildings/airport/towers/concrete/1.obj	0	0	0
+air_largetower3		10	lib/airport/Modern_Airports/Control_Towers/Classic_Tower_3.agp	0	0	0
+large_fuel_tank			opensceneryx/objects/buildings/airport/fuel/1.obj		1.0	0	0
+#medium_fuel_station
+#medium_fuel_station_overhang
+medium_tower1			opensceneryx/objects/buildings/airport/towers/concrete/1.obj	0	0	0
+medium_tower1		10	lib/airport/Modern_Airports/Control_Towers/Classic_Tower_3.agp	0	0	0
+medium_tower2			opensceneryx/objects/buildings/airport/towers/concrete/1.obj	0	0	0
+medium_tower2		10	lib/airport/Modern_Airports/Control_Towers/Classic_Tower_3.agp	0	0	0
+medium_tower3			opensceneryx/objects/buildings/airport/towers/concrete/1.obj	0	0	0
+medium_tower3		10	lib/airport/Modern_Airports/Control_Towers/Classic_Tower_3.agp	0	0	0
+medium_tower4			opensceneryx/objects/buildings/airport/towers/concrete/1.obj	0	0	0
+sco_gen_radarshackbaseb		opensceneryx/objects/airport/radar/2.obj			-3.0	0	0
+#small_fuel_station1
+#small_fuel_station2
+small_tower1			opensceneryx/objects/buildings/airport/towers/stone/1.obj	0	0	0
+small_tower2			opensceneryx/objects/buildings/airport/towers/stucco/1.obj	1.0	0	180
+tempcontrol_tower		opensceneryx/objects/buildings/airport/towers/wooden/1.obj	0	-3.0	270
+
+#
+# autogen.bgl (partial)
+#
+#ag_billboard
+ag_chemtank			opensceneryx/objects/buildings/industrial/tanks/3.obj		-0.2	-0.3	0
+ag_doublelight			opensceneryx/objects/furniture/lights/street/4.obj		0	0	0
+#ag_genericsign
+#ag_highpower			
+#ag_largebillboard
+ag_lightpole			opensceneryx/objects/furniture/lights/street/3.obj		0	2.0	0
+#ag_roadsign
+#ag_silo
+#ag_telephonepole
+ag_watertower_1			opensceneryx/objects/buildings/industrial/water_towers/cylindrical/2.obj	0	0	0
+agn_townwatertowergray_1	10	lib/airport/Common_Elements/Water_Towers/com_WT_1960.obj	0	0	0
+agn_townwatertowergray_2	10	lib/airport/Common_Elements/Water_Towers/com_WT_1960.obj	0	0	0
+agn_townwatertowerred_1	10	lib/airport/Common_Elements/Water_Towers/com_WT_1960.obj	0	0	0
+agn_townwatertowerred_2	10	lib/airport/Common_Elements/Water_Towers/com_WT_1960.obj	0	0	0
+agn_watertankmodern_1		opensceneryx/objects/buildings/industrial/water_towers/spherical/red_white.obj	0	0	0
+agn_watertankmodern_1	10	lib/airport/Common_Elements/Water_Towers/1990.obj		0	0	0
+agn_watertankmodern_2		opensceneryx/objects/buildings/industrial/water_towers/spherical/red_white.obj	0	0	0
+agn_watertankmodern_2	10	lib/airport/Common_Elements/Water_Towers/1990.obj		0	0	0
+agn_watertankmodern_3		opensceneryx/objects/buildings/industrial/water_towers/spherical/red_white.obj	0	0	0
+agn_watertankmodern_3	10	lib/airport/Common_Elements/Water_Towers/1990.obj		0	0	0
+agn_watertankmodern_4		opensceneryx/objects/buildings/industrial/water_towers/spherical/red_white.obj	0	0	0
+agn_watertankmodern_4	10	lib/airport/Common_Elements/Water_Towers/1990.obj		0	0	0
+
+#
+# buildings.bgl (partial)
+#
+#gen_cntrltowerbldg01
+#gen_cntrltowerbldg02
+#gen_cntrltowerbldg03
+#gen_cntrltowerbldg04
+#gen_cntrltowerbldg05
+#gen_cntrltowerbldg06
+#gen_cntrltowerbldg07
+lighthouse1			opensceneryx/objects/buildings/marine/lighthouses/1.obj		0	2.0	0
+#lighthouse2
+#lighthouse3
+
+#
+# fillerobjects.bgl
+#
+Gen_Baggage01			opensceneryx/objects/airport/furniture/luggage.obj		0	0	270
+Gen_Baggage02			opensceneryx/objects/airport/furniture/luggage.obj		0	0	0
+Gen_Baggage03			opensceneryx/objects/airport/furniture/luggage.obj		0	0	0
+Gen_Baggage04			opensceneryx/objects/airport/furniture/luggage.obj		0	0	0
+Gen_Baggage05			opensceneryx/objects/airport/furniture/luggage.obj		0	0	90
+Gen_Baggage06			opensceneryx/objects/airport/furniture/luggage.obj		0	0	0
+#gen_barrelkeg01
+gen_barrelsoil01		opensceneryx/objects/furniture/miscellaneous/oil_drums/1.obj	0.7	0	65
+gen_barrelsoil02		opensceneryx/objects/furniture/miscellaneous/oil_drums/1.obj	-0.8	0.1	50
+gen_barrelsoil03		opensceneryx/objects/furniture/miscellaneous/oil_drums/1.obj	0	0	150
+#gen_benchmetal01
+#gen_bobbinwood01
+Gen_Cargo01			opensceneryx/objects/furniture/pallets/4.obj			0	-0.2	90
+Gen_Cargo02			opensceneryx/objects/furniture/pallets.obj			0	0	90
+#Gen_Cargo03
+Gen_Cargo04			opensceneryx/objects/furniture/pallets/4.obj			0.2	-0.2	0
+Gen_Cargo05		10	lib/airport/Common_Elements/Miscellaneous/Barrel_Trash_Can.obj	0	0	0
+Gen_Cargo06		10	lib/airport/Common_Elements/Miscellaneous/Barrel_Trash_Can.obj	0	0	0
+Gen_Cargo07			opensceneryx/objects/furniture/pallets.obj			0	0	0
+Gen_Cargo08			opensceneryx/objects/airport/furniture/containers/small.obj	0	0	90
+Gen_Cargo09			opensceneryx/objects/airport/furniture/containers/small.obj	0	0	0
+Gen_Cargo10			opensceneryx/objects/furniture/pallets/4.obj			0.2	0	0
+#Gen_Cargo11
+#Gen_Cargo12
+#Gen_Cargo13
+Gen_Cargo14			opensceneryx/objects/furniture/pallets/4.obj			0.3	0	0
+Gen_Cargo15			opensceneryx/objects/furniture/pallets/5.obj			-0.67	0.97	270
+Gen_Cargo16			opensceneryx/objects/furniture/pallets/4.obj			0.2	0	0
+Gen_Cargo17			opensceneryx/objects/furniture/pallets/4.obj			-0.2	0.1	180
+Gen_Cargo18			opensceneryx/objects/furniture/pallets/4.obj			-0.2	0.1	180
+Gen_Cargo19			opensceneryx/objects/furniture/pallets/4.obj			0	-0.3	270
+Gen_Cargo20			opensceneryx/objects/furniture/pallets/4.obj			0.3	0	0
+Gen_Cargo21			opensceneryx/objects/furniture/pallets/4.obj			-0.2	0.1	180
+Gen_Cargo22			opensceneryx/objects/furniture/pallets/4.obj			-0.1	0.3	180
+Gen_Cargo23			opensceneryx/objects/furniture/pallets.obj			0	0	90
+Gen_Cargo24			opensceneryx/objects/furniture/pallets.obj			0	0	0
+Gen_Cargo25			opensceneryx/objects/furniture/pallets.obj			0	0	0
+Gen_Cargo26			opensceneryx/objects/furniture/pallets.obj			0	0	90
+Gen_Cargo27			opensceneryx/objects/furniture/pallets.obj			0	0	0
+Gen_Cargo28			opensceneryx/objects/furniture/pallets/4.obj			-0.1	0.3	180
+Gen_Cargo29			opensceneryx/objects/furniture/pallets.obj			0	0	90
+Gen_Cargo30			opensceneryx/objects/furniture/pallets.obj			0	0	0
+
+#
+# generic.bgl (partial)
+#
+#gen_watertower03
+#gen_watertower04
+#gen_watertower05
+
+#
+# missionobjects.bgl (partial)
+#
+gen_oilrig01			lib/ships/OilPlatform.obj					0	0	180
+sea_tower02		10	lib/airport/Modern_Airports/Control_Towers/Modern_Tower_1.agp	0	0	90
+
+#
+# hazards.bgl (partial)
+#
+#powertower01
+gen_rig01			lib/ships/OilPlatform.obj					0	0	0	
+gen_tank01			opensceneryx/objects/buildings/industrial/tanks/6.obj		-10.5	-8.5	0
+gen_tank01		10	lib/airport/Common_Elements/Fuel_Storage/Single_Tank_Large.obj	0	2.0	155
+gen_techshack01			opensceneryx/objects/buildings/airport/huts/metal/2.obj		-1	0	0
+gen_watertower01		opensceneryx/objects/buildings/industrial/water_towers/cylindrical/1.obj	0	0	0
+gen_watertower02		opensceneryx/objects/buildings/industrial/water_towers/cylindrical/1.obj	0	0	0
+gen_windmill01			opensceneryx/objects/buildings/industrial/wind_turbines/large.obj	0	0	0
+#sco_noaa_constructcrane_large
+#sco_noaa_constructcrane_med
+#sco_noaa_constructcrane_small
+#sco_noaa_portcrane
+#sco_noaa_portcraneblue
+#sco_noaa_portcranegrey
+#sco_noaa_portcraneredsea
+#sco_noaa_portcranewhite
+
+#
+# vehicles_aircraft.bgl
+#
+GEN_C185_Ski			opensceneryx/objects/aircraft/props/ga/c185e/skis.obj		0	3.1	0
+#GEN_Heli_Blackhawk_ARMY
+#GEN_Heli_Blackhawk_ARMY_A51_Mission
+#GEN_Heli_Blackhawk_ARMY_A51_Mission_Anim
+#GEN_Heli_Seahawk_NAVY
+#GEN_Jodel_Ski
+GEN_Jodel_Wheeled		opensceneryx/objects/aircraft/props/ga/d112.obj			0	3.0	0
+GEN_Plane_A380			opensceneryx/objects/aircraft/jets/heavy/a380.obj		0	25.0	0
+#GEN_Plane_AN225
+#GEN_Plane_B52h
+GEN_Plane_B737			opensceneryx/objects/aircraft/jets/heavy/b737-700.obj		-0.6	23.0	0
+#GEN_Plane_B737_GraveYard
+GEN_Plane_B737_var1		opensceneryx/objects/aircraft/jets/heavy/b737-700.obj		-0.6	23.0	0
+GEN_Plane_B737_var2		opensceneryx/objects/aircraft/jets/heavy/b737-700.obj		-0.6	23.0	0
+GEN_Plane_B737_var3		opensceneryx/objects/aircraft/jets/heavy/b737-700.obj		-0.6	23.0	0
+GEN_Plane_B737_var4		opensceneryx/objects/aircraft/jets/heavy/b737-700.obj		-0.6	23.0	0
+GEN_Plane_B747			opensceneryx/objects/aircraft/jets/heavy/b747-400.obj		0	26.0	0
+#GEN_Plane_B747_GraveYard
+GEN_Plane_B747_var1		opensceneryx/objects/aircraft/jets/heavy/b747-400.obj		0	26.0	0
+GEN_Plane_B747_var2		opensceneryx/objects/aircraft/jets/heavy/b747-400.obj		0	26.0	0
+GEN_Plane_B747_var3		opensceneryx/objects/aircraft/jets/heavy/b747-400.obj		0	26.0	0
+GEN_Plane_B747_var4		opensceneryx/objects/aircraft/jets/heavy/b747-400.obj		0	26.0	0
+#GEN_Plane_B787
+GEN_Plane_C185_Float		opensceneryx/objects/aircraft/props/ga/c185e/floats.obj		0	-3.9	180
+GEN_Plane_C185_Float_static	opensceneryx/objects/aircraft/props/ga/c185e/floats.obj		0	-3.9	180
+GEN_Plane_C185_repair		opensceneryx/objects/aircraft/props/ga/c185e.obj		0	-4.0	180
+GEN_Plane_C185_Wheeled		opensceneryx/objects/aircraft/props/ga/c185e.obj		0	2.4	0
+#GEN_Plane_Concorde
+GEN_Plane_DC3			opensceneryx/objects/aircraft/props/regional_commuter/dc-3/generic.obj	0	5.8	0
+#GEN_Plane_F18_BlueA_1
+#GEN_Plane_F18_BlueA_2
+#GEN_Plane_F18_BlueA_3
+#GEN_Plane_F18_BlueA_4
+#GEN_Plane_F18_BlueA_5
+#GEN_Plane_F18_BlueA_6
+#GEN_Plane_F18c
+#GEN_Plane_F22a
+#GEN_Plane_HelioStallion
+#GEN_Plane_HelioStallion_Crashed
+GEN_Plane_J3Cub			opensceneryx/objects/aircraft/props/ga/pa18.obj			0	1.9	0
+GEN_Plane_J3Cub_Float		opensceneryx/objects/aircraft/props/ga/pa18/floats.obj		0	1.9	0
+GEN_Plane_J3Cub_Float_static	opensceneryx/objects/aircraft/props/ga/pa18/floats.obj		0	1.9	0
+#GEN_Plane_Jodel_Float
+#GEN_Plane_Jodel_Float_static
+Gen_Plane_LoopyLarry		opensceneryx/objects/aircraft/props/ga/pa18.obj			0	1.9	0
+GEN_Plane_MD83			opensceneryx/objects/aircraft/jets/heavy/md90.obj		-0.1	22.7	0
+#GEN_Plane_MD83_GraveYard01
+#GEN_Plane_MD83_GraveYard02
+GEN_Plane_MD83_var1		opensceneryx/objects/aircraft/jets/heavy/md90.obj		-0.1	22.7	0
+GEN_Plane_MD83_var2		opensceneryx/objects/aircraft/jets/heavy/md90.obj		-0.1	22.7	0
+GEN_Plane_MD83_var3		opensceneryx/objects/aircraft/jets/heavy/md90.obj		-0.1	22.7	0
+GEN_Plane_MD83_var4		opensceneryx/objects/aircraft/jets/heavy/md90.obj		-0.1	22.7	0
+#GEN_Plane_Schweizer2_bluestripe
+#GEN_Plane_Schweizer2_maroonstripe
+#GEN_Plane_Schweizer2_orange
+#GEN_Plane_Schweizer2_orngstripe
+#GEN_Plane_Schweizer2_redstripe
+#GEN_Plane_Schweizer2_yellstripe
+#GEN_Plane_SR71
+#GEN_Plane_SU37
+GEN_Plane_SuperCub		opensceneryx/objects/aircraft/props/ga/pa18.obj			0	1.9	0
+GEN_Plane_SuperCub_Bush		opensceneryx/objects/aircraft/props/ga/pa18.obj			0	1.9	0
+#GEN_Plane_SuperCub_Crash
+GEN_Plane_SuperCub_Float	opensceneryx/objects/aircraft/props/ga/pa18/floats.obj		0	1.9	0
+GEN_Plane_SuperCub_Float_Static	opensceneryx/objects/aircraft/props/ga/pa18/floats.obj		0	1.9	0
+#GEN_Plane_SuperCub_repair
+#gen_spaceshuttle02
+HotAirBalloon_1			lib/dynamic/balloon.obj						0	0	0
+HotAirBalloon_2			lib/dynamic/balloon.obj						0	0	0
+HotAirBalloon_3			lib/dynamic/balloon.obj						0	0	0
+#sco_blimp
+
+#
+# vehicles_airport.bgl
+#
+fuel_truck2	     	  	opensceneryx/objects/airport/vehicles/fuel/medium/9.obj		0	4.4	0
+Veh_Air_AirStartUnit		opensceneryx/objects/airport/vehicles/gpus.obj			0	1.7	0
+Veh_Air_AirStartUnit	10	lib/airport/Ramp_Equipment/GPU_1.obj				0	-0.5	90
+VEH_air_bagcart1	10	lib/airport/Ramp_Equipment/Lugg_Train_Straight1.obj		0	2.0	180
+VEH_air_bagcart1_blue	10	lib/airport/Ramp_Equipment/Lugg_Train_Straight1.obj		0	2.0	180
+veh_air_bagcart2	10	lib/airport/Ramp_Equipment/Lugg_Train_Straight3.obj		0	2.0	180
+veh_air_bagcart3	10	lib/airport/Ramp_Equipment/Lugg_Train_Straight5.obj		0	3.0	180
+VEH_air_bagcart_FlatNosed	10	lib/airport/Ramp_Equipment/Lugg_Train_Straight1.obj	0	2.0	180
+VEH_air_bagcart_FlatNosed_Grey	10	lib/airport/Ramp_Equipment/Lugg_Train_Straight1.obj	0	2.0	180
+veh_air_bagcartblue	10	lib/airport/Ramp_Equipment/Lugg_Train_Straight3.obj		0	2.0	180
+veh_air_bagcartgrey	10	lib/airport/Ramp_Equipment/Lugg_Train_Straight3.obj		0	2.0	180
+veh_air_bagloaderblue		opensceneryx/objects/airport/vehicles/loaders/6.obj		0	2.0	0
+veh_air_bagloaderblueup		opensceneryx/objects/airport/vehicles/loaders/7.obj		0	4.8	0
+veh_air_bagloadergrey		opensceneryx/objects/airport/vehicles/loaders/6.obj		0	2.0	0
+VEH_Air_BagTractor_Euro_Gray	10	lib/airport/Ramp_Equipment/Luggage_Truck.obj		0	0	180
+VEH_Air_BagTractor_Euro_White	10	lib/airport/Ramp_Equipment/Luggage_Truck.obj		0	0	180
+VEH_Air_BagTractor_US_Gray	10	lib/airport/Ramp_Equipment/Luggage_Truck.obj		0	0	180
+VEH_Air_BagTractor_US_White	10	lib/airport/Ramp_Equipment/Luggage_Truck.obj		0	0	180
+#veh_air_busyellow
+veh_air_cartblue		opensceneryx/objects/airport/vehicles/trucks/small/2.obj	0	-0.5	180
+veh_air_cartgrey		opensceneryx/objects/airport/vehicles/trucks/small/2.obj	0	-0.5	180
+veh_air_cateringtruckgrey    	opensceneryx/objects/airport/vehicles/catering/medium/servisair/1/stowed.obj	0	4.6	0
+VEH_Air_CaterTruck_Euro         opensceneryx/objects/airport/vehicles/catering/medium/servisair/1/stowed.obj	0	3.0	0
+veh_air_cratesgrey		opensceneryx/objects/airport/furniture/containers/small.obj	-0.5	0	255
+veh_air_firetruck		opensceneryx/objects/airport/vehicles/fire_engines/1.obj	0	6.0	0
+VEH_Air_FireTruck_Euro		opensceneryx/objects/airport/vehicles/fire_engines/1.obj	0	6.0	0
+VEH_Air_FireTruck_US_Green	opensceneryx/objects/airport/vehicles/fire_engines/2.obj	0	6.0	0
+VEH_Air_FireTruck_US_Red	opensceneryx/objects/airport/vehicles/fire_engines/1.obj	0	6.0	0
+#veh_air_forklift		opensceneryx/objects/vehicles/construction/forklifts/1.obj	0	2.0	0
+VEH_Air_Forklift_Blue		opensceneryx/objects/vehicles/construction/forklifts/2.obj	0	2.0	0
+VEH_Air_Forklift_Grey		opensceneryx/objects/vehicles/construction/forklifts/5.obj	0	2.0	0
+VEH_Air_Forklift_White		opensceneryx/objects/vehicles/construction/forklifts/4.obj	0	2.0	0
+VEH_Air_Forklift_Yellow		opensceneryx/objects/vehicles/construction/forklifts/6.obj	0	2.0	0
+veh_air_fueltruck		opensceneryx/objects/airport/vehicles/fuel/medium/9.obj		0	4.1	0
+veh_air_fueltruck01		opensceneryx/objects/airport/vehicles/fuel/medium/9.obj		0	4.1	0
+Veh_Air_Fueltruck_2		opensceneryx/objects/airport/vehicles/fuel/medium.obj		0	3.4	0
+Veh_Air_GroundPowerUnit		opensceneryx/objects/airport/vehicles/gpus.obj			0	2.2	0
+veh_air_mule			opensceneryx/objects/airport/vehicles/tugs/large/1.obj		0	3.0	0
+VEH_Air_PickupAsian_grey	opensceneryx/objects/airport/vehicles/vans/pickup/green/1.obj	0	2.5	0
+VEH_Air_PickupAsian_white	opensceneryx/objects/airport/vehicles/vans/pickup/white/1.obj	0	2.5	0
+VEH_Air_PickupEuro_Grey		opensceneryx/objects/airport/vehicles/vans/pickup/servair/1.obj	0	2.8	0
+VEH_Air_PickupEuro_White	opensceneryx/objects/airport/vehicles/vans/pickup/servisair/1.obj	0	2.8	0
+VEH_Air_PickupUS_Blue		opensceneryx/objects/airport/vehicles/vans/pickup/blue/1.obj	0	2.5	0
+VEH_Air_PickupUS_Grey		opensceneryx/objects/airport/vehicles/vans/pickup/green/1.obj	0	2.5	0
+VEH_Air_PickupUS_White		opensceneryx/objects/airport/vehicles/vans/pickup/white/1.obj	0	2.5	0
+veh_air_platformliftblue	opensceneryx/objects/airport/vehicles/lifts/2.obj		0.1	-2.5	180
+veh_air_platformliftgrey	opensceneryx/objects/airport/vehicles/lifts/2.obj		0.1	-2.5	180
+veh_air_plow			opensceneryx/objects/vehicles/construction/graders.obj		0	2.6	0
+veh_air_pushbackblue		opensceneryx/objects/airport/vehicles/tugs/large/1.obj		0	-4.0	0
+veh_air_pushbackgrey		opensceneryx/objects/airport/vehicles/tugs/large/1.obj		0	-4.0	0
+Veh_Air_SewageTruck		opensceneryx/objects/vehicles/commercial/tankers/2.obj		0	2.0	0
+veh_air_supplytruck		opensceneryx/objects/airport/vehicles/catering/large/servisair/1/stowed.obj	0	4.3	0
+veh_air_supplytruckred		opensceneryx/objects/airport/vehicles/catering/large/servair/1/stowed.obj	0	4.9	0
+veh_air_supplytruckup		opensceneryx/objects/airport/vehicles/catering/large/servisair/1/up_500cm.obj	0	4.3	0
+VEH_Air_TransBus_Euro_Silver	opensceneryx/objects/airport/vehicles/busses_coaches/minibusses/servair/1.obj	0	2.5	0
+VEH_Air_TransBus_Euro_White	opensceneryx/objects/airport/vehicles/busses_coaches/minibusses/servisair/1.obj	0	2.5	0
+#veh_deicing
+
+#
+# vehicles_land.bgl
+#
+gen_aviator01			lib/cars/car.obj						0	0.4	180
+#veh_backhoe
+#veh_bmp1
+#veh_btr
+#veh_dragline
+Veh_Flatbed_Rhino		opensceneryx/objects/vehicles/commercial/vans/pickup.obj	0	2.4	0
+VEH_Land_AmbulanceEur		opensceneryx/objects/airport/vehicles/busses_coaches/minibusses/white/1.obj	0	2.4	0
+VEH_Land_AmbulanceUS		opensceneryx/objects/airport/vehicles/busses_coaches/minibusses/white/1.obj	0	2.5	0
+VEH_Land_car_compact1_black	lib/cars/car.obj						0	0	0
+VEH_Land_car_compact1_lightgrey	lib/cars/car.obj						0	0	0
+VEH_Land_car_compact1_red	lib/cars/car.obj						0	0	0
+VEH_Land_car_compact1_white	lib/cars/car.obj						0	0	0
+VEH_Land_car_compact2_black	lib/cars/car.obj						0	0	0
+VEH_Land_car_compact2_blue	lib/cars/car.obj						0	0	0
+VEH_Land_car_compact2_red	lib/cars/car.obj						0	0	0
+VEH_Land_car_compact2_white	lib/cars/car.obj						0	0	0
+VEH_Land_car_compact3_darkgreen	lib/cars/car.obj						0	0	0
+VEH_Land_car_compact3_grey	lib/cars/car.obj						0	0	0
+VEH_Land_car_compact3_navy	lib/cars/car.obj						0	0	0
+VEH_Land_car_compact3_red	lib/cars/car.obj						0	0	0
+VEH_Land_car_fullsize1_black	lib/cars/car.obj						0	0	0
+VEH_Land_car_fullsize1_grey	lib/cars/car.obj						0	0	0
+VEH_Land_car_fullsize1_red	lib/cars/car.obj						0	0	0
+VEH_Land_car_fullsize1_white	lib/cars/car.obj						0	0	0
+VEH_Land_car_fullsize2_black	lib/cars/car.obj						0	0	0
+VEH_Land_car_fullsize2_blue	lib/cars/car.obj						0	0	0
+VEH_Land_car_fullsize2_red	lib/cars/car.obj						0	0	0
+VEH_Land_car_fullsize2_white	lib/cars/car.obj						0	0	0
+VEH_Land_car_midsize1_black	lib/cars/car.obj						0	0	0
+VEH_Land_car_midsize1_grey	lib/cars/car.obj						0	0	0
+VEH_Land_car_midsize1_red	lib/cars/car.obj						0	0	0
+VEH_Land_car_midsize1_white	lib/cars/car.obj						0	0	0
+VEH_Land_car_midsize2_blueblack	lib/cars/car.obj						0	0	0
+VEH_Land_car_midsize2_goldwhite	lib/cars/car.obj						0	0	0
+VEH_Land_car_midsize2_greenwhite	lib/cars/car.obj					0	0	0
+VEH_Land_car_midsize2_redwhite	lib/cars/car.obj						0	0	0
+VEH_Land_Car_Mini1_Black	lib/cars/car.obj						0	0	0
+VEH_Land_Car_Mini1_Blue		lib/cars/car.obj						0	0	0
+VEH_Land_Car_Mini1_LightGrey	lib/cars/car.obj						0	0	0
+VEH_Land_Car_Mini1_Red		lib/cars/car.obj						0	0	0
+VEH_Land_Car_Mini1_White	lib/cars/car.obj						0	0	0
+VEH_Land_Car_Mini2_Black	lib/cars/car.obj						0	0	0
+VEH_Land_Car_Mini2_DarkGreen	lib/cars/car.obj						0	0	0
+VEH_Land_Car_Mini2_LightGrey	lib/cars/car.obj						0	0	0
+VEH_Land_Car_Mini2_Red		lib/cars/car.obj						0	0	0
+VEH_Land_Car_Mini2_White	lib/cars/car.obj						0	0	0
+Veh_Land_Car_Mini3_Black	lib/cars/car.obj						0	0	0
+Veh_Land_Car_Mini3_Brown	lib/cars/car.obj						0	0	0
+Veh_Land_Car_Mini3_Grey		lib/cars/car.obj						0	0	0
+Veh_Land_Car_Mini3_Junker	lib/cars/car.obj						0	0	0
+Veh_Land_Car_Mini3_Red		lib/cars/car.obj						0	0	0
+Veh_Land_Car_Mini3_White	lib/cars/car.obj						0	0	0
+VEH_Land_Car_Mini4_Black	lib/cars/car.obj						0	0	0
+VEH_Land_Car_Mini4_Grey		lib/cars/car.obj						0	0	0
+VEH_Land_Car_Mini4_LightGrey	lib/cars/car.obj						0	0	0
+VEH_Land_Car_Mini4_Red		lib/cars/car.obj						0	0	0
+VEH_Land_Car_Mini4_White	lib/cars/car.obj						0	0	0
+VEH_Land_car_minivan1_black	opensceneryx/objects/vehicles/commercial/vans/transit.obj	0	2.4	0
+VEH_Land_car_minivan1_brown	opensceneryx/objects/vehicles/commercial/vans/transit.obj	0	2.4	0
+VEH_Land_car_minivan1_white	opensceneryx/objects/vehicles/commercial/vans/transit.obj	0	2.4	0
+VEH_Land_car_minivan2_blue	opensceneryx/objects/vehicles/commercial/busses_coaches/minibusses/blue/1.obj	0	2.4	0
+VEH_Land_car_minivan2_brown	opensceneryx/objects/vehicles/commercial/busses_coaches/minibusses/yellow/1.obj	0	2.4	0
+VEH_Land_car_minivan2_grey	opensceneryx/objects/vehicles/commercial/busses_coaches/minibusses/green/1.obj	0	2.4	0
+VEH_Land_car_pickuptruck1_black	opensceneryx/objects/vehicles/commercial/vans/pickup.obj	0	2.4	0
+VEH_Land_car_pickuptruck1_blue	opensceneryx/objects/vehicles/commercial/vans/pickup.obj	0	2.4	0
+VEH_Land_car_pickuptruck1_red	opensceneryx/objects/vehicles/commercial/vans/pickup.obj	0	2.4	0
+VEH_Land_car_pickuptruck1_white	opensceneryx/objects/vehicles/commercial/vans/pickup.obj	0	2.4	0
+VEH_Land_car_pickuptruck5_red	opensceneryx/objects/vehicles/commercial/vans/pickup.obj	0	2.4	0
+VEH_Land_car_pickuptruck5_white	opensceneryx/objects/vehicles/commercial/vans/pickup.obj	0	2.4	0
+VEH_Land_car_pickuptruck6_black	opensceneryx/objects/vehicles/commercial/vans/pickup.obj	0	2.4	0
+VEH_Land_car_pickuptruck6_blue	opensceneryx/objects/vehicles/commercial/vans/pickup.obj	0	2.4	0
+VEH_Land_car_pickuptruck6_red	opensceneryx/objects/vehicles/commercial/vans/pickup.obj	0	2.4	0
+VEH_Land_car_pickuptruck6_white	opensceneryx/objects/vehicles/commercial/vans/pickup.obj	0	2.4	0
+VEH_Land_car_sporty1_black	lib/cars/car.obj						0	0	0
+VEH_Land_car_sporty1_grey	lib/cars/car.obj						0	0	0
+VEH_Land_car_sporty1_red	lib/cars/car.obj						0	0	0
+VEH_Land_car_sporty1_yellow	lib/cars/car.obj						0	0	0
+VEH_Land_car_stationwagon1_black	lib/cars/car.obj					0	0	0
+VEH_Land_car_stationwagon1_blue	lib/cars/car.obj						0	0	0
+VEH_Land_car_stationwagon1_grey	lib/cars/car.obj						0	0	0
+VEH_Land_car_stationwagon1_red	lib/cars/car.obj						0	0	0
+VEH_Land_car_stationwagon2_blue	lib/cars/car.obj						0	0	0
+VEH_Land_car_stationwagon2_brown	lib/cars/car.obj					0	0	0
+VEH_Land_car_stationwagon2_gray	lib/cars/car.obj						0	0	0
+VEH_Land_car_stationwagon2_red	lib/cars/car.obj						0	0	0
+VEH_Land_car_stationwagon3_black	lib/cars/car.obj					0	0	0
+VEH_Land_car_stationwagon3_grey	lib/cars/car.obj						0	0	0
+VEH_Land_car_stationwagon3_red	lib/cars/car.obj						0	0	0
+VEH_Land_car_stationwagon3_white	lib/cars/car.obj					0	0	0
+VEH_Land_car_suv1_red		lib/cars/car.obj						0	0	0
+VEH_Land_car_suv1_white		lib/cars/car.obj						0	0	0
+VEH_Land_car_suv2_black		lib/cars/car.obj						0	0	0
+VEH_Land_car_suv2_brown		lib/cars/car.obj						0	0	0
+VEH_Land_car_suv3_red		lib/cars/car.obj						0	0	0
+VEH_Land_car_suv3_white		lib/cars/car.obj						0	0	0
+VEH_Land_car_suv4_blue		lib/cars/car.obj						0	0	0
+VEH_Land_car_suv4_red		lib/cars/car.obj						0	0	0
+VEH_Land_car_suv5_brown		lib/cars/car.obj						0	0	0
+VEH_Land_car_suv5_darkgreen	lib/cars/car.obj						0	0	0
+VEH_Land_car_suv6_brown		lib/cars/car.obj						0	0	0
+VEH_Land_car_suv6_darkgreen	lib/cars/car.obj						0	0	0
+#VEH_Land_car_truck1_white
+#VEH_Land_car_truck2_blue
+#VEH_Land_car_truck2_grey
+#VEH_Land_car_truck2_red
+VEH_Land_car_truck3_bluestripe	opensceneryx/objects/vehicles/commercial/trucks/blue/1.obj	0	2.3	0
+VEH_Land_car_truck3_grey	opensceneryx/objects/vehicles/commercial/trucks/dhl/1.obj	0	2.3	0
+VEH_Land_car_truck3_redstripe	opensceneryx/objects/vehicles/commercial/trucks/red/1.obj	0	2.3	0
+VEH_Land_car_truck3_white	opensceneryx/objects/vehicles/commercial/trucks/white/1.obj	0	2.3	0
+VEH_Land_car_truck4_darkgrey	opensceneryx/objects/vehicles/commercial/trucks/ups/1.obj	0	3.5	0
+VEH_Land_car_truck5_white	opensceneryx/objects/vehicles/commercial/vans/pickup.obj	0	3.0	0
+Veh_Land_Car_Truck6_Blue	opensceneryx/objects/vehicles/commercial/trucks/ups/1.obj	0	3.5	0
+Veh_Land_Car_Truck6_Red		opensceneryx/objects/vehicles/commercial/trucks/ups/1.obj	0	3.5	0
+Veh_Land_Car_Truck6_White	opensceneryx/objects/vehicles/commercial/trucks/ups/1.obj	0	3.5	0
+Veh_Land_Car_Truck7_Blue	opensceneryx/objects/vehicles/commercial/vans/pickup.obj	0	3.0	0
+Veh_Land_Car_Truck7_Brown	opensceneryx/objects/vehicles/commercial/vans/pickup.obj	0	3.0	0
+Veh_Land_Car_Truck7_White	opensceneryx/objects/vehicles/commercial/vans/pickup.obj	0	3.0	0
+Veh_Land_Car_Truck8_blue	opensceneryx/objects/airport/vehicles/fuel/large/8.obj		0	1.0	0
+#Veh_Land_Car_Truck9_red
+Veh_Land_Car_Truck10_Black	opensceneryx/objects/vehicles/commercial/trucks/white/1.obj	0	2.3	0
+Veh_Land_Car_Truck10_grey	opensceneryx/objects/vehicles/commercial/trucks/white/1.obj	0	2.3	0
+Veh_Land_Car_Truck11_grey	opensceneryx/objects/vehicles/construction/dump_trucks.obj	0	3.2	0
+#Veh_Land_Car_Truck12_blue
+#Veh_Land_Car_Truck13_red
+VEH_Land_car_van1_black		opensceneryx/objects/vehicles/commercial/vans/transit.obj	0	3.0	0
+VEH_Land_car_van1_grey		opensceneryx/objects/vehicles/commercial/vans/transit.obj	0	3.0	0
+VEH_Land_car_van1_red		opensceneryx/objects/vehicles/commercial/vans/transit.obj	0	3.0	0
+VEH_Land_car_van1_white		opensceneryx/objects/vehicles/commercial/vans/transit.obj	0	3.0	0
+#VEH_land_CityBus02_Grey
+#VEH_land_CityBus_Grey
+VEH_land_DeliveryVan		opensceneryx/objects/vehicles/commercial/vans/box.obj		0	2.8	0
+VEH_land_FarmT_GREEN		opensceneryx/objects/vehicles/commercial/vans/pickup.obj	0	2.2	0
+VEH_land_FarmT_RED		opensceneryx/objects/vehicles/commercial/vans/pickup.obj	0	2.2	0
+VEH_land_Flatbed_Black		opensceneryx/objects/vehicles/commercial/vans/pickup.obj	0	2.2	0
+VEH_land_Flatbed_lightblue	opensceneryx/objects/vehicles/commercial/vans/pickup.obj	0	2.2	0
+VEH_land_Flatbed_WHITE		opensceneryx/objects/vehicles/commercial/vans/pickup.obj	0	2.2	0
+VEH_land_Pickup_OLDBROWN	opensceneryx/objects/vehicles/commercial/vans/pickup.obj	0	2.4	0
+VEH_land_Pickup_OLDRed		opensceneryx/objects/vehicles/commercial/vans/pickup.obj	0	2.4	0
+VEH_land_Pickup_OLDWHITE	opensceneryx/objects/vehicles/commercial/vans/pickup.obj	0	2.4	0
+#VEH_land_Schoolbus
+#VEH_land_Schoolbus_Green
+VEH_land_TruckL_DARKGREY	opensceneryx/objects/vehicles/commercial/vans/pickup.obj	0	2.5	0
+VEH_land_TruckL_GREY		opensceneryx/objects/vehicles/commercial/vans/pickup.obj	0	2.5	0
+VEH_land_TruckL_WHITE		opensceneryx/objects/vehicles/commercial/vans/pickup.obj	0	2.5	0
+VEH_land_TruckS_RED		opensceneryx/objects/vehicles/commercial/vans/pickup.obj	0	2.5	0
+VEH_land_TruckS_WHITE		opensceneryx/objects/vehicles/commercial/vans/pickup.obj	0	2.5	0
+VEH_land_TruckST_BLACK		opensceneryx/objects/vehicles/commercial/vans/pickup.obj	0	2.5	0
+#veh_m-939
+#veh_redbike
+#veh_redtractor
+#Veh_SafariGreen
+#veh_schoolbus
+#veh_stryker
+#VEH_tractorCab
+#VEH_tractorCab02
+#veh_truck_logging
+#veh_truckfireold01
+#veh_truckfuelmilitary01
+#veh_truckmilitary01
+veh_truckpickupold01		opensceneryx/objects/vehicles/commercial/vans/pickup.obj	0	2.4	0
+
+#
+# vehicles_water.bgl
+#
+cargoa				opensceneryx/objects/vehicles/boats_ships/container.obj		0	100	0
+cargob				opensceneryx/objects/vehicles/boats_ships/container.obj		0	100	0
+cruise_linera			opensceneryx/objects/vehicles/boats_ships/cruise.obj		0	120	0
+cruise_linerb			opensceneryx/objects/vehicles/boats_ships/cruise.obj		0	120	0
+generic_ferry1			opensceneryx/objects/vehicles/boats_ships/ferries/1.obj		0	77	0
+#generic_ferry2
+pboat_22ft_blackstripe		opensceneryx/objects/vehicles/boats_ships/fishing/10.obj	0	-1.0	0
+pboat_22ft_bluehull		opensceneryx/objects/vehicles/boats_ships/fishing/10.obj	0	-1.0	0
+pboat_22ft_brownhull		opensceneryx/objects/vehicles/boats_ships/fishing/10.obj	0	-1.0	0
+pboat_25ft_bluehull		opensceneryx/objects/vehicles/boats_ships/power/4.obj		0	6.0	0
+pboat_25ft_goldhull		opensceneryx/objects/vehicles/boats_ships/power/4.obj		0	6.0	0
+pboat_25ft_wavyhull		opensceneryx/objects/vehicles/boats_ships/power/4.obj		0	6.0	0
+pboat_30ft_bluehull		opensceneryx/objects/vehicles/boats_ships/fishing.obj		0	5.0	270
+pboat_30ft_redstripe		opensceneryx/objects/vehicles/boats_ships/fishing.obj		0	5.0	270
+pboat_30ft_wavyhull		opensceneryx/objects/vehicles/boats_ships/fishing.obj		0	5.0	270
+pboat_57ft_bluehull		opensceneryx/objects/vehicles/boats_ships/power/1.obj		0	10	0
+pboat_57ft_bluestripe		opensceneryx/objects/vehicles/boats_ships/power/1.obj		0	10	0
+pboat_57ft_goldhull		opensceneryx/objects/vehicles/boats_ships/power/1.obj		0	10	0
+pboat_75ft_bluehull		opensceneryx/objects/vehicles/boats_ships/power/2.obj		0	10	0
+pboat_75ft_brownhull		opensceneryx/objects/vehicles/boats_ships/power/2.obj		0	10	0
+pboat_75ft_redhull		opensceneryx/objects/vehicles/boats_ships/power/2.obj		0	10	0
+sailboat_big_down		lib/ships/SailBoat.obj						0	0	0
+sailboat_big_up			lib/ships/SailBoat.obj						0	0	0
+sailboat_s_down			opensceneryx/objects/vehicles/boats_ships/sail.obj		0	8.0	0
+sailboat_s_up			opensceneryx/objects/vehicles/boats_ships/sail.obj		0	8.0	0
+talkeetna_queen			opensceneryx/objects/vehicles/boats_ships/tour/2.obj		0	15	0
+VEH_carrier01			lib/ships/Carrier.obj						4	28	0
+VEH_carrier01_high_detail	lib/ships/Carrier.obj						4	28	0
+veh_carrier1			lib/ships/Carrier.obj						4	28	0
+VEH_cruiser01			lib/ships/Frigate.obj						-36	15	0
+VEH_destroyer01			lib/ships/Frigate.obj						0	10	0
+VEH_water_cargoC		opensceneryx/objects/vehicles/boats_ships/container.obj		0	100	0
+VEH_water_cargoD		opensceneryx/objects/vehicles/boats_ships/container.obj		0	100	0
+VEH_water_cargoE		opensceneryx/objects/vehicles/boats_ships/container.obj		0	100	0
+VEH_water_cargoF		opensceneryx/objects/vehicles/boats_ships/container.obj		0	100	0
+VEH_water_cargoG		opensceneryx/objects/vehicles/boats_ships/container.obj		0	100	0
+veh_water_cruiseship1		opensceneryx/objects/vehicles/boats_ships/cruise.obj		0	120	0
+VEH_water_cruiseship2		opensceneryx/objects/vehicles/boats_ships/cruise.obj		0	120	0
+VEH_water_diveboat		opensceneryx/objects/vehicles/boats_ships/power/5.obj		0	8.0	0
+veh_water_eastcoastcarrier1	lib/ships/Carrier.obj						4	28	0
+#VEH_water_fishingboatlg01
+#VEH_water_fishingboatlg02
+#VEH_water_hovercraft01
+VEH_water_LahainaPrincess	opensceneryx/objects/vehicles/boats_ships/tour/3.obj		0	15	0
+VEH_water_MauiPrincess		opensceneryx/objects/vehicles/boats_ships/tour/1.obj		0	15	0
+veh_water_sailboat1		opensceneryx/objects/vehicles/boats_ships/sail.obj		0	7.0	0
+veh_water_sailboat2		opensceneryx/objects/vehicles/boats_ships/sail.obj		0	7.0	0
+veh_water_sailboat3		opensceneryx/objects/vehicles/boats_ships/sail.obj		0	7.0	0
+veh_water_sailboat4		lib/ships/SailBoat.obj						0	1.0	0
+veh_water_sailboat5		lib/ships/SailBoat.obj						0	1.0	0
+#veh_water_smallboat1
+#veh_water_smallboat2
+#veh_water_smallboat3
+#veh_water_smallboat4
+#VEH_water_Sulphurqueen
+#VEH_water_supertanker_02
+#VEH_water_tanker01
+#VEH_water_tanker02
+#VEH_water_tanker03
+#VEH_water_yacht_280ft
+wash_ferry			opensceneryx/objects/vehicles/boats_ships/ferries/1.obj		0	77	0
+
+#
+# waterobjects.bgl (partial)
+#
+gen_buoy_01_red			lib/airport/landscape/buoy.obj					0	0	0
+gen_buoy_02_green		lib/airport/landscape/buoy.obj					0	0	0
+
+#
+# FSXP_FillerObjects.bgl (partial)
+#
+Gen_Fuelling_Station		opensceneryx/objects/buildings/airport/fuel/1.obj		2.0	1.0	90
+Gen_Fuelling_station_SM		opensceneryx/objects/buildings/airport/fuel/1.obj		0	-1.0	270
+Gen_Fuelling_station_SM	10	lib/airport/Common_Elements/Fueling_Stations/Small_Fuel_Station.obj	0	3.0	180
+Gen_Garbagecan		10	lib/airport/Common_Elements/Miscellaneous/Square_Trash_Can.obj	0	0	0
+Gen_Mailbox		10	lib/g10/global_objects/mailbox_US.obj				0	0	90
+#Gen_Phonebooth
+lightpost_object_bigwash        opensceneryx/objects/furniture/lights/street/4.obj		0	0	90
+lightpost_object_bigwash_ORANGE opensceneryx/objects/furniture/lights/street/4.obj		0	0	90
+lightpost_object_smallwash      opensceneryx/objects/furniture/lights/street/4.obj		0	0	90
+
+#
+# FSXP_Vehicles.bgl (partial)
+#
+#Gen_CampTrailer_01
+Gen_Plane_Sea_Fury_01		opensceneryx/objects/aircraft/props/military/seafury.obj	0	0	0
+Gen_Plane_Sea_Fury_02		opensceneryx/objects/aircraft/props/military/seafury.obj	0	0	0
+Gen_Plane_Sea_Fury_03		opensceneryx/objects/aircraft/props/military/seafury.obj	0	0	0
+#gen_RenoTeamRV_01
+#Gen_Plane_AT6_01
+#Gen_Plane_AT6_02
+#Gen_Plane_AT6_03
+#Gen_Plane_AT6_04
+#Gen_Plane_AT6_05
+#Gen_Plane_Extra300_Blue
+#Gen_Plane_Extra300_Dragon
+#Gen_Plane_Extra300_Green
+#Gen_Plane_Extra300_Orange
+#Gen_Plane_Extra300_Red
+#Gen_Plane_Extra300_Shark
+#Gen_Plane_Extra300_Yellow
+#Gen_Plane_Extra300_Zebra
+#Gen_Plane_L-39_01
+#Gen_Plane_L-39_02
+#VEH_Air_NASA_CateringTruck_Sm
+#VEH_Air_NASA_Firetruck_Sm
+#VEH_Air_NASA_Forklift_Sm
+#Veh_Air_NASA_FuelTruck01_SM
+#Veh_Air_NASA_GroundPowerUnit_sm
+#VEH_Air_NASA_Pickup
+#VEH_Air_NASA_TransBus_Sm
+#Veh_Airboat
+#Veh_CanoeBlue
+#Veh_CanoeGreen
+#Veh_CanoeMetal
+Veh_Chemical_Truck_Red		opensceneryx/objects/airport/vehicles/fuel/large/8.obj		0	-6.8	180
+#Veh_CigaretteBoat
+#Veh_CigaretteBoat02
+Veh_FireCaptain_SUV_1		lib/cars/car.obj						0	0	180
+Veh_FireCaptain_SUV_1	10	lib/cars/police_car.obj						0	0	180
+#Veh_Greek_Fishingboat_01
+#Veh_Greek_Fishingboat_02
+#Veh_Greek_Fishingboat_03
+#Veh_Greek_Fishingboat_04
+#Veh_Greek_Fishingboat_05
+#Veh_Greek_Fishingboat_06
+#Veh_Greek_Fishingboat_07
+#Veh_Greek_Fishingboat_08
+#Veh_Istanbul_CarFerry
+#Veh_Istanbul_FishingBoat
+Veh_Istanbul_Freighter		opensceneryx/objects/vehicles/boats_ships/container.obj		0	100	0
+Veh_Istanbul_PassengerFerry	opensceneryx/objects/vehicles/boats_ships/cruise/4.obj		0	49	0
+VEH_land_Pickup_Govt		lib/cars/.obj							0	0	0
+VEH_land_Pickup_Govt	10	lib/cars/police_car.obj						0	0	0
+VEH_land_SUV_Govt		lib/cars/car.obj						0	0	0
+VEH_land_SUV_Govt	10	lib/cars/police_car.obj						0	0	0
+Veh_Police_Cruiser		lib/cars/car.obj						0	0	180
+Veh_Police_Cruiser	10	lib/cars/police_car.obj						0	0	180
+Veh_Snowcat			opensceneryx/objects/vehicles/construction/brooms.obj		0	2.7	0
+#Veh_TourCoach
+Veh_Truck_Fire_new_1		opensceneryx/objects/airport/vehicles/fire_engines/1.obj	0	5.4	0
+Veh_USCG_Cutter			lib/ships/Frigate.obj						0	0	0

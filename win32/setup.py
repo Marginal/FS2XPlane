@@ -79,9 +79,11 @@ elif platform.lower().startswith('darwin'):
               ]
 
 res=["Resources/objects.txt",
-     "Resources/Rwy12.xml"]
+     "Resources/opensceneryx_library.txt",
+     "Resources/Rwy12.xml",
+     "Resources/substitutions.txt"]
 for f in listdir('Resources'):
-    if f[-4:] in ['.bgl','.dds','.obj','.png']: res.append('Resources/%s' % f)
+    if f[-4:] in ['.bgl','.dds','.fac','.for','.lin','.obj','.png','.pol']: res.append('Resources/%s' % f)
     
 setup(name='FS2XPlane',
       version=("%4.2f" % appversion),

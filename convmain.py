@@ -37,6 +37,7 @@ class Output:
         self.dds=(xpver>=9)
         self.draped=(xpver>=10)
         self.doatc=(xpver>=10)
+        self.usesopensceneryx=False
 
         # Callbacks
         self.status=status
@@ -63,8 +64,9 @@ class Output:
         self.objdat={}	# Objects by name
         self.polyplc=[]	# Poly placements: [(name, hdg, [loc, u, v])]
         self.polydat={}	# Polygons by name
-        self.stock={}	# FS2004 stock objects - we don't have these
+        self.stock={}	# FSX stock objects - we don't have these
         self.friendly={}	# GUID->friendly name map
+        self.subst={}	# Library substitutions for some stock objects
         self.names={}	# friendly names must be unique
         self.haze={}	# Textures that have palette-based transparency
         self.donetex={}	# Textures we have seen (avoid multiple convert/report)
@@ -132,6 +134,8 @@ class Output:
             raise FS2XError("Can't read \"%s\"." % path)
         for line in stock:
             line=line.split()
+            if not line or line[0].startswith('#'): continue
+            assert line[0] not in self.stock and len(line)==2, line[0]
             name=line[1]
             self.stock[line[0]]=name
             self.names[name]=True
@@ -139,6 +143,27 @@ class Output:
 
         # Standard Rwy12 mappings
         friendlyxml(join('Resources', 'Rwy12.xml'), self.friendly, self.names)
+
+        # Library substitutions for stock objects
+        # Assumed to be a strict subset of self.stock
+        path=join('Resources', 'substitutions.txt')
+        try:
+            stock=file(path, 'rU')
+        except IOError:
+            raise FS2XError("Can't read \"%s\"." % path)
+        for line in stock:
+            line=line.split()
+            if not line or line[0].startswith('#'): continue
+            if len(line)==6:	# X-Plane library item only available in later versions
+                if int(line[1])<=self.xpver:
+                    line.pop(1)
+                else:
+                    continue
+            else:
+                assert line[0] not in self.subst and len(line)==5, line[0]
+            assert line[0] in self.names, line[0]
+            self.subst[line[0]]=(line[1],float(line[2]),float(line[3]),float(line[4]))
+        stock.close()
 
         if debug:
             # note full debugging also requires non-optimised execution
@@ -530,9 +555,9 @@ class Output:
                 i+=1
                 continue	# Already got it
 
-            # Ensure that the user doesn't inadvertantly convert MS objects
+            # Substitue for stock objects
             if uid in self.stock and not (self.debug and self.dumplib):
-                obj=makestock(self, uid, name)
+                obj=makestock(self, name)
                 if obj:
                     self.objdat[name]=[obj]
                 # Missing object error will be reported later
@@ -887,8 +912,10 @@ class Output:
                         obj.export(scale, self, fslayers)
             elif name in self.stock.values():
                 self.log('Object %s is a built-in object' % name)
-            else:
+            elif '/' not in name:	# Not substituted library object
                 self.log('Object %s not found' % name)
+            elif name.startswith('opensceneryx/'):
+                self.usesopensceneryx=True
             i+=1
         keys=self.polydat.keys()
         sortfolded(keys)
@@ -899,6 +926,14 @@ class Output:
 
         if self.dumplib:
             return
+
+        if self.usesopensceneryx:
+            self.log('Using objects from the OpenSceneryX library')
+            copyfile(join('Resources','opensceneryx_library.txt'), join(self.xppath, 'library.txt'))
+            mkdir(join(self.xppath,'opensceneryx'))
+            for filename in listdir('Resources'):
+                if splitext(filename)[0]=='placeholder':
+                    copyfile(join('Resources',filename), join(self.xppath,'opensceneryx',filename))
 
         # copy readmes
         for path, dirs, files in walk(self.fspath):
@@ -949,7 +984,7 @@ class Output:
         polydef={}	# filename
         polyplc={}	# number and data
         polylookup={}	# lists of indices into polydef
-        for loc, head, c, name, scale in self.objplc:
+        for loc, heading, c, name, scale in self.objplc:
             tile=(int(floor(loc.lat)), int(floor(loc.lon)))
             key=(name,scale)
             complexity=cmplx[tile][(name,scale)]
@@ -963,14 +998,15 @@ class Output:
             if not key in objlookup[tile]:
                 # Object not in objdef yet
                 thisobjdef=objdef[tile][complexity]
-                idx=[]
-                if name in self.objdat:
+                if '/' in name:		# Substituted library object
+                    objlookup[tile][key]=[len(thisobjdef)]
+                    thisobjdef.append(name)
+                elif name in self.objdat:
                     # Must only add objs that exist
+                    idx=[]
                     for obj in self.objdat[name]:
                         idx.append(len(thisobjdef))
-                        if obj.comment=="X-Plane library object":
-                            thisobjdef.append(obj.filename)
-                        elif scale!=1.0:
+                        if scale!=1.0:
                             thisobjdef.append("objects/%s_%02d%02d.obj" % (obj.filename[:-4], int(scale), round(scale*100,0)%100))
                         else:
                             thisobjdef.append("objects/%s" % obj.filename)
@@ -980,7 +1016,7 @@ class Output:
 
             base=objlookup[tile][key][0]
             for i in objlookup[tile][key]:
-                objplc[tile][complexity].append((i,loc.lon,loc.lat,head))
+                objplc[tile][complexity].append((i,loc.lon,loc.lat,heading))
 
         for (name, heading, points) in self.polyplc:
             tile=(int(floor(points[0][0].lat)), int(floor(points[0][0].lon)))

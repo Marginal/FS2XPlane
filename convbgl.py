@@ -1305,6 +1305,12 @@ class ProcScen:
             loc=self.loc
         if __debug__:
             if self.debug: self.debug.write("LibraryCall %s %s %.2f %.2f\n%s\n" % (name,friendly,heading,scale,self.matrix[-1]))
+        if friendly in self.output.subst:
+            (name, biasX, biasZ, biasH)=self.output.subst[friendly]
+            h1=radians(heading)
+            loc=loc.biased(cos(h1)*biasX+sin(h1)*biasZ,
+                           cos(h1)*biasZ-sin(h1)*biasX)
+            heading=(heading+biasH)%360
         self.output.objplc.append((loc, heading, self.complexity,
                                    name, round(scale,2)))
         if self.altmsl:
