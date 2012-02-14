@@ -1,6 +1,6 @@
 #!/bin/sh
 
-VERSION=`python -c "from version import appversion; print appversion"`
+VERSION=`python -c "from version import appversion; print '%4.2f' % appversion"`
 VER=`python -c "from version import appversion; print int(round(appversion*100,0))"`
 RELEASE=1
 
@@ -56,7 +56,7 @@ cp -p MacOS/* FS2XPlane.app/Contents/MacOS/
 rm -f FS2XPlane.app/Contents/MacOS/Info.plist
 for i in $PY; do cp -p "$i" FS2XPlane.app/Contents/MacOS/; done
 mkdir -p FS2XPlane.app/Contents/MacOS/win32
-for i in win32/bglunzip.exe win32/fake2004.exe; do cp -i "$i" FS2XPlane.app/Contents/MacOS/win32/; done
+for i in win32/bglunzip.exe win32/fake2004.exe; do cp -p "$i" FS2XPlane.app/Contents/MacOS/win32/; done
 mkdir -p FS2XPlane.app/Contents/Resources
 for i in $DATA; do cp -p "$i" FS2XPlane.app/Contents/; done
 for i in $RSRC; do cp -p "$i" FS2XPlane.app/Contents/Resources/; done
