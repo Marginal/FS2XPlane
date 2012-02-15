@@ -10,7 +10,7 @@ rm -f fs2xplane_$VERSION-$RELEASE_all.deb
 rm -f FS2XPlane_${VER}_mac.zip
 rm -rf FS2XPlane.app
 
-PY='fs2xp.py FS2XPlane.py convbgl.py convmain.py convmdl.py convobjs.py convphoto.py convtaxi.py convutil.py convxml.py MessageBox.py version.py'
+PY='fs2xp.py FS2XPlane.py convatc.py convbgl.py convmain.py convmdl.py convobjs.py convphoto.py convtaxi.py convutil.py convxml.py MessageBox.py version.py'
 DATA='FS2XPlane.html bglxml.copying.txt Squish_license.txt'
 RSRC='Resources/*.bgl Resources/*.dds Resources/*.fac Resources/*.for Resources/*.lin Resources/*.obj Resources/*.png Resources/*.pol Resources/objects.txt Resources/opensceneryx_library.txt Resources/Rwy12.xml Resources/substitutions.txt'
 
@@ -54,6 +54,7 @@ sudo chown -R $USER:staff $RPMRT/*
 mkdir -p FS2XPlane.app/Contents/MacOS
 cp -p MacOS/* FS2XPlane.app/Contents/MacOS/
 rm -f FS2XPlane.app/Contents/MacOS/Info.plist
+rm -f FS2XPlane.app/Contents/MacOS/*.bak
 for i in $PY; do cp -p "$i" FS2XPlane.app/Contents/MacOS/; done
 mkdir -p FS2XPlane.app/Contents/MacOS/win32
 for i in win32/bglunzip.exe win32/fake2004.exe; do cp -p "$i" FS2XPlane.app/Contents/MacOS/win32/; done
