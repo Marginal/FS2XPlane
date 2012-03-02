@@ -1,7 +1,7 @@
 dist
 build
 
-FS2XPlane.app
+*.app
 *.exe
 *.bak
 *.pyc

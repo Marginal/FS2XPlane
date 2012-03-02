@@ -255,6 +255,9 @@ class MainWindow(wx.Frame):
             wx.EVT_MENU(self, wx.ID_HELP, self.onHelp)
             helpmenu.Append(wx.ID_ABOUT, 'About %s'  % appname)
             wx.EVT_MENU(self, wx.ID_ABOUT, self.onAbout)
+            # ID_EXIT moved to application menu
+            helpmenu.Append(wx.ID_EXIT, u'Quit %s\tCtrl-Q' % appname)
+            wx.EVT_MENU(self, wx.ID_EXIT, self.onClose)
             menubar.Append(helpmenu, '&Help')
             self.SetMenuBar(menubar)
 
@@ -378,6 +381,7 @@ class MainWindow(wx.Frame):
         if platform=='darwin':
             # Hack! Change name on application menu. wxMac always uses id 1.
             try:
+                from Carbon import Menu
                 Menu.GetMenuHandle(1).SetMenuTitleWithCFString(appname)
             except:
                 pass
