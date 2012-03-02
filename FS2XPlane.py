@@ -136,19 +136,33 @@ newfsroot=None
 if platform=='win32':
     from sys import getwindowsversion
     sysdesc+="System:\tWindows %s.%s %s\n" % (getwindowsversion()[0], getwindowsversion()[1], getwindowsversion()[4])
-    from _winreg import OpenKey, QueryValueEx, HKEY_LOCAL_MACHINE, REG_SZ, REG_EXPAND_SZ
-    progs=getenv("PROGRAMFILES", '\\')
+    from _winreg import OpenKey, QueryValueEx, HKEY_LOCAL_MACHINE, HKEY_CURRENT_USER, REG_SZ, REG_EXPAND_SZ
+    progs=getenv("PROGRAMFILES", '\\').decode('mbcs')
     for i in listdir(progs):
         if i.lower().startswith("x-plane") and isdir(join(progs, i, "Custom Scenery")):
             xppath=join(progs, i, "Custom Scenery")
             break
-        else:
-            desktop=join(getenv("USERPROFILE", '\\'), "Desktop")
-            for i in listdir(desktop):
-                if i.lower().startswith("x-plane") and isdir(join(desktop, i, "Custom Scenery")):
-                    xppath=join(desktop, i, "Custom Scenery")
-                    break
-    fspath=lbpath=join(getenv("ProgramFiles") or "C:\\Program Files","Microsoft Games","Microsoft Flight Simulator X","Addon Scenery")	# fallback
+    else:
+        xppath=getenv("USERPROFILE", 'C:\\').decode('mbcs')	# fallback
+        try:
+            handle=OpenKey(HKEY_CURRENT_USER, 'Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\User Shell Folders')
+            (v,t)=QueryValueEx(handle, 'Desktop')
+            handle.Close()
+            if t==REG_EXPAND_SZ:
+                dirs=v.rstrip('\0').decode('mbcs').strip().split('\\')
+                for i in range(len(dirs)):
+                    if dirs[i][0]==dirs[i][-1]=='%':
+                        dirs[i]=getenv(dirs[i][1:-1],dirs[i]).decode('mbcs')
+                v='\\'.join(dirs)
+            if t in [REG_SZ,REG_EXPAND_SZ] and isdir(v):
+                xppath=desktop=v
+                for i in listdir(desktop):
+                    if i.lower().startswith("x-plane") and isdir(join(desktop, i, "Custom Scenery")):
+                        xppath=join(desktop, i, "Custom Scenery")
+                        break
+        except:
+            pass
+    fspath=lbpath=join(getenv("ProgramFiles").decode('mbcs') or "C:\\Program Files","Microsoft Games","Microsoft Flight Simulator X","Addon Scenery")	# fallback
     try:
         handle=OpenKey(HKEY_LOCAL_MACHINE, 'SOFTWARE\\Microsoft\\Microsoft Games\\Flight Simulator\\10.0')
         (v,t)=QueryValueEx(handle, 'SetupPath')
@@ -157,7 +171,7 @@ if platform=='win32':
             dirs=v.rstrip('\0').strip().split('\\')
             for i in range(len(dirs)):
                 if dirs[i][0]==dirs[i][-1]=='%':
-                    dirs[i]=getenv(dirs[i][1:-1],dirs[i])
+                    dirs[i]=getenv(dirs[i][1:-1],dirs[i]).decode('mbcs')
             v='\\'.join(dirs)
         if t in [REG_SZ,REG_EXPAND_SZ] and isdir(v):
             v=join(v.rstrip('\0').strip(), 'Addon Scenery')
@@ -178,8 +192,11 @@ else:	# Mac & linux
     else:
         from os import uname	# not defined in win32 builds
         sysdesc+="System:\t%s %s %s\n" % (uname()[0], uname()[2], uname()[4])
-    home=unicodeify(expanduser('~'))	# Unicode so paths listed as unicode
-    desktop=join(home, "Desktop")
+    try:
+        home=expanduser('~').decode(sys.getfilesystemencoding() or 'utf-8')	# Unicode so paths listed as unicode
+        desktop=join(home, "Desktop")
+    except:
+        home=desktop=u'/'
     for i in listdir(desktop):
         if i.lower().startswith("x-plane") and isdir(join(desktop, i, "Custom Scenery")):
             xppath=join(desktop, i, "Custom Scenery")

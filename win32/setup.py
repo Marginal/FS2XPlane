@@ -2,7 +2,6 @@
 
 from distutils.core import setup
 from os import getcwd, listdir, name
-from sys import platform
 from glob import glob
 
 import sys
@@ -47,7 +46,7 @@ manifest=('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'+
           '</dependency>\n'+
           '</assembly>\n')
 
-if platform=='win32':
+if sys.platform=='win32':
     # http://www.py2exe.org/  Invoke with: setup.py py2exe
     import py2exe
     platdata=[('win32',
@@ -64,7 +63,7 @@ if platform=='win32':
                 ]),
               ]
 
-elif platform.lower().startswith('darwin'):
+elif sys.platform.lower().startswith('darwin'):
     # http://undefined.org/python/py2app.html  Invoke with: setup.py py2app
     import py2app
     platdata=[('MacOS',
@@ -118,7 +117,9 @@ setup(name='FS2XPlane',
                                         'OpenGL.arrays.numpymodule',
                                         #'OpenGL.arrays.strings',	# gives runtime error
                                         'OpenGL.arrays.vbo'],
-                            'excludes':['Carbon', 'tcl', 'Tkinter', 'mx', 'socket', 'urllib', 'webbrowser'],
+                            'excludes':['Carbon', 'tcl', 'Tkinter', 'mx', 'socket', 'urllib', 'webbrowser',
+                                        'curses', 'distutils', 'doctest', 'email', 'hotshot', 'inspect', 'pdb', 'setuptools', 'win32',	# Python2.5
+                                        'Numeric', 'dotblas', 'numarray', 'scipy', 'nose'],	# Old Numeric stuff
                             'packages':['encodings.ascii','encodings.mbcs','encodings.latin_1','encodings.utf_8','encodings.cp437'],
                             'optimize':2,
                             },
