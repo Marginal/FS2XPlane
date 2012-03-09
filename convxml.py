@@ -524,7 +524,7 @@ class Airport:
                 atc.append((com.name, 'twr', com.frequency))
         if atc:
             if ident in output.atc:
-                output.atc.extend(atc)
+                output.atc[ident].extend(atc)
             else:
                 output.atc[ident]=atc
 

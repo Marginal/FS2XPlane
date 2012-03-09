@@ -1305,6 +1305,11 @@ class ProcScen:
             loc=self.loc
         if __debug__:
             if self.debug: self.debug.write("LibraryCall %s %s %.2f %.2f\n%s\n" % (name,friendly,heading,scale,self.matrix[-1]))
+        if not self.loc:
+            # no location for library object!
+            if __debug__:
+                if self.debug: self.debug.write("!No location\n")
+            return
         if friendly in self.output.subst:
             (name, biasX, biasZ, biasH)=self.output.subst[friendly]
             h1=radians(heading)
