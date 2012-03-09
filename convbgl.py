@@ -80,7 +80,7 @@ class TaxiwayName:
 # Read BGL header
 class Parse:
     def __init__(self, bgl, srcfile, output):
-        if output.debug: output.debug.write('%s\n' % srcfile.encode("latin1",'replace'))
+        if output.debug: output.debug.write('\nFile: %s\n' % srcfile.encode("latin1",'replace'))
         # Per-BGL counts
         output.gencount=1	# next generic building number
         output.gencache={}	# cache of generic buildings
@@ -202,14 +202,15 @@ class ProcScen:
         self.cmd=0
 
         self.bgl=bgl
+        self.enda=enda
         self.libname=libname
-        self.srcfile=basename(srcfile)
+        self.srcfile=srcfile
         self.texdir=texdir
         if libname:
             self.comment="object %s in file %s" % (
-                libname,asciify(self.srcfile,False))
+                libname,asciify(basename(self.srcfile),False))
         else:
-            self.comment="file %s" % asciify(self.srcfile,False)	# Used for reporting
+            self.comment="file %s" % asciify(basename(self.srcfile),False)	# Used for reporting
         self.output=output
 
         self.start=bgl.tell()
@@ -312,6 +313,9 @@ class ProcScen:
         self.vars={
             # Vars not listed are assumed to be 0
             0: 0,	# dummy
+            0x02: 2,	# No idea, but used by Aerosoft to control lighting
+            0x10: 50,	# No idea, but used by Aerosoft to control lighting
+            0x5c: 255,	# Local variable used by Aerosoft in EDDF
             #0x07e: 0,	# FS5_CG_TO_GROUND_X: ???
             0x280: 0,	# altmsl (presumably of airplane?)
             0x282: 1,	# beacon: rotating bitmap shifted 1 bit/3 sec
@@ -427,6 +431,7 @@ class ProcScen:
               0x9e:self.Interpolate,
               0x9f:self.NOPi,
               0xa0:self.Object,
+              0xa6:self.TargetIndicator,
               0xa7:self.SpriteVICall,
               0xa8:self.TextureRoadStart,
               0xaa:self.NewRunway,
@@ -451,9 +456,9 @@ class ProcScen:
 
         while True:
             pos=bgl.tell()
-            if pos>=enda:
+            if pos>=self.enda:
                 self.cmd=0
-                if pos>enda and self.debug: self.debug.write("!Overrun at %x enda=%x\n" % (pos, enda))
+                if pos>self.enda and self.debug: self.debug.write("!Overrun at %x enda=%x\n" % (pos, self.enda))
             elif pos<self.start:
                 # Underrun - just return if in a call eg ESGJ2K2
                 self.cmd=0x22
@@ -1210,7 +1215,7 @@ class ProcScen:
         else:
             roof=0
         newobj=None
-        name="%s-generic-%d.obj" % (asciify(self.srcfile[:-4]),
+        name="%s-generic-%d.obj" % (asciify(basename(self.srcfile)[:-4]),
                                     self.output.gencount)
         if typ==3:
             foo=(8,size_x, size_z, tuple(heights), tuple(texs))
@@ -1289,10 +1294,6 @@ class ProcScen:
             friendly=self.output.stock[name]
         else:
             friendly=name
-        if self.libname:
-            # recursive call in library
-            self.output.log('Unsupported request for object %s in %s' % (friendly, self.comment))
-            return
         if self.matrix[-1]:
             heading=self.matrix[-1].heading()	# not really
             scale=self.matrix[-1].scale()*self.scale
@@ -1305,6 +1306,19 @@ class ProcScen:
             loc=self.loc
         if __debug__:
             if self.debug: self.debug.write("LibraryCall %s %s %.2f %.2f\n%s\n" % (name,friendly,heading,scale,self.matrix[-1]))
+        if self.libname:
+            # recursive call in library
+            (mdlformat, bglname, realfile, offset, size, name, libscale)=self.output.libobj[name]
+            if bglname==self.srcfile:
+                # Hack: Just include in library objects defined in same file
+                self.start=min(self.start,offset)
+                self.enda=max(self.enda,offset+size)
+                self.precall(False)
+                self.bgl.seek(offset)
+                return
+            else:
+                self.output.log('Unsupported request for object %s in %s' % (friendly, self.comment))
+                return
         if not self.loc:
             # no location for library object!
             if __debug__:
@@ -1557,7 +1571,7 @@ class ProcScen:
             heading=0
             loc=self.loc
         newobj=None
-        name="%s-generic-%d.obj" % (asciify(self.srcfile[:-4]),
+        name="%s-generic-%d.obj" % (asciify(basename(self.srcfile)[:-4]),
                                     self.output.gencount)
         if typ in [10,11]:
             foo=(sides, size_x, size_z, tuple(heights), tuple(texs))
@@ -1581,6 +1595,9 @@ class ProcScen:
             #self.output.log('Absolute altitude (%sm) for generic building %s at (%12.8f, %13.8f) in %s' % (round(self.altmsl,2), name, self.loc.lat, self.loc.lon, self.comment))
         elif self.alt:
             self.output.log('Non-zero altitude (%sm) for generic building %s at (%12.8f, %13.8f) in %s' % (round(self.alt,2), name, self.loc.lat, self.loc.lon, self.comment))
+
+    def TargetIndicator(self):	# a6 - used by Aerosoft
+        (x,y,z)=unpack('<3h', self.bgl.read(6))
 
     def SpriteVICall(self):	# a7
         (off,x,y,z,p,b,h,vp,vb,vh)=unpack('<4h6H', self.bgl.read(20))
@@ -2423,7 +2440,7 @@ class ProcScen:
                 raise struct.error	# Code assumes no spurious location
         elif self.loc or self.dayloc:
             if not self.loc: self.loc=self.dayloc
-            bname=self.srcfile
+            bname=basename(self.srcfile)
             if bname.lower()[-4:]=='.bgl':
                 bname=bname[:-4]
         else:
