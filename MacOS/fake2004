@@ -26,44 +26,52 @@ for I in $($LS -dump | grep -v .Trash | grep -oE "/.+/CrossOver.*\.app" | sort -
 done
 
 if [ ! "$WINELOADER" ]; then
+	for I in $($LS -dump | grep -v .Trash | grep -oE "/.+/Wine\.app" | sort -u); do
+		if [ -x "$I/Contents/Resources/bin/wine" ]; then
+			export WINELOADER="$I/Contents/Resources/bin/wine"
+			break;
+		fi;
+	done;
+fi;
+
+if [ ! "$WINELOADER" ]; then
 	echo Not installed
 	exit 1;
 fi
 
-unset DISPLAY
-"$WINELOADER" ./MacOS/win32/fake2004.exe
-
-
 # Make a default bottle
-for I in $(find ~/Library/Application\ Support -type d -name "CrossOver*"); do
+for I in $(find ~/Library/Application\ Support -type d -name "CrossOver*" | sort); do
 	if [ -d "$I/Bottles" ]; then
 		if [ -a "$I/Bottles/default" ]; then
-			BOTTLE="$I/Bottles/default"
+			WINEPREFIX="$I/Bottles/default"
 			break;
 		else
 			for J in $(find "$I/Bottles" -type d -depth 1); do
-				BOTTLE="$I/Bottles/default"
-				ln -s "$J" $BOTTLE
+				WINEPREFIX="$I/Bottles/default"
+				ln -s "$J" $WINEPREFIX
 				break 2;
 			done;
 		fi
 	fi;
 done;
 
-if [ ! "$BOTTLE" ]; then
-	exit;
+if [ ! "$WINEPREFIX" ]; then
+	WINEPREFIX=~/.wine;
 fi
 
+unset DISPLAY
+export WINEPREFIX
+"$WINELOADER" ./MacOS/win32/fake2004.exe
 
 # Link fake 2004 into default bottle
-if [ -e "$BOTTLE/dosdevices/c:/Program Files" ]; then
-	if [ ! -e "$BOTTLE/dosdevices/c:/Program Files/Microsoft Games/Flight Simulator 9" ]; then
-		mkdir -p "$BOTTLE/dosdevices/c:/Program Files/Microsoft Games"
-		ln -s ~/FS2004 "$BOTTLE/dosdevices/c:/Program Files/Microsoft Games/Flight Simulator 9";
+if [ -e "$WINEPREFIX/dosdevices/c:/Program Files" ]; then
+	if [ ! -e "$WINEPREFIX/dosdevices/c:/Program Files/Microsoft Games/Flight Simulator 9" ]; then
+		mkdir -p "$WINEPREFIX/dosdevices/c:/Program Files/Microsoft Games"
+		ln -s ~/FS2004 "$WINEPREFIX/dosdevices/c:/Program Files/Microsoft Games/Flight Simulator 9";
 	fi
-	if [ ! -e "$BOTTLE/dosdevices/c:/Program Files/Microsoft Games/Microsoft Flight Simulator X" ]; then
-		mkdir -p "$BOTTLE/dosdevices/c:/Program Files/Microsoft Games"
-		ln -s ~/FS2004 "$BOTTLE/dosdevices/c:/Program Files/Microsoft Games/Microsoft Flight Simulator X";
+	if [ ! -e "$WINEPREFIX/dosdevices/c:/Program Files/Microsoft Games/Microsoft Flight Simulator X" ]; then
+		mkdir -p "$WINEPREFIX/dosdevices/c:/Program Files/Microsoft Games"
+		ln -s ~/FS2004 "$WINEPREFIX/dosdevices/c:/Program Files/Microsoft Games/Microsoft Flight Simulator X";
 		touch ~/FS2004/fsx.exe;	# may not exist if upgrading
     fi;
 fi

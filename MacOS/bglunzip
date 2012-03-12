@@ -26,6 +26,15 @@ for I in $($LS -dump | grep -v .Trash | grep -oE "/.+/CrossOver.*\.app" | sort -
 done
 
 if [ ! "$WINELOADER" ]; then
+	for I in $($LS -dump | grep -v .Trash | grep -oE "/.+/Wine\.app" | sort -u); do
+		if [ -x "$I/Contents/Resources/bin/wine" ]; then
+			export WINELOADER="$I/Contents/Resources/bin/wine"
+			break;
+		fi;
+	done;
+fi;
+
+if [ ! "$WINELOADER" ]; then
 	echo Not installed
 	exit 1;
 fi
