@@ -176,7 +176,7 @@ class Node:
 
 
 class Link:	# TaxiwayPath or TaxiwayParking
-    def __init__(self, path, parkingoffset, taxinames, runways):
+    def __init__(self, path, parkingoffset, taxinames, runways=[]):
         self.type=path.type	# PATH, VEHICLE, RUNWAY
         self.width=float(path.width)
         self.closed=False
