@@ -271,7 +271,7 @@ class Output:
                                 compressed=bglname
                                 # Wine can't handle non-ascii?
                                 try:
-                                    bglname[len(self.toppath):].encode("ascii")
+                                    bglname[len(toppath):].encode("ascii")
                                 except:
                                     compressed=join(gettempdir(), 'fs2xp1.bgl')
                                     copyfile(bglname, compressed)
