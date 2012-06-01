@@ -71,7 +71,6 @@ sysdesc="%s %.2f\n" % (appname, appversion)
 
 
 if platform=='darwin':
-    from Carbon import Menu
     # Hack: wxMac 2.5 requires the following to get shadows to look OK:
     # ... wx.ALIGN_CENTER_VERTICAL|wx.TOP|wx.BOTTOM, 2)
     pad=2
@@ -396,12 +395,17 @@ class MainWindow(wx.Frame):
         self.Show(True)
 
         if platform=='darwin':
-            # Hack! Change name on application menu. wxMac always uses id 1.
-            try:
+            # Change name on application menu. Can't do this in wx.
+            try:	# Carbon
                 from Carbon import Menu
-                Menu.GetMenuHandle(1).SetMenuTitleWithCFString(appname)
+                Menu.GetMenuHandle(1).SetMenuTitleWithCFString(appname)		# wxMac always uses id 1.
             except:
-                pass
+                try:	# Cocoa
+                    import AppKit
+                    # doesn't work: AppKit.NSApp.mainMenu().itemAtIndex_(0).submenu().setTitle_(appname)	 http://www.mail-archive.com/cocoa-dev@lists.apple.com/msg43196.html
+                    AppKit.NSBundle.mainBundle().infoDictionary()['CFBundleName']=appname
+                except:
+                    if __debug__: print_exc()
 
         if newfsroot: myMessageBox('Install MSFS sceneries under: \n%s ' % newfsroot, 'Created a fake MSFS installation.', wx.ICON_INFORMATION|wx.OK, self)
 
@@ -541,7 +545,8 @@ class MainWindow(wx.Frame):
 
 
 # main
-app=wx.App()
+app=wx.App(redirect=not __debug__)
+app.SetAppName(appname)
 if platform=='win32':
     if app.GetComCtl32Version()>=600 and wx.DisplayDepth()>=32:
         wx.SystemOptions.SetOptionInt('msw.remap', 2)
