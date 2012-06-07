@@ -5,7 +5,7 @@ from os import listdir, mkdir, popen3, stat, unlink
 from os.path import abspath, basename, curdir, dirname, exists, isdir, join, normpath, splitext
 from shutil import copyfile
 from struct import pack
-from sys import platform
+from sys import maxint, platform
 from tempfile import gettempdir
 import types
 import unicodedata
@@ -456,25 +456,35 @@ class Object:
                 objfile.write("IDX\t%d\n" % self.idx[j])
             if self.idx: objfile.write("\n")
 
+            if len(self.vlight)<=1 and len(self.veffect)<=1 and not self.vline and not self.vt:
+                # X-Plane optimises single lights away otherwise
+                objfile.write("ATTR_LOD\t0 1000\n")
+
             # Maybe a decal
+            if self.poly:
+                if output.draped:
+                    # Have to calculate an explicit LOD for draped-only geometry
+                    minx=minz=maxint
+                    maxx=maxz=-maxint
+                    for (x,y,z, nx,ny,nz, tu,tv) in self.vt:
+                        minx=min(minx,x)
+                        maxx=max(maxx,x)
+                        minz=min(minz,z)
+                        maxz=max(maxz,z)
+                        lod=sqrt(max(maxx-minx,maxz-minz))*25	# Roughly twice what X-Plane 10 calculates if LOD not specified
+                        lod=round(lod+5,-1)			# round up to next 10 for neatness
+                    objfile.write("ATTR_LOD_draped\t%d\nATTR_draped\n" % lod)
+                else:
+                    objfile.write("ATTR_poly_os\t%d\n\n" % self.poly)
+            elif self.vt:
+                objfile.write("ATTR_no_blend\n\n")	# for fences etc
             if self.layer!=None:
                 if self.poly and output.draped:
                     objfile.write("ATTR_layer_group_draped\t%s\n" % fslayers[self.layer])
                 else:
                     objfile.write("ATTR_layer_group\t%s\n" % fslayers[self.layer])
-            if self.poly:
-                if output.draped:
-                    objfile.write("ATTR_draped\n")
-                else:
-                    objfile.write("ATTR_poly_os\t%d\n\n" % self.poly)
-            elif self.vt:
-                objfile.write("ATTR_no_blend\n\n")	# for fences etc
             #if self.surface:
             #    objfile.write("ATTR_hard\tconcrete\n")
-
-            if len(self.vlight)<=1 and len(self.veffect)<=1 and not self.vline and not self.vt:
-                # X-Plane 8.x optimises single lights away otherwise
-                objfile.write("ATTR_LOD\t0 1000\n")
 
             for (x,y,z,effect,s) in self.veffect:
                 objfile.write("%s\t%8.3f %8.3f %8.3f\t%6.3f\n" % (effect, x, y, z, s))
