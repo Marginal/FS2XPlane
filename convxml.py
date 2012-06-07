@@ -512,17 +512,31 @@ class Airport:
             raise FS2XError('Found duplicate definition of airport %s in file %s' % (self.ident, parser.filename))
 
         aptdat=output.apt[ident][1]
-            
+
+        # X-Plane 10 ATC expects every airport with ATC to have a tower frequency
         atc=[]
+        havetwr=True
         for com in self.com:
-            if com.type in ['CLEARANCE', 'CLEARANCE_PRE_TAXI']:
-                if not (com.name, 'del', com.frequency) in atc:
-                    atc.append((com.name, 'del', com.frequency))
-            elif com.type=='GROUND':
-                atc.append((com.name, 'gnd', com.frequency))
-            elif com.type=='TOWER':
-                atc.append((com.name, 'twr', com.frequency))
-        if atc:
+            if com.type=='TOWER':
+                break
+        else:
+            # promote ground to tower if tower is missing
+            for com in self.com:
+                if com.type=='GROUND':
+                    com.type='TOWER'
+                    break
+            else:
+                havetwr=False
+        if havetwr:
+            for com in self.com:
+                name=asciify(com.name, False)
+                if com.type in ['CLEARANCE', 'CLEARANCE_PRE_TAXI']:
+                    if not (name, 'del', com.frequency) in atc:
+                        atc.append((name, 'del', com.frequency))
+                elif com.type=='GROUND':
+                    atc.append((name, 'gnd', com.frequency))
+                elif com.type=='TOWER':
+                    atc.append((name, 'twr', com.frequency))
             if ident in output.atc:
                 output.atc[ident].extend(atc)
             else:
@@ -532,7 +546,7 @@ class Airport:
         if D(self, 'name') :
             # airport type may be changed to sea or heli base later on
             aptdat.append(AptNav(1, "%5d %d 0 %s %s" % (
-                        float(self.alt)*m2f, len(atc)>0, ident, asciify(self.name, False))))
+                        float(self.alt)*m2f, havetwr, ident, asciify(self.name, False))))
 
         # Runways
         for runway in self.runway:
@@ -1157,7 +1171,7 @@ class Airport:
             ndb.export(parser, output)
 
         # Doit
-        if output.doatc:
+        if output.doatc and havetwr:
             atclayout(allnodes, alllinks, self.runway, self.helipad, self.com, output, aptdat, ident)
 
         # Doit

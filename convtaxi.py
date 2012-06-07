@@ -195,14 +195,16 @@ class Link:	# TaxiwayPath or TaxiwayParking
             self.name=path.number
             if path.designator in designators:
                 self.name+=designators[path.designator]
-            self.hotness=self.name
             # Rename link with both runway ends
             for r in runways:
                 if self.name in r.numbers:
-                    self.name="%s/%s" % (r.numbers[0], r.numbers[1])
+                    self.name="Runway %s/%s" % (r.numbers[0], r.numbers[1])
                     self.hotness="%s,%s" % (r.numbers[0], r.numbers[1])
                     break
-            self.name='Runway '+self.name
+            else:
+                # ATC blows up if runway links don't have the correct runway number. So demote to an apron path.
+                self.type='PATH'
+                self.name='Taxi'
         else:
             if self.type=='PATH':
                 self.draw=False	# No surface for apron paths

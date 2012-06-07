@@ -825,7 +825,7 @@ class Output:
                                     l.code=17
                                 f.write("%s\n" % l)
                             doneheader=True
-                        elif l.code in [110,120,130] or (l.code<110 and last>=110):
+                        elif l.code in [110,120,130,1000,1200,1300] or (l.code<110 and last>=110):
                             f.write("\n%s\n" % l)	# Hack - insert CR
                         elif l.code in [14,15] and last>=110:
                             f.write("\n%s\n" % l)	# Hack - insert CR

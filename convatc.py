@@ -1,5 +1,4 @@
 from convutil import AptNav, D, T, E
-from convtaxi import designators, Node, Link
 
 def atclayout(allnodes, alllinks, runways, helipads, coms, output, aptdat, ident):
 
@@ -34,36 +33,50 @@ def atclayout(allnodes, alllinks, runways, helipads, coms, output, aptdat, ident
     aptdat.append(AptNav(1003, '%s 0' % ident))			# visibility min
     aptdat.append(AptNav(1004, '0000 2400'))			# Zulu hours
 
-    aptdat.append(AptNav(1101, 'Default Pattern'))		# XXX TODO: Pattern info from runway record
-    nos={'EAST':9, 'NORTH':36, 'NORTHEAST':4, 'NORTHWEST':31,
-         'SOUTH':18, 'SOUTHEAST':13, 'SOUTHWEST':22, 'WEST':27}
-    opp={'C':'C', 'CENTER':'C', 'L':'R', 'LEFT':'R', 'R':'L', 'RIGHT':'L'}
+    # Find a VFR pattern. Choose first operational runway.
+    for runway in runways:
+        if T(runway, 'primaryLanding') and T(runway, 'primaryTakeoff'):
+            aptdat.append(AptNav(1101, '%s %s' % (
+                        runway.numbers[0], runway.primaryPattern.lower())))
+            break
+        elif T(runway, 'secondaryLanding') and T(runway, 'secondaryTakeoff'):
+            aptdat.append(AptNav(1101, '%s %s' % (
+                        runway.numbers[1], runway.secondaryPattern.lower())))
+            break
+        
     for runway in runways:
         number=['XXX','XXX']
         operations=[None,None]
+        names=[None,None]
         coms=[None,None]
         if T(runway, 'primaryLanding') and T(runway, 'primaryTakeoff'):
             operations[0]='arrivals|departures'
+            names[0]='Runway'
             coms[0]=comapp
         elif T(runway, 'primaryLanding'):
             operations[0]='arrivals'
+            names[0]='Arrivals'
             coms[0]=comapp
         elif T(runway, 'primaryTakeoff'):
             operations[0]='departures'
+            names[0]='Departures'
             coms[0]=comdep
         if T(runway, 'secondaryLanding') and T(runway, 'secondaryTakeoff'):
             operations[1]='arrivals|departures'
+            names[1]='Runway'
             coms[1]=comapp
         elif T(runway, 'secondaryLanding'):
             operations[1]='arrivals'
+            names[1]='Arrivals'
             coms[1]=comapp
         elif T(runway, 'secondaryTakeoff'):
             operations[1]='departures'
+            names[1]='Departures'
             coms[1]=comdep
         for end in [0,1]:
             if operations[end]:
-                aptdat.append(AptNav(1100, '%s %s %s heavy|jets|turboprops|props 000000 000000' % (
-                            runway.numbers[end], coms[end], operations[end])))
+                aptdat.append(AptNav(1100, '%s %s %s heavy|jets|turboprops|props 000359 000359 %s %s' % (
+                            runway.numbers[end], coms[end], operations[end], names[end], runway.numbers[end])))
 
     # Helipads
     hno=0
@@ -80,17 +93,6 @@ def atclayout(allnodes, alllinks, runways, helipads, coms, output, aptdat, ident
             # XXX TODO: What is the type field for?
             aptdat.append(AptNav(1201, "%12.8f %13.8f %s %4d %s" % (
                         n.loc.lat, n.loc.lon, 'both', n.id, n.name)))
-
-    # String Links together into paths
-    #paths=[]
-    #for t in ['RUNWAY','TAXI','PATH']:
-    #    searchspace=[l for l in alllinks if l.type==t and not l.closed]
-    #    while len(searchspace):
-    #        paths.append(searchspace[0].findlinked(searchspace))
-    #for path in paths:
-    #    for l in path:
-    #        aptdat.append(AptNav(1202, "%d %d %s %s" % (
-    #                    l.nodes[0].id, l.nodes[1].id, 'twoway', l.name)))
 
     for t in ['RUNWAY','TAXI','PATH']:
         for l in alllinks:
