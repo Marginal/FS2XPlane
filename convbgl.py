@@ -1340,7 +1340,7 @@ class ProcScen:
     def RoadStart(self):	# 69
         (width,x,y,z)=unpack('<hhhh', self.bgl.read(8))
         width=width*self.scale*2
-        if width>=10 or width<=10:	# arbitrary
+        if width>=10 or width<=-10:	# arbitrary
             self.linktype=('VEHICLE', width, 'TRUE')
         else:
             self.linktype=('VEHICLE', width, 'FALSE')
@@ -1626,7 +1626,7 @@ class ProcScen:
         width=width*self.scale*2	# width is in [m]?, ie not scaled?
         if style<=1 and -1<=width<=-1:		# arbitrary - centreline only
             self.linktype=('TAXI', width, 'TRUE')
-        elif style<=1 and (width>=10 or width<=10):	# arbitrary
+        elif style<=1 and (width>=10 or width<=-10):	# arbitrary
             self.linktype=('VEHICLE', width, 'TRUE')
         elif style<=1:
             self.linktype=('VEHICLE', width, 'FALSE')
