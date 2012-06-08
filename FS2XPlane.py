@@ -62,6 +62,12 @@ except:
     tkMessageBox.showerror("Error", "PyOpenGL is not installed.\nThis application\nrequires PyOpenGL 3.0.1 or later.")
     exit(1)
 
+if not __debug__:
+    import warnings
+    warnings.simplefilter('ignore', DeprecationWarning)
+    if hasattr(wx,'wxPyDeprecationWarning'):
+        warnings.simplefilter('ignore', wx.wxPyDeprecationWarning)
+
 from convmain import Output
 from convutil import FS2XError, asciify, unicodeify, sortfolded, viewer, helper
 from MessageBox import myMessageBox, AboutBox
