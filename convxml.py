@@ -741,12 +741,7 @@ class Airport:
                 
             # VASIs
             for vasi in runway.vasi:
-                if False: # vasi.type=='PAPI2':	# PAPI2 not supported in 8.50 
-                    if vasi.side=='RIGHT':
-                        vtype=8
-                    else:
-                        vtype=7
-                elif vasi.type in ['PAPI2', 'PAPI4', 'APAP', 'PANEL']:
+                if vasi.type=='PAPI4':
                     if vasi.side=='RIGHT':
                         vtype=3
                     else:
@@ -774,8 +769,8 @@ class Airport:
                 h=radians(vheading)
                 vloc=cloc.biased(-cos(h)*x-sin(h)*z, sin(h)*x-cos(h)*z)
                 # was: not output.excluded(vloc), but keep VASI info
-                aptdat.append(AptNav(21, '%12.8f %13.8f %d %6.2f %3.1f %s' % (
-                    vloc.lat, vloc.lon, vtype, vheading, vangle, runway.numbers[end])))
+                aptdat.append(AptNav(21, '%12.8f %13.8f %d %6.2f %3.1f %s %s' % (
+                    vloc.lat, vloc.lon, vtype, vheading, vangle, runway.numbers[end], vasi.type)))
 
         # Helipads
         hno=0
