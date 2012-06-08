@@ -1143,21 +1143,13 @@ class ProcScen:
     def Texture2(self):		# 43
         (size,)=unpack('<H', self.bgl.read(2))
         self.bgl.read(8)	# 00, flags0, unicol
-        # FFS nl2000 crew can't count - so stop when hit first '\0'
-        #tex=self.bgl.read(size-12).rstrip(' \0')
-        tex=''
-        size=size-12
-        while size:
-            c=self.bgl.read(1)
-            if c=='\0':
-                # Hope we're not at end of area - cos this will overrun.
-                while self.bgl.read(1)=='\0':
-                    pass
-                self.bgl.seek(-1, 1)        
-                break
-            tex=tex+c
-            size=size-1
-        self.tex=[findtex(tex.rstrip(), self.texdir, self.output.addtexdir)]
+        tex=self.bgl.read(size-12)
+        # This is often incorrectly implemented - texture name can overrun. So read on up to first non-null.
+        while '\0' not in tex:
+            # Hope we're not at end of area - cos this will overrun.
+            tex=tex+self.bgl.read(1)
+        tex=tex.split('\0')[0].rstrip()
+        self.tex=[findtex(tex, self.texdir, self.output.addtexdir)]
         if __debug__:
             if self.debug: self.debug.write("%s\n" % basename(self.tex[0]).encode("latin1",'replace'))
         self.t=0
