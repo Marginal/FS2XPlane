@@ -79,12 +79,13 @@ def atclayout(allnodes, alllinks, runways, helipads, coms, output, aptdat, ident
                             runway.numbers[end], coms[end], operations[end], names[end], runway.numbers[end])))
 
     # Helipads
-    hno=0
-    for helipad in helipads:
-        hno+=1
-        if not T(helipad, 'closed'):
-            aptdat.append(AptNav(1100, 'H%0d %s %s helos 000000 000000' % (
-                        hno, comapp, 'arrivals|departures')))
+    if False:	# According to WED we don't do this
+        hno=0
+        for helipad in helipads:
+            hno+=1
+            if not T(helipad, 'closed'):
+                aptdat.append(AptNav(1100, 'H%0d %s %s helos 000359 000359 %s %0d' % (
+                            hno, comapp, 'arrivals|departures', 'Helipad', hno)))
 
     # Node list
     aptdat.append(AptNav(1200, ''))
