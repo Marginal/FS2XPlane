@@ -7,18 +7,18 @@
 air_largetower1a	10	lib/airport/Modern_Airports/Control_Towers/Modern_Tower_1.agp	0	0	90
 air_largetower1b	10	lib/airport/Modern_Airports/Control_Towers/Modern_Tower_1.agp	0	0	90
 air_largetower2			opensceneryx/objects/buildings/airport/towers/concrete/1.obj	0	0	0
-air_largetower2		10	lib/airport/Modern_Airports/Control_Towers/Classic_Tower_3.agp	0	0	0
+air_largetower2		10	lib/airport/Classic_Airports/Control_Towers/Classic_Tower_3.agp	0	0	0
 air_largetower3			opensceneryx/objects/buildings/airport/towers/concrete/1.obj	0	0	0
-air_largetower3		10	lib/airport/Modern_Airports/Control_Towers/Classic_Tower_3.agp	0	0	0
+air_largetower3		10	lib/airport/Classic_Airports/Control_Towers/Classic_Tower_3.agp	0	0	0
 large_fuel_tank			opensceneryx/objects/buildings/airport/fuel/1.obj		1.0	0	0
 #medium_fuel_station
 #medium_fuel_station_overhang
 medium_tower1			opensceneryx/objects/buildings/airport/towers/concrete/1.obj	0	0	0
-medium_tower1		10	lib/airport/Modern_Airports/Control_Towers/Classic_Tower_3.agp	0	0	0
+medium_tower1		10	lib/airport/Classic_Airports/Control_Towers/Classic_Tower_3.agp	0	0	0
 medium_tower2			opensceneryx/objects/buildings/airport/towers/concrete/1.obj	0	0	0
-medium_tower2		10	lib/airport/Modern_Airports/Control_Towers/Classic_Tower_3.agp	0	0	0
+medium_tower2		10	lib/airport/Classic_Airports/Control_Towers/Classic_Tower_3.agp	0	0	0
 medium_tower3			opensceneryx/objects/buildings/airport/towers/concrete/1.obj	0	0	0
-medium_tower3		10	lib/airport/Modern_Airports/Control_Towers/Classic_Tower_3.agp	0	0	0
+medium_tower3		10	lib/airport/Classic_Airports/Control_Towers/Classic_Tower_3.agp	0	0	0
 medium_tower4			opensceneryx/objects/buildings/airport/towers/concrete/1.obj	0	0	0
 sco_gen_radarshackbaseb		opensceneryx/objects/airport/radar/2.obj			-3.0	0	0
 #small_fuel_station1
