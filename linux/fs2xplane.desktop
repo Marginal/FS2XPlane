@@ -1,5 +1,5 @@
 [Desktop Entry]
-Encoding=UTF-8
+Version=1.0
 Name=FS2XPlane
 Comment=MSFS add-on scenery converter for X-Plane
 Exec=fs2xplane
@@ -7,4 +7,4 @@ Icon=fs2xplane
 Terminal=false
 Type=Application
 StartupNotify=true
-Categories=GNOME;GTK;Graphics
+Categories=GNOME;GTK;Graphics;

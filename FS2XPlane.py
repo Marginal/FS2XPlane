@@ -1,4 +1,4 @@
-#!/usr/bin/pythonw
+#!/usr/bin/python
 
 #
 # Copyright (c) 2006-2012 Jonathan Harris
@@ -267,10 +267,12 @@ class MainWindow(wx.Frame):
         if platform=='win32':
             self.SetIcon(wx.Icon(executable, wx.BITMAP_TYPE_ICO))
         elif platform.lower().startswith('linux'):	# PNG supported by GTK
-            self.SetIcon(wx.Icon('Resources/%s.png' % appname,
-                                 wx.BITMAP_TYPE_PNG))
+            icons=wx.IconBundle()
+            icons.AddIconFromFile('Resources/%s.png' % appname, wx.BITMAP_TYPE_PNG)
+            icons.AddIconFromFile('Resources/%s-128.png'% appname, wx.BITMAP_TYPE_PNG)
+            self.SetIcons(icons)
         elif platform=='darwin':
-            # icon pulled from Resources via Info.plist. Need minimal menu
+            # icon pulled from Resources via Info.plist (except for MessageBox icon). Need minimal menu
             menubar = wx.MenuBar()
             helpmenu = wx.Menu()
             helpmenu.Append(wx.ID_HELP, '%s Help\tCtrl-?'  % appname)
