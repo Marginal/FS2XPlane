@@ -192,8 +192,7 @@ class Parse:
 
 # handle section 9 area and 10 library. libname!=None if this is a library
 class ProcScen:
-    def __init__(self, bgl, enda, scale, libname, srcfile, texdir, output,
-                 scen, tran):
+    def __init__(self, bgl, enda, scale, libname, srcfile, texdir, output, scen=None, tran=None):
 
         self.old=False	# Old style scenery found and skipped
         self.rrt=False	# Old style runways/roads found and skipped
@@ -281,23 +280,22 @@ class ProcScen:
         self.stack=[]	# (return address, layer, pop matrix?)
         self.tex=[]
         self.mat=[[(1.0,1.0,1.0),(0,0,0),(0,0,0),0]]	# [[a,s,e,p]]
-        self.vtx=[]
+        self.vtx=[None] * 2048	# DefRes/ResList limit
         self.idx=[]	# Indices into vtx
         self.m=0	# Index into mat
         self.t=None	# Index into tex
+        self.lightcol=(1,1,1)
         self.billboard=None	# Emulating billboarding in a libary defn
 
         self.nodes=[]
         self.links=[]
         self.linktype=None	# Last road/river/taxiway (type, width, centerline)
-        self.pnt=None	# Last line location (x,y,z)
         self.haze=0	# Whether palette-based transparency. 0=none
         self.zbias=0	# Polygon offsetting
-        self.surface=False	# StrRes/CntRes does lines not surface
+        self.surface=False	# StrRes/CntRes does lines not surface by default
         self.concave=False
         
         self.objdat={}	# (mat, vtx[], idx[]) by (loc, layer, alt, altmsl, matrix, scale, tex, lit)
-        self.linedat={}	# (vtx[], idx[], (r,g,b)) by (loc, layer, alt, altmsl, matrix, scale, None, None)
         self.lightdat={}# ((x,y,z), (r,g,b)) by (loc, layer, alt, altmsl, matrix, scale, None, None)
         self.effectdat={}# ((x,y,z), (effect, s)) by (loc, layer, alt, altmsl, matrix, scale, None, None)
         self.polydat=[]	# ((points, layer, heading, scale, tex, lit))
@@ -305,7 +303,6 @@ class ProcScen:
         self.neednight=False
         self.dayloc=None
         self.dayobjdat={}        
-        self.daylinedat={}        
         self.daylightdat={}        
         self.dayeffectdat={}
         self.daypolydat=[]
@@ -349,6 +346,7 @@ class ProcScen:
               0x07:self.CPnt,
               0x08:self.Closure,
               0x0d:self.Jump,
+              0x0e:self.DefRes,
               0x0f:self.StrRes,
               0x10:self.CntRes,    
               0x14:self.SColor,
@@ -368,12 +366,12 @@ class ProcScen:
               0x25:self.SeparationPlane,
               0x26:self.SetWrd,
               0x29:self.GResList,
-              0x30:self.NOPh,
               0x2a:self.FaceT,
               0x2b:self.Call32,
               0x2d:self.SColor24,
-              0x2e:self.SColor24,
+              0x2e:self.LColor24,
               0x2f:self.Scale,
+              0x30:self.NOPh,
               0x32:self.Call,
               0x33:self.Instance,
               0x34:self.SuperScale,
@@ -395,7 +393,7 @@ class ProcScen:
               0x49:self.Building,
               0x3f:self.NOPh,
               0x50:self.SColor,
-              0x51:self.SColor,
+              0x51:self.LColor,
               0x52:self.SColor,
               0x55:self.SurfaceType,
               0x5d:self.TextureRepeat,
@@ -498,12 +496,10 @@ class ProcScen:
             self.vars[0x28c]=4
             self.dayloc=self.loc
             self.dayobjdat=self.objdat
-            self.daylinedat=self.linedat
             self.daylightdat=self.lightdat
             self.dayeffectdat=self.effectdat
             self.daypolydat=self.polydat
             self.objdat={}
-            self.linedat={}
             self.lightdat={}
             self.polydat=[]
             self.complexity=1
@@ -516,14 +512,14 @@ class ProcScen:
             self.stack=[]	# (return address, layer, pop matrix?)
             self.tex=[]
             self.mat=[[(1.0,1.0,1.0),(0,0,0),(0,0,0),0]]	# [[a,s,e,p]]
-            self.vtx=[]
+            self.vtx=[None] * 2048	# DefRes limit
             self.idx=[]	# Indices into vtx
             self.m=0	# Index into mat
             self.t=None	# Index into tex
+            self.lightcol=(1,1,1)
             self.nodes=[]
             self.links=[]
             self.linktype=None	# Last road/river/taxiway (type, width, centerline)
-            self.pnt=None	# Last line location (x,y,z)
             self.haze=0		# Whether palette-based transparency. 0=none
             self.zbias=0	# Polygon offsetting
             self.concave=False
@@ -581,40 +577,26 @@ class ProcScen:
 
     def SPnt(self):		# 06
         (sx,sy,sz)=unpack('<hhh', self.bgl.read(6))
-        self.pnt=(sx,sy,sz,0,0,0,0,0)
+        self.old=True
 
     def CPnt(self):		# 07
         (cx,cy,cz)=unpack('<hhh', self.bgl.read(6))
-        (key,mat)=self.makekey(False)
-        if not mat or not self.pnt: return	# transparent
-        if not key in self.linedat:
-            self.linedat[key]=[]
-        else:
-            (vtx,idx,m)=self.linedat[key][-1]
-            if m==mat[0] and vtx[-1]==self.pnt:
-                # continuation
-                idx.append(len(vtx))
-                vtx.append((cx,cy,cz,0,0,0,0,0))
-                self.linedat[key][-1]=(vtx,idx,m)
-                self.checkmsl()
-                self.pnt=(cx,cy,cz,0,0,0,0,0)
-                return
-
-        self.linedat[key].append(([self.pnt, (cx,cy,cz,0,0,0,0,0)],
-                                  [0,1], mat[0]))
-        self.checkmsl()
-        self.pnt=(cx,cy,cz,0,0,0,0,0)
+        self.old=True
 
     def Closure(self):		# 08
+        if not self.surface:
+            self.old=True
+            return
         count=len(self.idx)
         if count<=4: self.concave=False	# Don't bother
         vtx=[]
         for i in range(count):
-            (x,y,z,c,c,c,c,c)=self.vtx[self.idx[i]]
-            vtx.append((x,y,z, 0,1,0, x*self.scale/256, z*self.scale/256))
+            (x,y,z,nx,ny,nz,c,c)=self.vtx[self.idx[i]]
+            vtx.append((x,y,z, nx,ny,nz, x*self.scale/256, z*self.scale/256))
+        self.idx=[]
+        self.surface=False
         if self.makepoly(False, vtx):
             return
-        self.idx=[]
         if self.concave:
             (vtx,idx)=subdivide(vtx)
             self.concave=False
@@ -628,45 +610,25 @@ class ProcScen:
             self.objdat[key]=[]
         self.objdat[key].append((mat, vtx, idx, True))
         self.checkmsl()
-        self.surface=False        
         
     def Jump(self):		# 0d, 1b: IfInBoxRawPlane, 73: IfInBoxP
         (off,)=unpack('<h', self.bgl.read(2))
         if not off: raise struct.error	# infloop
         self.bgl.seek(off-4,1)
 
+    def DefRes(self):		# 0e
+        (i)=unpack('<H',self.bgl.read(2))
+        self.vtx[i]=unpack('<3h', self.bgl.read(6))+(0,1,0,0,0)
+
     def StrRes(self):		# 0f
         (i,)=unpack('<H',self.bgl.read(2))
-        if self.surface:
-            self.idx.append(i)
-        else:
-            self.pnt=self.vtx[i]
+        self.idx=[i]
 
     def CntRes(self):		# 10
         (i,)=unpack('<H',self.bgl.read(2))
-        if self.surface:	# doing surface not lines
-            self.idx.append(i)	# wait for closure
-            return
-        (key,mat)=self.makekey(False)
-        if not mat or not self.pnt: return	# transparent
-        if not key in self.linedat:
-            self.linedat[key]=[]
-        else:
-            (vtx,idx,m)=self.linedat[key][-1]
-            if m==mat[0] and vtx[-1]==self.pnt:
-                # continuation
-                idx.append(len(vtx))
-                vtx.append(self.vtx[i])
-                self.linedat[key][-1]=(vtx,idx,m)
-                self.checkmsl()
-                self.pnt=self.vtx[i]
-                return
-
-        self.linedat[key].append(([self.pnt, self.vtx[i]], [0,1], mat[0]))
-        self.checkmsl()
-        self.pnt=self.vtx[i]
+        self.idx.append(i)	# wait for closure
         
-    def SColor(self):	# 14:Scolor, 50:GColor, 51:NewLColor, 52:NewSColor
+    def SColor(self):	# 14:Scolor, 50:GColor, 52:NewSColor
         (c,)=unpack('H', self.bgl.read(2))
         self.m=0
         self.mat=[[self.unicol(c), (0,0,0), (0,0,0), 0]]
@@ -694,15 +656,8 @@ class ProcScen:
         
     def ResList(self):		# 1a
         (index,count)=unpack('<2H', self.bgl.read(4))
-        if len(self.vtx)<index:
-            self.vtx.extend([None for i in range(index-len(self.vtx))])
         for i in range(index,index+count):
-            (x,y,z)=unpack('<3h', self.bgl.read(6))
-            v=(x,y,z, 0,0,0, 0,0)
-            if i==len(self.vtx):
-                self.vtx.append(v)
-            else:
-                self.vtx[i]=v
+            self.vtx[i]=unpack('<3h', self.bgl.read(6))+(0,1,0,0,0)
 
     def IfInBoxRawPlane(self):	# 1b
         # Skip
@@ -836,15 +791,9 @@ class ProcScen:
 
     def GResList(self):		# 29
         (index,count)=unpack('<2H', self.bgl.read(4))
-        if len(self.vtx)<index:
-            self.vtx.extend([None for i in range(index-len(self.vtx))])
         for i in range(index,index+count):
             (x,y,z,nx,ny,nz)=unpack('<6h', self.bgl.read(12))
-            v=(x,y,z, nx/32767.0,ny/32767.0,nz/32767.0, 0,0)
-            if i==len(self.vtx):
-                self.vtx.append(v)
-            else:
-                self.vtx[i]=v
+            self.vtx[i]=(x,y,z, nx/32767.0,ny/32767.0,nz/32767.0, 0,0)
 
     def FaceT(self):		# 1d:Face, 2a:GFaceT, 3e:FaceT
         (count,)=unpack('<H', self.bgl.read(2))
@@ -900,7 +849,7 @@ class ProcScen:
         self.objdat[key].append((mat, vtx, idx, False))
         self.checkmsl()
         
-    def SColor24(self):		# 2d: SColor24, 2e: LColor24
+    def SColor24(self):		# 2d: SColor24
         (r,a,g,b)=unpack('4B', self.bgl.read(4))
         self.m=0
         if a==0xf0:	# unicol
@@ -912,6 +861,17 @@ class ProcScen:
         else:
             self.mat=[[(r/255.0,g/255.0,b/255.0), (0,0,0), (0,0,0), 0]]
         
+    def LColor24(self):		# 2e: SColor24
+        (r,a,g,b)=unpack('4B', self.bgl.read(4))
+        if a==0xf0:	# unicol
+            self.lightcol=self.unicol(0xf000+r)
+        elif (a>=0xb0 and a<=0xb7) or (a>=0xe0 and a<=0xe7):
+            # E0 = transparent ... EF=opaque. Same for B?
+            # Treat semi-transparent as fully transparent
+            self.lightcol=None
+        else:
+            self.lightcol=(r/255.0,g/255.0,b/255.0)
+
     def Scale(self):		# 2f
         self.bgl.read(8)	# jump,range (LOD) (may be 0),size,reserved
         (scale,)=unpack('<I', self.bgl.read(4))
@@ -971,20 +931,18 @@ class ProcScen:
         else:
             dx=dy=dz=0
         (key,mat)=self.makekey(False)
-        if not mat or mat[0]==(0,0,0): return	# eg SAEZ.bgl
         if not key in self.lightdat:
             self.lightdat[key]=[]
         for i in range(count):
-            self.lightdat[key].append(((sx+i*dx,sy+i*dy,sz+i*dz), mat[0]))
+            self.lightdat[key].append(((sx+i*dx,sy+i*dy,sz+i*dz), self.lightcol))
         self.checkmsl()
         
     def Point(self):		# 37
         (x,y,z)=unpack('<3h', self.bgl.read(6))
         (key,mat)=self.makekey(False)
-        if not mat or mat[0]==(0,0,0): return
         if not key in self.lightdat:
             self.lightdat[key]=[]
-        self.lightdat[key].append(((x,y,z), mat[0]))
+        self.lightdat[key].append(((x,y,z), self.lightcol))
         self.checkmsl()
 
     def Concave(self):		# 38
@@ -1141,6 +1099,7 @@ class ProcScen:
         self.output.misc.append((100, cloc, [AptNav(100, txt)]))
 
     def Texture2(self):		# 43
+        self.surface=True	# StrRes/CntRes does surface not lines
         (size,)=unpack('<H', self.bgl.read(2))
         self.bgl.read(8)	# 00, flags0, unicol
         tex=self.bgl.read(size-12)
@@ -1249,6 +1208,11 @@ class ProcScen:
         if __debug__:
             if self.debug: self.debug.write("%x<-%x = %d\n" % (to, fr, val))
         
+    def LColor(self):		# 51
+        (c,)=unpack('H', self.bgl.read(2))
+        self.lightcol=self.unicol(c)
+        self.m=0
+
     def SurfaceType(self):	# 55
         (sfc, x, z, alt)=unpack('<Hhhh', self.bgl.read(8))
         if sfc!=0: return
@@ -1395,10 +1359,9 @@ class ProcScen:
         (idx,)=unpack('<H', self.bgl.read(2))
         (x,y,z,c,c,c,c,c)=self.vtx[idx]
         (key,mat)=self.makekey(False)
-        if not mat or mat[0]==(0,0,0): return
         if not key in self.lightdat:
             self.lightdat[key]=[]
-        self.lightdat[key].append(((x,y,z), mat[0]))
+        self.lightdat[key].append(((x,y,z), self.lightcol))
         self.checkmsl()
         
     def Call32(self):		# 2b:AddObj32, 8a:Call32
@@ -1543,7 +1506,6 @@ class ProcScen:
                 self.output.log('Unsupported effect "%s" at (%12.8f, %13.8f) in %s' % (name, self.loc.lat, self.loc.lon, self.comment))
             else:
                 (key,mat)=self.makekey(False)
-                if not mat: return
                 if not key in self.effectdat: self.effectdat[key]=[]
                 self.effectdat[key].append(((0,0,0), effects[name]))
                 self.checkmsl()
@@ -1884,8 +1846,8 @@ class ProcScen:
         
     def DrawTriList(self):	# b9
         idx=[]
-        (base,count,off)=unpack('<3H', self.bgl.read(6))
-        for i in range(off/3):
+        (base,vcount,icount)=unpack('<3H', self.bgl.read(6))
+        for i in range(icount/3):
             (a,b,c)=unpack('<3H', self.bgl.read(6))
             idx.extend([a+base,b+base,c+base])
         if self.makepoly(True, self.vtx, idx):
@@ -1902,24 +1864,9 @@ class ProcScen:
         self.checkmsl()
 
     def DrawLineList(self):	# ba
-        idx=[]
-        last=0
-        first=maxint
-        (base,count,off)=unpack('<3H', self.bgl.read(6))
-        for i in range(off/2):
-            (a,b)=unpack('<2H', self.bgl.read(4))
-            idx.extend([a,b])
-            first=min(first,a,b)
-            last=max(last,a,b)
-        for i in range(len(idx)):
-            idx[i]=idx[i]-first
-        (key,mat)=self.makekey(True)
-        if not mat: return
-        if not key in self.linedat:
-            self.linedat[key]=[]
-        self.linedat[key].append((self.vtx[base+first:base+last+1],
-                                  idx, mat[0]))
-        self.checkmsl()
+        (base,vcount,icount)=unpack('<3H', self.bgl.read(6))
+        self.old=True
+        self.bgl.seek(2*icount,1)
         
     # opcodes c0 and above new in FS2004
 
@@ -2312,13 +2259,6 @@ class ProcScen:
                             self.lightdat[lkey].append(thing)
                 else:
                     self.lightdat[lkey]=self.daylightdat[lkey]
-            for lkey in self.daylinedat.keys():
-                if lkey in self.linedat:
-                    for thing in self.daylinedat[lkey]:
-                        if not thing in self.linedat[lkey]:
-                            self.linedat[lkey].append(thing)
-                else:
-                    self.linedat[lkey]=self.daylinedat[lkey]
 
             self.effectdat=self.dayeffectdat	# just use daylight
             
@@ -2423,7 +2363,7 @@ class ProcScen:
             self.objdat.update(self.dayobjdat)	# Day-only objects
             self.objdat.update(nightobjdat)	# Night-only objects
         
-        if not self.lightdat and not self.linedat and not self.effectdat and not self.objdat and not self.polydat and not self.links:
+        if not self.lightdat and not self.effectdat and not self.objdat and not self.polydat and not self.links:
             return	# Only contained non-scenery stuff
         elif self.libname:
             bname=self.libname
@@ -2497,7 +2437,7 @@ class ProcScen:
         # Keys must be unique to avoid duplicates.
         # Matrix is applied here to allow for detection of data in a bgl
         # that is duplicated apart from by heading
-        for lkey in unique(self.lightdat.keys()+self.linedat.keys()+self.effectdat.keys()+self.objdat.keys()):
+        for lkey in unique(self.lightdat.keys()+self.effectdat.keys()+self.objdat.keys()):
             (loc, layer, alt, altmsl, matrix, scale, tex, lit)=lkey
             if layer>=40:
                 layer=None
@@ -2559,19 +2499,6 @@ class ProcScen:
                         (x,y,z)=newmatrix.transform(x,y,z)
                     vlight.append([x*scale,alt+y*scale,-z*scale, r,g,b])
                 
-            if lkey in self.linedat:
-                for (vtx, i, (r,g,b)) in self.linedat[lkey]:
-                    vbase=len(vline)
-                    ibase=len(idx)
-                    for v in vtx:
-                        (x,y,z,nx,ny,nz,tu,tv)=v
-                        if newmatrix:
-                            (x,y,z)=newmatrix.transform(x,y,z)
-                        vline.append([x*scale,alt+y*scale,-z*scale, r,g,b])
-                    for j in i:
-                        idx.append(vbase+j)
-                    lines.append([ibase,len(i)])
-
             if lkey in self.effectdat:
                 for ((x,y,z),(effect,s)) in self.effectdat[lkey]:
                     if newmatrix:
@@ -2680,7 +2607,7 @@ class ProcScen:
                         #    poly=2	# probably detail
                     
                 # Finally build the object
-                obj=Object(fname+'.obj', self.comment, tex, lit, layer, vlight, vline, lines, veffect, vt, idx, mattri, poly)
+                obj=Object(fname+'.obj', self.comment, tex, lit, layer, vlight, veffect, vt, idx, mattri, poly)
                 if self.libname:
                     objs.append(obj)
                 else:
