@@ -3,7 +3,7 @@ from locale import getpreferredencoding
 import os	# for startfile
 from os import listdir, mkdir, popen3, stat, unlink
 from os.path import abspath, basename, curdir, dirname, exists, isdir, join, normpath, splitext
-from shutil import copyfile
+from shutil import copy2
 from struct import pack
 from sys import maxint, platform
 from tempfile import gettempdir
@@ -618,7 +618,7 @@ def maketex(src, dstdir, output, palno, substituteblank=False):
     if dirname(src)=='Resources':
         # texture is supplied with this program (eg FS2X-palette.png)
         tex=output.donetex[src]=basename(src)
-        copyfile(join(os.getcwdu(),src), join(dstdir,tex))
+        copy2(join(os.getcwdu(),src), dstdir)
         return tex
 
     # Spaces not allowed in textures. Avoid Mac/PC interop problems
@@ -637,7 +637,7 @@ def maketex(src, dstdir, output, palno, substituteblank=False):
             tex=tex+'.png'
         for f in listdir('Resources'):
             if f.lower()==tex.lower():
-                copyfile(join(os.getcwdu(),'Resources',tex), join(dstdir,tex))
+                copy2(join(os.getcwdu(),'Resources',tex), dstdir)
                 output.donetex[src]=tex
                 return tex
         if src not in output.donetex:
@@ -645,12 +645,10 @@ def maketex(src, dstdir, output, palno, substituteblank=False):
         if substituteblank:
             # Missing texture in polygon causes crash
             if output.dds:
-                copyfile(join(os.getcwdu(),'Resources','blank.dds'),
-                         join(dstdir,'blank.dds'))
+                copy2(join(os.getcwdu(),'Resources','blank.dds'), dstdir)
                 return 'blank.dds'
             else:
-                copyfile(join(os.getcwdu(),'Resources','blank.png'),
-                         join(dstdir,'blank.png'))
+                copy2(join(os.getcwdu(),'Resources','blank.png'), dstdir)
                 return 'blank.png'
         output.donetex[src]=tex
         return tex
