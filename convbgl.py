@@ -1308,7 +1308,7 @@ class ProcScen:
         (type, width, centerline)=self.linktype
         if type and not (-1<=width<=1):
             node=self.loc.biased(x*self.scale, z*self.scale)
-            if not node.equals(self.nodes[-1]):
+            if node!=self.nodes[-1]:
                 self.nodes.append(TaxiwayPoint(node))
                 self.links.append(TaxiwayPath(type, width, centerline, len(self.nodes)-2,len(self.nodes)-1))
 

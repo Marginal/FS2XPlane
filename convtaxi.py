@@ -329,7 +329,7 @@ def tessvertex(vertex, data):
 
 def tesscombine(coords, vertex, weight, data):
     (points, debez)=data
-    if weight[2]==0 and vertex[0][0].equals(vertex[1][0]):
+    if weight[2]==0 and vertex[0][0]==vertex[1][0]:
         # normal join
         (loc1, cnt1, blank1, dummy1, code1)=vertex[0]
         (loc2, cnt2, blank2, dummy2, code2)=vertex[1]
@@ -472,14 +472,14 @@ def taxilayout(allnodes, alllinks, surfaceheading, output, aptdat=None, ident="u
                     for e2 in [0,1]:
                         if l2.nodes[e2]==link.nodes[end]:
                             for side in [0,1]:
-                                if l2.intersect[e2][side][0].equals(loc1):
+                                if l2.intersect[e2][side][0]==loc1:
                                     (loc1,bez1,bad1)=l2.intersect[e2][side]
                                     l2.intersect[e2][side]=(loc1,None,bad1)
                 for l2 in link.nodes[1-end].links:
                     for e2 in [0,1]:
                         if l2.nodes[e2]==link.nodes[1-end]:
                             for side in [0,1]:
-                                if l2.intersect[e2][side][0].equals(loc2):
+                                if l2.intersect[e2][side][0]==loc2:
                                     (loc2,bez2,bad2)=l2.intersect[e2][side]
                                     l2.intersect[e2][side]=(loc2,None,bad2)
                 bad1=bad2=1
@@ -793,7 +793,7 @@ def taxilayout(allnodes, alllinks, surfaceheading, output, aptdat=None, ident="u
                         #if __debug__: print len(points), j, loc,
                         angle=0
                         for i in range(n):
-                            if loc.equals(opoints[i][0]):
+                            if loc==opoints[i][0]:
                                 # try another point in the candidate
                                 #if __debug__: print "Coincident", loc,
                                 break
@@ -1228,7 +1228,7 @@ def apronlayout(points, surface, surfaceheading, output, aptdat=None, ident="unk
                 if __debug__: print len(points), j, loc,
                 angle=0
                 for i in range(n):
-                    if loc.equals(opoints[i]):
+                    if loc==opoints[i]:
                         # try another point in the candidate
                         if __debug__: print "Coincident", loc,
                         break

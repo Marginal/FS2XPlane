@@ -1038,7 +1038,7 @@ class Airport:
         #for b in self.boundaryfence:
         #    if len(b.vertex)>1:
         #        vert=[Point(v.lat, v.lon) for v in b.vertex]
-        #        if vert[0].equals(vert[-1]):
+        #        if vert[0]==vert[-1]:
         #            output.facplc.append('opensceneryx/facades/fences/chainlink/1/closed.fac', vert[0:-1])
         #        else:
         #            output.facplc.append('opensceneryx/facades/fences/chainlink/1/open.fac', vert)
