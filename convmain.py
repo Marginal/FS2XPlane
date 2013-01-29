@@ -323,6 +323,10 @@ class Output:
                                 name=asciify(bgl.read(hdsize-(41)).rstrip(' \0'))
                             if uid in self.friendly:
                                 name=self.friendly[uid]
+                            elif not name and asciify(splitext(filename)[0]) not in self.names:
+                                name=asciify(splitext(filename)[0])
+                                self.friendly[uid]=name
+                                self.names[name]=True
                             elif name and name not in self.names:
                                 self.friendly[uid]=name
                                 self.names[name]=True
@@ -389,6 +393,10 @@ class Output:
                                         name=self.stock[uid]
                                     elif uid in self.friendly:
                                         name=self.friendly[uid]
+                                    elif not name and records==1 and asciify(splitext(filename)[0]) not in self.names:
+                                        name=asciify(splitext(filename)[0])
+                                        self.friendly[uid]=name
+                                        self.names[name]=True
                                     elif name and name not in self.names:
                                         self.friendly[uid]=name
                                         self.names[name]=True
