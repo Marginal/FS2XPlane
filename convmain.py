@@ -44,11 +44,6 @@ class Output:
         self.log=log
         self.refresh=refresh
 
-        # Per-BGL counts - should live somewhere else
-        self.gencount=0
-        self.gencache={}# cache of generic buildings
-        self.anccount=0	# Not used for library objects
-
         self.apt={}	# (location, AptNav entries) by ICAO code
         self.aptfull={}	# version of the above with nothing excluded
         self.nav=[]
@@ -565,7 +560,7 @@ class Output:
 
             # Substitue for stock objects
             if uid in self.stock and not (self.debug and self.dumplib):
-                obj=makestock(self, name)
+                obj=makestock(name, self)
                 if obj:
                     self.objdat[name]=[obj]
                 # Missing object error will be reported later
@@ -648,14 +643,11 @@ class Output:
                 else:
                     lasttexdir=None
                 if mdlformat==10:
-                    p=convmdl.ProcScen(bgl, offset+size, libscale, name,
-                                       bglname, lasttexdir, self, scen, tran)
+                    p=convmdl.ProcScen(bgl, offset+size, libscale, name, bglname, lasttexdir, self)
                 else:
-                    p=convbgl.ProcScen(bgl, offset+size, libscale, name,
-                                       bglname, lasttexdir, self, scen, tran)
+                    p=convbgl.ProcScen(bgl, offset+size, libscale, name, bglname, lasttexdir, self, scen, tran)
                 if p.anim:
-                    self.log("Skipping animation in object %s in file %s" % (
-                        name, filename))
+                    self.log("Skipping animation in object %s in file %s" % (name, filename))
                     if self.debug: self.debug.write("Animation\n")
                 if p.old:
                     self.log("Skipping pre-FS2002 scenery in object %s in file %s" % (name, filename))
@@ -1014,10 +1006,7 @@ class Output:
                     idx=[]
                     for obj in self.objdat[name]:
                         idx.append(len(thisobjdef))
-                        if scale!=1.0:
-                            thisobjdef.append("objects/%s_%02d%02d.obj" % (obj.filename[:-4], int(scale), round(scale*100,0)%100))
-                        else:
-                            thisobjdef.append("objects/%s" % obj.filename)
+                        thisobjdef.append("objects/" + obj.filename(scale))
                     objlookup[tile][key]=idx
                 else:
                     continue
@@ -1034,7 +1023,7 @@ class Output:
                 polydef[tile]=[]
                 polyplc[tile]=[]
 
-            fname="objects/"+self.polydat[name].filename
+            fname="objects/"+self.polydat[name].filename()
             if not fname in polydef[tile]:
                 polyplc[tile].append((len(polydef[tile]),heading,points))
                 polydef[tile].append(fname)

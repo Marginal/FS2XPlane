@@ -4,7 +4,7 @@ from os import listdir
 from os.path import basename, join
 import re
 
-from convutil import Polygon, Point
+from convutil import Polygon, Point, Texture
 
 LATRES=360.0/32768
 LONRES=480.0/32768
@@ -49,7 +49,7 @@ def ProcPhoto(texdir, output):
         lat=(lat-int(match[4])*res)*LATRES
         lon=(lon+int(match[5])*res)*LONRES
         layer=max(1,4-layer)
-        makephoto(name, join(texdir,tex), lit, lat, lon, res, layer, 512, output)
+        makephoto(name, Texture(output.xpver, join(texdir,tex), lit), lat, lon, res, layer, 512, output)
 
     # Standard FS2004 style - assumes that summer exists
     for tex in texs:
@@ -80,7 +80,7 @@ def ProcPhoto(texdir, output):
 
         lat=lat*LATRES
         lon=lon*LONRES
-        makephoto(name, join(texdir,tex), lit, lat, lon, 1, 0, 256, output)
+        makephoto(name, Texture(output.xpver, join(texdir,tex), lit), lat, lon, 1, 0, 256, output)
 
 
 # Check for higher-res Blue Sky Scenery scenery
@@ -105,7 +105,7 @@ def ishigher(name, layer, lat,lon, blueskydict, output):
     return False
                 
 
-def makephoto(name, tex, lit, lat, lon, scale, layer, pixels, output):
+def makephoto(name, tex, lat, lon, scale, layer, pixels, output):
     # lat and lon are the NW corner cos that's how MSFS does it
     if output.debug: output.debug.write("Photo: %s %.6f,%.6f,%s " % (name, lat, lon, scale))
     if lon+LONRES*scale > floor(lon)+1:
@@ -137,8 +137,7 @@ def makephoto(name, tex, lit, lat, lon, scale, layer, pixels, output):
             points[i][3]=points[-1][0]
     elif output.debug: output.debug.write("OK\n")
 
-    poly=Polygon(name+'.pol', tex, lit, True, int(LATRES*1852*60*scale), layer,
-                 (lat-LATRES*scale*0.5, lon+LONRES*scale*0.5, pixels))
+    poly=Polygon(name, tex, True, int(LATRES*1852*60*scale), layer, (lat-LATRES*scale*0.5, lon+LONRES*scale*0.5, pixels))
     output.polydat[name]=poly
     for p in points:
         output.polyplc.append((name, 65535, p))

@@ -150,9 +150,8 @@ class SceneryObject:
                     name=parser.genmulticache[key]
                 else:
                     parser.gencount += 1
-                    name="%s-generic-%d.obj" % (asciify(parser.filename[:-4]),
-                                                parser.gencount)
-                    obj=makegenmulti(name, output.palettetex, *key)
+                    name="%s-generic-%d" % (asciify(parser.filename[:-4]), parser.gencount)
+                    obj=makegenmulti(name, output, *key)
                     parser.genmulticache[key]=name
                     output.objdat[name]=[obj]
                 output.objplc.append((loc, heading, cmplx, name, 1))
@@ -171,9 +170,8 @@ class SceneryObject:
                     name=parser.genquadcache[key]
                 else:
                     parser.gencount += 1
-                    name="%s-generic-%d.obj" % (asciify(parser.filename[:-4]),
-                                                parser.gencount)
-                    obj=makegenquad(name, output.palettetex, *key)
+                    name="%s-generic-%d" % (asciify(parser.filename[:-4]), parser.gencount)
+                    obj=makegenquad(name, output, *key)
                     parser.genquadcache[key]=name
                     output.objdat[name]=[obj]
                 output.objplc.append((loc, heading, cmplx, name, 1))
@@ -204,9 +202,8 @@ class SceneryObject:
                     name=parser.genquadcache[key]
                 else:
                     parser.gencount += 1
-                    name="%s-generic-%d.obj" % (asciify(parser.filename[:-4]),
-                                                parser.gencount)
-                    obj=makegenquad(name, output.palettetex, *key)
+                    name="%s-generic-%d" % (asciify(parser.filename[:-4]), parser.gencount)
+                    obj=makegenquad(name, output, *key)
                     parser.genquadcache[key]=name
                     output.objdat[name]=[obj]
                 output.objplc.append((loc, heading, cmplx, name, 1))

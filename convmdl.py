@@ -3,13 +3,12 @@ from os.path import basename, dirname, join, normpath, pardir, splitext
 from struct import unpack
 
 from convbgl import findtex, maketexdict
-from convutil import asciify, rgb2uv,  Matrix, Object
+from convutil import asciify, rgb2uv, Matrix, Object, Material, Texture
 
 
 # handle FSX format library MDL file
 class ProcScen:
-    def __init__(self, bgl, enda, scale, libname, srcfile, texdir, output, 
-                 scen, tran):
+    def __init__(self, bgl, enda, scale, libname, srcfile, texdir, output):
 
         self.old=False	# Old style scenery found and skipped
         self.rrt=False	# Old style runways/roads found and skipped
@@ -20,7 +19,7 @@ class ProcScen:
         comment="object %s in file %s" % (libname,asciify(basename(srcfile),False))
 
         tex=[]
-        mat=[]
+        mattex=[]
         vt=[]
         idx=[]
         matrix=[]
@@ -43,27 +42,40 @@ class ProcScen:
                     if c=='TEXT':
                         tex.extend([bgl.read(64).strip('\0').strip() for i in range(0,size,64)])
                     elif c=='MATE':
+                        # http://www.fsdeveloper.com/wiki/index.php?title=MDL_file_format_(FSX)#MATE
                         for i in range(0,size,120):
-                            (typ,unk,unk,texture,unk,unk,unk,lit,unk,unk,dr,dg,db,da,sr,sg,sb,sa,sp,er,eg,eb,ea,bloomfloor,ambscale,unk,srcblend,dstblend,alphafunc,alphathreshold,zwritealpha)=unpack('<HHfI6I4f4ff4f2ffIIIff', bgl.read(120))
-                            # what about alpha blend & func, and emissive blend
-                            if typ&0x82:
-                                if typ&2:
-                                    texture=findtex(tex[texture], texdir, output.addtexdir)
-                                else:
-                                    texture=None
-                                if typ&0x80:
-                                    lit=findtex(tex[lit], texdir, output.addtexdir)
-                                    (er,eg,eb)=(0,0,0)
-                                else:
-                                    lit=None
-                                
-                                # discard diffuse & power - see class Object
-                                mat.append(((1.0,1.0,1.0),(sr,sg,sb),(er,eg,eb),0, (texture, lit)))
+                            (flags1,flags2,diffuse,detail,normal,specular,emissive,reflection,fresnel,dr,dg,db,da,sr,sg,sb,sa,sp,ds,normalscale,recflectionscale,po,power,bloomfloor,ambientscale,srcblend,dstblend,alphafunc,alphathreshhold,zwritealpha)=unpack('<9I16f3I2f', bgl.read(120))
+                            # Get texture names
+                            diffuse   =(flags1 & Material.FSX_MAT_HAS_DIFFUSE) and tex[diffuse] or None
+                            emissive  =(flags1 & Material.FSX_MAT_HAS_EMISSIVE) and tex[emissive] or None
+                            if output.xpver<=10:
+                                normal=specular=reflection=None	# Not supported in<=10, so no point doing lookup
                             else:
-                                mat.append(((dr,dg,db),(sr,sg,sb),(er,eg,eb),0, None))
+                                specular  =(flags1 & Material.FSX_MAT_HAS_SPECULAR) and tex[specular] or None
+                                normal    =(flags1 & Material.FSX_MAT_HAS_NORMAL) and tex[normal] or None
+                                reflection=(flags1 & Material.FSX_MAT_HAS_REFLECTION) and tex[reflection] or None
+                            # Get texture filenames
+                            if diffuse:   diffuse   =findtex(diffuse, texdir, output.addtexdir)
+                            if emissive:  emissive  =findtex(emissive, texdir, output.addtexdir)
+                            if specular:  specular  =findtex(specular, texdir, output.addtexdir)
+                            if normal:    normal    =findtex(normal, texdir, output.addtexdir)
+                            if reflection:reflection=findtex(reflection, texdir, output.addtexdir)
+
+                            t=(diffuse or emissive) and Texture(output.xpver, diffuse, emissive, specular, normal, reflection) or None
+                            m=Material(output.xpver,
+                                       (dr,dg,db),
+                                       (flags1 & Material.FSX_MAT_SPECULAR) and not specular and ((sr!=sg or sr!=sb or sr<0.9) and (sr,sg,sb)!=(0,0,0)) and [sr,sg,sb] or None,
+                                       False,	# Poly
+                                       flags2&Material.FSX_MAT_DOUBLE_SIDED != 0,
+                                       flags1&Material.FSX_MAT_ZTEST_ALPHA and alphafunc in [Material.FSX_MAT_ALPHA_TEST_GREATER,Material.FSX_MAT_ALPHA_TEST_GREATER_EQUAL] and alphathreshhold/255 or None,
+                                       not diffuse and ((flags1 & Material.FSX_MAT_SPECULAR) and (sr,sg,sb)!=(0,0,0)) and True,
+                                       flags1&Material.FSX_MAT_NO_SHADOW != 0)
+                            mattex.append((m,t))
                         if __debug__:
                             if output.debug:
-                                output.debug.write("Materials %d\n" % len(mat))
+                                output.debug.write("Materials %d\n" % len(mattex))
+                                for i in range(len(mattex)):
+                                    output.debug.write("%3d:\t%s\t%s\n" % (i, mattex[i][0], mattex[i][1]))
                     elif c=='INDE':
                         idx=unpack('<%dH' % (size/2), bgl.read(size))
                     elif c=='VERB':
@@ -134,13 +146,13 @@ class ProcScen:
                                         (child, peer, finalmatrix, parent)=scen[scene]
                                         if __debug__:
                                             if output.debug:
-                                                output.debug.write("LOD %4d scene %d material %d tris %d\n" % (lod, scene, material, icount/3))
+                                                output.debug.write("LOD %4d: scene %d verb %d material %d tris %d voff %d vcount %d ioff %d icount %d\n" % (lod, scene, verb, material, icount/3, voff, vcount, ioff, icount))
 
                                         while parent!=-1:
                                             (child, peer, thismatrix, parent)=scen[parent]
                                             finalmatrix=finalmatrix*thismatrix
                                         if not lod in data: data[lod]=[]
-                                        data[lod].append((mat[material], vt[verb][voff:voff+vcount], idx[ioff:ioff+icount], finalmatrix))
+                                        data[lod].append((mattex[material][0], mattex[material][1], vt[verb][voff:voff+vcount], idx[ioff:ioff+icount], finalmatrix))
                                         partno+=1
                                     else:
                                         bgl.seek(size,1)
@@ -151,80 +163,32 @@ class ProcScen:
             else:
                 bgl.seek(size,1)
 
-        # Sort data by texture. Only use highest LOD
-        suffix=0
-        suffixstr=''
-        sorted={}
-        libname=asciify(libname)
-        for ((d,s,sp,e,texture),vt,idx,matrix) in data[maxlod]:
+        # Only interested in highest LOD
+        objs={}	# objs by texture
+        for (m,t,vt,idx,matrix) in data[maxlod]:
             if __debug__:
-                if output.debug:
-                    if texture:
-                        (tex,lit)=texture
-                        if tex: tex=basename(tex).encode("latin1",'replace')
-                    else:
-                        tex=None
-                    output.debug.write("%s\n%s\n" % (tex, matrix))
-                    
-            # handle multiple objects with same name
-            while True:
-                if suffix: suffixstr='-%d' % suffix
-                if texture:
-                    (tex,lit)=texture
-                    if tex:
-                        (fname,ext)=splitext(basename(tex))
-                        fname="%s%s-%s" % (libname, suffixstr, asciify(fname))
-                    elif lit:
-                        (fname,ext)=splitext(basename(lit))
-                        fname="%s%s-%s" % (libname, suffixstr, asciify(fname))
-                else:
-                    fname="%s%s" % (libname, suffixstr)
-                if fname in output.objdat:
-                    suffix+=1
-                else:
-                    break
-            if not texture in sorted: sorted[texture]=[]
-            sorted[texture].append(((d,s,sp,e),vt,idx,matrix))
-
-        bname=libname+suffixstr
-        objs=[]
-
-        for texture in sorted:
+                if output.debug: output.debug.write("%s\n%s\n" % (t, matrix))
             objvt=[]
-            objidx=[]
-            mattri=[]
-            for ((d,s,e,p),vt,idx,matrix) in sorted[texture]:
-                vbase=len(objvt)
-                ibase=len(objidx)
-                nrmmatrix=matrix.adjoint()
-                if texture:
-                    (tex,lit)=texture
-                    if tex:
-                        (fname,ext)=splitext(basename(tex))
-                    else:
-                        (fname,ext)=splitext(basename(lit))
-                    fname="%s-%s" % (bname, asciify(fname))
-                    for (x,y,z, nx,ny,nz, tu,tv) in vt:
-                        (x,y,z)=matrix.transform(x,y,z)
-                        (nx,ny,nz)=nrmmatrix.rotateAndNormalize(nx,ny,nz)
-                        objvt.append((x,y,-z, nx,ny,-nz, tu,tv))
-                else:
-                    # replace materials with palette texture
-                    tex=output.palettetex
-                    lit=None
-                    fname=bname
-                    (pu,pv)=rgb2uv(d)
-                    for (x,y,z, nx,ny,nz, tu,tv) in vt:
-                        (x,y,z)=matrix.transform(x,y,z)
-                        (nx,ny,nz)=nrmmatrix.rotateAndNormalize(nx,ny,nz)
-                        objvt.append((x,y,-z, nx,ny,-nz, pu,pv))
-                if not vbase:
-                    objidx.extend(idx)	# common case
-                else:
-                    objidx.extend([vbase+i for i in idx])
-                mattri.append(((d,s,e,p), ibase, len(objidx)-ibase, False))
-                              
-            objs.append(Object(fname+'.obj', comment, tex, lit, None, [], [], [], [], objvt, objidx, mattri, 0))
+            nrmmatrix=matrix.adjoint()
+            if t:
+                assert not t.s and not t.n and not t.r	# Bunching scheme will need re-work
+                for (x,y,z, nx,ny,nz, tu,tv) in vt:
+                    (x,y,z)=matrix.transform(x,y,z)
+                    (nx,ny,nz)=nrmmatrix.rotateAndNormalize(nx,ny,nz)
+                    objvt.append((x,y,-z, nx,ny,-nz, tu,tv))
+            else:
+                # replace material with palette texture
+                (pu,pv)=rgb2uv(m.d)
+                for (x,y,z, nx,ny,nz, tu,tv) in vt:
+                    (x,y,z)=matrix.transform(x,y,z)
+                    (nx,ny,nz)=nrmmatrix.rotateAndNormalize(nx,ny,nz)
+                    objvt.append((x,y,-z, nx,ny,-nz, pu,pv))
+            if t in objs:
+                obj=objs[t]
+                if t and t.e: obj.tex.e=t.e	# Because we don't compare on emissive
+            else:
+                objs[t]=obj=Object(libname, comment, t, None)
+            obj.addgeometry(m, objvt, idx)
 
         # Add objs to library with one name
-        if objs: output.objdat[libname]=objs
+        if objs: output.objdat[libname]=objs.values()

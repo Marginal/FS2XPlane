@@ -180,16 +180,6 @@ class Point:
         self.lon=round(self.lon,precision)
         return self
 
-    #def __cmp__(self, other):
-    #    return self.lat==other.lat and self.lon==other.lon
-    #
-    #def __hash__(self):
-    #    return hash(self.lat) ^ hash(self.lon)
-    #
-    #def __setattr__(self, name, value):
-    #    # make immutable
-    #    raise TypeError
-
 
 class Matrix:
     def __init__(self, v=None):
@@ -294,9 +284,11 @@ class Matrix:
                   [0,      0,      0, 1]])
         return t*self
 
-    #def __cmp__(self, other):
-    #    # For use as a hash key
-    #    return cmp(self.m, other.m)
+    def __cmp__(self, o):
+        return cmp(self.m, o.m)
+
+    def __hash__(self):
+        return hash(tuple([tuple(r) for r in self.m]))
 
     def __mul__(self, other):
         # self*other
@@ -314,8 +306,7 @@ class Matrix:
     def __str__(self):
         s=''
         for i in range(4):
-            s=s+' [%8.3f %8.3f %8.3f %8.3f]\n' % (
-                self.m[i][0], self.m[i][1], self.m[i][2], self.m[i][3])
+            s=s+' [%8.3f %8.3f %8.3f %8.3f]\n' % (self.m[i][0], self.m[i][1], self.m[i][2], self.m[i][3])
         s='['+s[1:-1]+']'
         return s
 
@@ -344,65 +335,153 @@ class AptNav:
         #    return 0
 
 
-class Object:
-    def __init__(self, filename, comment, tex, lit, layer,
-                 vlight, vline, lines, veffect, vt, idx, mattri, poly):
-        self.filename=filename
-        self.comment=comment
-        self.tex=tex
-        self.lit=lit
+# MDLX-style material with texture split out (since it can be specified separately under MDL9)
+# http://www.fsdeveloper.com/wiki/index.php?title=MDL_file_format_(FSX)
+class Material:
+
+    FSX_MAT_SPECULAR=0x1
+    FSX_MAT_HAS_DIFFUSE=0x2
+    FSX_MAT_HAS_NORMAL=0x4
+    FSX_MAT_HAS_SPECULAR=0x8
+    FSX_MAT_HAS_REFLECTION=0x20
+    FSX_MAT_HAS_EMISSIVE=0x80
+    FSX_MAT_NO_SHADOW=0x200000
+    FSX_MAT_ZTEST_ALPHA=0x400000
+    FSX_MAT_ALPHA_TEST_GREATER=5
+    FSX_MAT_ALPHA_TEST_GREATER_EQUAL=7
+    FSX_MAT_DOUBLE_SIDED=0x8
+
+    def __init__(self, xpver, diffuse, specular=None, poly=False, dblsided=False, alphacutoff=None, shiny=False, shadow=True):
+        self.d=diffuse		# diffuse color
+        self.s=xpver>10 and specular or None	# specular color or None if default. <=v10 has no support for specular color - http://xplanescenery.blogspot.co.uk/2006/01/obj8-what-not-to-use.html
+        self.poly=poly		# poly_os or draped
+        self.dblsided=dblsided	# True or False
+        self.alpha=alphacutoff	# AlphaTestValue or None
+        self.shiny=shiny	# True or False
+        self.shadow=xpver<10 or shadow	# True or False. v9 has no explicit support for shadows
         if poly:
-            self.layer=layer
-            self.surface=(layer!=None and layer>4)
-        else:
-            self.layer=None
-            self.surface=False
-        self.vlight=vlight
-        self.vline=vline
-        self.lines=lines	# [start, count]
-        self.veffect=veffect
-        self.vt=vt
-        self.idx=idx
-        self.mattri=mattri	# [((d,s,e), start, count, dblsided)]
-        self.poly=poly
+            # Draped ignores all state - http://developer.x-plane.com/?article=obj8-file-format-specification#DRAPING
+            self.poly=self.dblsided=self.shiny=False
+            self.alpha=None
+            self.shadow=True
+
+    if __debug__:
+        def __str__(self):
+            return "d:%s s:%s poly:%s dbl:%s alpha:%s shiny:%s shadow:%s" % (self.d, self.s, self.poly, self.dblsided, self.alpha, self.shiny, self.shadow)
 
     def __eq__(self, o):
-        return (self.filename==o.filename and
-                self.comment==o.comment and
-                self.tex==o.tex and
-                self.lit==o.lit and
-                self.layer==o.layer and
-                #self.surface==o.surface and	# redundant
-                self.vlight==o.vlight and
-                self.vline==o.vline and
-                self.lines==o.lines and
-                self.veffect==o.veffect and
-                self.vt==o.vt and
-                self.idx==o.idx and
-                self.mattri==o.mattri and
-                self.poly==o.poly)
+        # Note don't compare diffuse color cos its irrelevant once its been mapped to palette
+        return self.s==o.s and self.alpha==o.alpha and self.shiny==o.shiny and self.shadow==o.shadow
 
+    def clone(self):
+        return Material(99, self.d, self.s, self.poly, self.dblsided, self.alpha, self.shiny, self.shadow)
+
+# Texture collection
+class Texture:
+
+    def __init__(self, xpver, diffuse, emissive, specular=None, normal=None, reflection=None):
+        # arguments are case-corrected full pathnames to source textures
+        self.d=diffuse
+        self.e=emissive
+        self.s=xpver>10 and specular or None	# Specular map unused
+        self.n=xpver>10 and normal or None	# Normal map unused
+        self.r=xpver>10 and reflection or None	# Reflection map unused
+
+    if __debug__:
+        def __str__(self):
+            return "d:%s e:%s s:%s n:%s r:%s" % (self.d and basename(self.d), self.e and basename(self.e), self.s and basename(self.s), self.n and basename(self.n), self.r and basename(self.r))
+
+    def __eq__(self, o):
+	# Only compare on diffuse (unless diffuse is None)
+        assert (not self.s and not self.n and not self.r)	# Naming scheme will need re-work
+        return isinstance(o,Texture) and self.d==o.d and (self.d or self.e==o.e)
+
+    def __hash__(self):
+        return hash(self.d or (None,self.e))	# Only compare on diffuse (unless diffuse is None)
+
+class Object:
+    def __init__(self, name, comment, tex, layer, vlight=None, veffect=None):
+        self.name=name
+        self.comment=comment
+        self.tex=tex
+        self.layer=layer		# FS layer - can only be set in pre-FS9 BGL code
+        self.vlight=vlight or []	# http://docs.python.org/2/tutorial/controlflow.html#default-argument-values
+        self.veffect=veffect or []
+        self.vt=[]
+        self.idx=[]
+        self.mattri=[]			# [(Material, start, count)]
+
+    def __eq__(self, o):
+        return (#self.name==o.name and		# don't care about name
+                #self.comment==o.comment and	# redundant
+                isinstance(o,Object) and
+                self.tex==o.tex and
+                self.layer==o.layer and
+                self.vt==o.vt and
+                self.vlight==o.vlight and
+                self.veffect==o.veffect and
+                self.mattri==o.mattri)
+
+    def addgeometry(self, mat, vt, idx):
+        if not vt:		# re-using existing vertex table
+            start=len(self.idx)
+            count=len(idx)
+            self.idx.extend(idx)
+        elif not self.vt:	# common case
+            start=0
+            count=len(idx)
+            self.vt=[(round(x,3), round(y,3), round(z,3), round(nx,3), round(ny,3), round(nz,3), round(tu,3), round(tv,3)) for (x,y,z,nx,ny,nz,tu,tv) in vt]	# round to increase chance of detecting dupes
+            self.idx.extend(idx)
+        else:
+            base=len(self.vt)
+            start=len(self.idx)
+            count=len(idx)
+            self.vt.extend([(round(x,3), round(y,3), round(z,3), round(nx,3), round(ny,3), round(nz,3), round(tu,3), round(tv,3)) for (x,y,z,nx,ny,nz,tu,tv) in vt])	# round to increase chance of detecting dupes
+            self.idx.extend([base+i for i in idx])
+        if not self.mattri:	# or __debug__:
+            self.mattri.append((mat, start, count))
+        else:
+            # Consolidate TRI commands if possible
+            (oldmat, oldstart, oldcount)=self.mattri[-1]
+            if start==oldstart+oldcount and oldmat==mat:
+                self.mattri[-1]=(oldmat, oldstart, oldcount+count)	# Merge successive
+            else:
+                self.mattri.append((mat, start, count))
+
+    def filename(self, scale):
+        assert not self.tex or (not self.tex.s and not self.tex.n and not self.tex.r)	# Naming scheme will need re-work
+        if self.tex and (self.tex.d or self.tex.e):
+            (tex,ext)=splitext(basename(self.tex.d or self.tex.e))
+            if not ext.lower() in ['.dds', '.bmp', '.png']: tex+=ext[1:].lower()	# For *.xAF etc
+            filename=asciify("%s-%s" % (self.name, tex))
+        else:
+            filename=self.name
+        if scale!=1:
+            filename="%s_%02d%02d.obj" % (filename, int(scale), round(scale*100,0)%100)
+        else:
+            filename=filename+'.obj'
+        return filename
+        
     def export(self, scale, output, fslayers):
-        if not self.comment: return		# Nothing to do for library objects
+        if not self.comment: return		# Nothing to do for X-Plane library objects
+
         if scale!=1:
             comment="%s scaled x%s" % (self.comment, scale)
-            filename="%s_%02d%02d.obj" % (
-                self.filename[:-4], int(scale), round(scale*100,0)%100)
         else:
             comment=self.comment
-            filename=self.filename
 
-        # Special handling for trees using default MSFS tree texture
-        if self.tex and not exists(self.tex) and basename(self.tex).lower() in ['treeswi.bmp', 'treessp.bmp', 'treessu.bmp', 'treesfa.bmp', 'treeshw.bmp']:
-            if output.dds:
-                self.tex='Resources/trees.dds'
-            else:
-                self.tex='Resources/trees.png'
-            self.lit=None
+        if self.tex and self.tex.d and not exists(self.tex.d) and basename(self.tex.d).lower() in ['treeswi.bmp', 'treessp.bmp', 'treessu.bmp', 'treesfa.bmp', 'treeshw.bmp']:
+            # Special handling for trees using default MSFS tree texture
+            (tex,lit)=maketexs(output.dds and 'Resources/trees.dds' or 'Resources/trees.png', None, output)
+        elif not self.tex:
+            # Palette
+            (tex,lit)=maketexs(output.palettetex, None, output)
+        elif self.vt:
+            assert self.tex.d!=None	# self.tex should just be None instead
+            (tex,lit)=maketexs(self.tex.d, self.tex.e, output)
+        else:
+            tex=lit=None
 
-        # self.tex & .lit are case-corrected full pathname to source texture
-        (tex,lit)=maketexs(self.tex, self.lit, output)
-            
         if False: #output.debug:
             # Generate line at object origin
             self.vline.insert(0, (0, 0, 0,  1, 0.5, 0.5))
@@ -413,41 +492,55 @@ class Object:
                 (m, start, count, dbl)=self.mattri[i]
                 self.mattri[i]=(m, start+2, count, dbl)
         
+        # Re-order to move poly/draped items first
+        poly=False
+        for i in range(len(self.mattri)):
+            (mat,start,count)=self.mattri[i]
+            if mat.poly:
+                self.mattri.pop(i)
+                self.mattri.insert(0, (mat,start,count))
+                poly=True
+        if poly and output.draped:
+            # Have to calculate an explicit LOD for draped-only geometry
+            minx=minz=maxint
+            maxx=maxz=-maxint
+            for (x,y,z, nx,ny,nz, tu,tv) in self.vt:
+                minx=min(minx,x)
+                maxx=max(maxx,x)
+                minz=min(minz,z)
+                maxz=max(maxz,z)
+            drapedlod=sqrt(max(maxx-minx,maxz-minz))*25	# Roughly twice what X-Plane 10 calculates if LOD not specified
+            drapedlod=round(drapedlod+5,-1)		# round up to next 10 for neatness
+
         try:
             path=join(output.xppath, 'objects')
             if not isdir(path): mkdir(path)
-            objpath=join(path, filename)
+            objpath=join(path, self.filename(scale))
+            assert not exists(objpath), self.filename(scale)	# Something's wrong if the target file already exists
             objfile=file(objpath, 'wt')
-            if not filename in listdir(path):
+            if not self.filename(scale) in listdir(path):
                 raise IOError	# case mixup
             objfile.write("I\n800\t# %sOBJ\n" % banner)
             objfile.write("\n# %s\n\n" % comment)
             if tex and self.vt:
-                if self.poly and output.draped:
-                    objfile.write("TEXTURE\t\nTEXTURE_DRAPED\t%s\n" % tex)
+                objfile.write("TEXTURE\t\t%s\n" % tex)
+                if lit:
+                    objfile.write("TEXTURE_LIT\t%s\n" % lit)
+                if poly and output.draped:
+                    objfile.write("TEXTURE_DRAPED\t%s\n" % tex)
                     # lit not supported
-                else:
-                    objfile.write("TEXTURE\t\t%s\n" % tex)
-                    if lit:
-                        objfile.write("TEXTURE_LIT\t%s\n" % lit)
             else:
                 objfile.write("TEXTURE\t\n")
     
-            objfile.write("POINT_COUNTS\t%d %d %d %d\n\n" % (
-                len(self.vt), len(self.vline), len(self.vlight),
-                len(self.idx)))
-            
-            for (x,y,z,r,g,b) in self.vlight:
-                objfile.write("VLIGHT\t%8.3f %8.3f %8.3f\t%6.3f %6.3f %6.3f\n" % (x*scale, y*scale, z*scale, r, g, b))
-            if self.vlight: objfile.write("\n")
-            
-            for (x,y,z,r,g,b) in self.vline:
-                objfile.write("VLINE\t%8.3f %8.3f %8.3f\t%6.3f %6.3f %6.3f\n" % (x*scale, y*scale, z*scale, r, g, b))
-            if self.vline: objfile.write("\n")
+            objfile.write("POINT_COUNTS\t%d %d %d %d\n\n" % (len(self.vt), 0, len(self.vlight), len(self.idx)))
 
             for (x,y,z,nx,ny,nz,u,v) in self.vt:
                 objfile.write("VT\t%8.3f %8.3f %8.3f\t%6.3f %6.3f %6.3f\t%6.4f %6.4f\n" % (x*scale, y*scale, z*scale, nx,ny,nz, u,v))
             if self.vt: objfile.write("\n")
+
+            for (x,y,z,r,g,b) in self.vlight:
+                objfile.write("VLIGHT\t%8.3f %8.3f %8.3f\t%6.3f %6.3f %6.3f\n" % (x*scale, y*scale, z*scale, r, g, b))
+            if self.vlight: objfile.write("\n")
 
             n=len(self.idx)
             for i in range(0, n-9, 10):
@@ -459,79 +552,79 @@ class Object:
                 objfile.write("IDX\t%d\n" % self.idx[j])
             if self.idx: objfile.write("\n")
 
-            if len(self.vlight)<=1 and len(self.veffect)<=1 and not self.vline and not self.vt:
+            if len(self.vlight)<=1 and len(self.veffect)<=1 and not self.vt:
                 # X-Plane optimises single lights away otherwise
                 objfile.write("ATTR_LOD\t0 1000\n")
 
-            # Maybe a decal
-            if self.poly:
-                if output.draped:
-                    # Have to calculate an explicit LOD for draped-only geometry
-                    minx=minz=maxint
-                    maxx=maxz=-maxint
-                    for (x,y,z, nx,ny,nz, tu,tv) in self.vt:
-                        minx=min(minx,x)
-                        maxx=max(maxx,x)
-                        minz=min(minz,z)
-                        maxz=max(maxz,z)
-                        lod=sqrt(max(maxx-minx,maxz-minz))*25	# Roughly twice what X-Plane 10 calculates if LOD not specified
-                        lod=round(lod+5,-1)			# round up to next 10 for neatness
-                    objfile.write("ATTR_LOD_draped\t%d\nATTR_draped\n" % lod)
-                else:
-                    objfile.write("ATTR_poly_os\t%d\n\n" % self.poly)
-            elif self.vt:
-                objfile.write("ATTR_no_blend\n\n")	# for fences etc
-            if self.layer!=None:
-                if self.poly and output.draped:
-                    objfile.write("ATTR_layer_group_draped\t%s\n" % fslayers[self.layer])
-                else:
-                    objfile.write("ATTR_layer_group\t%s\n" % fslayers[self.layer])
-            #if self.surface:
-            #    objfile.write("ATTR_hard\tconcrete\n")
+            if self.tex and self.tex.s: objfile.write("GLOBAL_specular\t%5.3f\n" % 1)	# needed for specular map
+            # default state
+            poly=False
+            dblsided=False
+            alpha=None
+            shiny=False
+            shadow=True
+            for (mat, start, count) in self.mattri:
+                if mat.poly and not poly:
+                    if output.draped:
+                        if self.layer:
+                            objfile.write("ATTR_layer_group_draped\t%s\n" % fslayers[self.layer])
+                        objfile.write("ATTR_LOD_draped\t%d\nATTR_draped\n" % drapedlod)
+                    else:
+                        if self. layer:
+                            objfile.write("ATTR_layer_group\t%s\n" % fslayers[self.layer])
+                            #if layer and layer>4)	# can't remember where '4' is documented
+                            #    objfile.write("ATTR_hard\tconcrete\n")
+                        objfile.write("ATTR_poly_os\t%d\n" % 2)
+                elif poly and not mat.poly:
+                    if output.draped:
+                        objfile.write("\nATTR_no_draped\n")
+                    else:
+                        objfile.write("\nATTR_poly_os\t%d\n" % 0)
+                poly=mat.poly
 
+                if mat.shadow and not shadow:
+                    objfile.write("ATTR_shadow\n")
+                elif shadow and not mat.shadow:
+                    objfile.write("ATTR_no_shadow\n")
+                shadow=mat.shadow
+                
+                assert not (self.tex and self.tex.s and mat.shiny)	# specularity is handled using GLOBAL_specular when we have a map
+                if mat.shiny and not shiny:
+                    objfile.write("ATTR_shiny_rat\t%5.3f\n" % 1)
+                elif shiny and not mat.shiny:
+                    objfile.write("ATTR_shiny_rat\t%5.3f\n" % 0)
+                shiny=mat.shiny
+
+                if mat.alpha and not alpha:
+                    objfile.write("ATTR_no_blend\t%5.3f\n" % mat.alpha)
+                elif alpha and not mat.alpha:
+                    objfile.write("ATTR_blend\n")
+                alpha=mat.alpha
+
+                if mat.dblsided and not dblsided:
+                    objfile.write("ATTR_no_cull\n")
+                elif dblsided and not mat.dblsided:
+                    objfile.write("ATTR_cull\n")
+                dblsided=mat.dblsided
+
+                objfile.write("TRIS\t%d %d\n\n" % (start, count))
+
+            if self.vlight:
+                objfile.write("LIGHTS\t0 %d\n\n" % len(self.vlight))
+    
             for (x,y,z,effect,s) in self.veffect:
                 objfile.write("%s\t%8.3f %8.3f %8.3f\t%6.3f\n" % (effect, x, y, z, s))
-            if self.veffect: objfile.write("\n")                
-                
-            if self.vlight:
-                objfile.write("LIGHTS\t0 %d\n" % len(self.vlight))
-            for (start, count) in self.lines:
-                objfile.write("LINES\t%d %d\n" % (start, count))
+            if self.veffect: objfile.write("\n")
 
-            # Ambient and Specular don't work, according to 
-            # xplanescenery.blogspot.com/2006/01/obj8-what-not-to-use.html
-            # Also, Diffuse is to be avoided because its slow
-            # Derive shininess from average of specular colour.
-            a=(1.0,1.0,1.0)
-            s=0
-            e=(0.0,0.0,0.0)
-            p=0
-            d=False
-            for (m, start, count, dbl) in self.mattri:
-                if dbl and not d:
-                    objfile.write("ATTR_no_cull\n")
-                elif d and not dbl:
-                    objfile.write("ATTR_cull\n")
-                d=dbl
-                if e!=m[2]:
-                    e=(er,eg,eb)=m[2]
-                    objfile.write("ATTR_emission_rgb\t%5.3f %5.3f %5.3f\n" %(
-                        er,eg,eb))
-                if s!=(m[1][0]+m[1][1]+m[1][2])/3:
-                    s=(m[1][0]+m[1][1]+m[1][2])/3
-                    objfile.write("ATTR_shiny_rat\t%5.3f\n" % s)
-                objfile.write("TRIS\t%d %d\n" % (start, count))
-    
             objfile.close()
         except IOError:
             raise FS2XError("Can't write \"%s\"" % objpath)
 
 
 class Polygon:
-    def __init__(self, filename, tex, lit, nowrap, scale, layer, paging=None):
-        self.filename=filename
+    def __init__(self, name, tex, nowrap, scale, layer, paging=None):
+        self.name=name
         self.tex=tex
-        self.lit=lit
         self.nowrap=nowrap
         self.scale=scale
         self.layer=layer
@@ -539,26 +632,27 @@ class Polygon:
         self.paging=paging
 
     def __eq__(self, o):
-        return (self.filename==o.filename and
+        return (self.name==o.name and
                 self.tex==o.tex and
-                self.lit==o.lit and
                 self.nowrap==o.nowrap and
                 self.layer==o.layer)	 	# was ignored - 8.60 layer bug
                 #self.scale==o.scale		# scale is boring
                 #self.surface==o.surface	# redundant
 
+    def filename(self):
+        return self.name+'.pol'
+
     def export(self, output, fslayers):
-        if self.paging and ((self.tex in output.donetex) or
-                            (self.lit in output.donetex)):
+        if self.paging and ((self.tex.d in output.donetex) or (self.tex.e and self.tex.e in output.donetex)):
             # Avoid paging shared textures
             self.paging=None
-        (tex,lit)=maketexs(self.tex, self.lit, output, True)
+        (tex,lit)=maketexs(self.tex.d, self.tex.e, output, True)
         try:
             path=join(output.xppath, 'objects')
-            objpath=join(path, self.filename)
+            objpath=join(path, self.filename())
             if not isdir(path): mkdir(path)
             objfile=file(objpath, 'wt')
-            if not self.filename in listdir(path):
+            if not self.filename() in listdir(path):
                 raise IOError	# case mixup
             objfile.write("I\n850\t# %sDRAPED_POLYGON\n\n" % banner)
             if tex:
@@ -566,11 +660,9 @@ class Polygon:
                     suffix='_NOWRAP'
                 else:
                     suffix=''                    
-                objfile.write("TEXTURE%s\t\t%s\n" % (
-                    suffix, tex))
+                objfile.write("TEXTURE%s\t\t%s\n" % (suffix, tex))
                 if lit:
-                    objfile.write("TEXTURE_LIT%s\t%s\n" % (
-                        suffix, lit))
+                    objfile.write("TEXTURE_LIT%s\t%s\n" % (suffix, lit))
             else:
                 objfile.write("TEXTURE\t\n")
             objfile.write("SCALE\t\t%d %d\n" % (self.scale, self.scale))
@@ -703,13 +795,12 @@ def maketex(src, dstdir, output, palno, substituteblank=False):
 
 # Uniquify list, retaining order. Assumes list items are hashable
 def unique(seq):
-    # Can't use set() - not in Python 2.3
-    seen = {}
+    seen = set()
     result = []
     for item in seq:
-        if item in seen: continue
-        seen[item] = True
-        result.append(item)
+        if item not in seen:
+            seen.add(item)
+            result.append(item)
     return result
 
 

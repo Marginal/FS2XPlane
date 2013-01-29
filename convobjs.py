@@ -4,16 +4,14 @@ from os import listdir
 from os.path import join
 import xml.parsers.expat
 
-from convutil import asciify, Object, rgb2uv
+from convutil import asciify, Object, Material, Texture, rgb2uv
 
 # X-Plane automatically generates versions of these from nav.dat data 
 ignorestock=['air_beacontower01', 'air_localizerantenna01', 'air_ndb_dmeantenna','air_ndb_dmeshack','air_ndb_dmetower','gen_dme','gen_ndb01','gen_tacan','ndb','ndbhigh','sco_gen_checkershed','sco_gen_ilstransmitter','sco_gen_radarshackb','sco_gen_radarshackbaseb','sco_gen_radarshackdish','sco_gen_vor03','sco_gen_vor03dme','sco_gen_vorsmall','sco_gen_vorsmall2','sco_gen_vorsmall2dme','sco_gen_vorsmalldme']
 
-def makestock(output, name):
+def makestock(name, output):
     if name in output.subst: return None
     objname=name+'.obj'
-    #defaultobj=Object(objname, "Placeholder for built-in object %s (%s)" %
-    #                  (uid, name), None, None, None, [],[],[],[],[],[],[],0)
     if not objname in listdir('Resources'): return None
 
     tex=None
@@ -44,12 +42,12 @@ def makestock(output, name):
                         int(tokens[7]), int(tokens[8]), int(tokens[9]),
                         int(tokens[10])])
     obj.close()
-    return Object(objname, "(c) Jonathan Harris 2008. http://creativecommons.org/licenses/by-sa/3.0/",
-                  tex, None, None, [], [], [], [], vt, idx,
-                  [([(1,1,1),(0,0,0),(0,0,0),0.5], 0, len(idx), False)], 0)
+    obj=Object(name, "(c) Jonathan Harris 2008. http://creativecommons.org/licenses/by-sa/3.0/", None, None)
+    obj.addgeometry(Material(output.xpver, None), vt, idx)
+    return obj
 
 
-def makegenquad(name, palettetex, x, z, incx, incz, heights, texs, roof):
+def makegenquad(name, output, x, z, incx, incz, heights, texs, roof):
     # roof types: 0=flat, 1=pointy, 2=gabled, 3=slanty
     cumheight=0
     vt=[]
@@ -170,12 +168,11 @@ def makegenquad(name, palettetex, x, z, incx, incz, heights, texs, roof):
                    (-x0, topheight, -z0, 0,0,-1, u,v)])
         idx.extend([base+2,base+1,base, base,base+3,base+2])
         
-    return Object(name, "Generic building", palettetex, None,
-                  None, [], [], [], [], vt, idx,
-                  [([(1,1,1),(0,0,0),(0,0,0),0.5], 0, len(idx), False)], 0)
+    obj=Object(name, "Generic building", None, None)
+    obj.addgeometry(Material(output.xpver, None), vt, idx)
+    return obj
 
-
-def makegenmulti(name, palettetex, sides, x, z, heights, texs):
+def makegenmulti(name, output, sides, x, z, heights, texs):
     # building fits inside an oval inscribed in a x*z box
     slice=2*pi/sides
     halfslice=pi/sides
@@ -240,10 +237,9 @@ def makegenmulti(name, palettetex, sides, x, z, heights, texs):
                         base+(corner*2+1)%sides2,
                         base+(corner*2+2)%sides2])
 
-    return Object(name, "Generic building", palettetex, None,
-                  None, [], [], [], [], vt, idx,
-                  [([(1,1,1),(0,0,0),(0,0,0),0.5], 0, len(idx), False)], 0)
-
+    obj=Object(name, "Generic building", None, None)
+    obj.addgeometry(Material(output.xpver, None), vt, idx)
+    return obj
 
 
 # Generic buildings fallback colours from "Generic Building Textures.xls" in

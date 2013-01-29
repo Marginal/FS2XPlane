@@ -16,7 +16,7 @@ except NameError:
     from OpenGL import GLU
     gluTessVertex = GLU._gluTessVertex
 
-from convutil import cirp, m2f, NM2m, complexity, asciify, unicodeify, normalize, rgb2uv, cross, dot, AptNav, Object, Polygon, Point, Matrix, FS2XError, unique, groundfudge, planarfudge, effects
+from convutil import cirp, m2f, NM2m, complexity, asciify, unicodeify, normalize, rgb2uv, cross, dot, AptNav, Object, Polygon, Material, Texture, Point, Matrix, FS2XError, unique, groundfudge, planarfudge, effects
 from convobjs import makegenquad, makegenmulti
 from convtaxi import taxilayout, Node, Link
 from convphoto import blueskyre
@@ -81,10 +81,6 @@ class TaxiwayName:
 class Parse:
     def __init__(self, bgl, srcfile, output):
         if output.debug: output.debug.write('\nFile: %s\n' % srcfile.encode("latin1",'replace'))
-        # Per-BGL counts
-        output.gencount=1	# next generic building number
-        output.gencache={}	# cache of generic buildings
-        output.anccount=0	# Not used for library objects
         name=basename(srcfile)
         texdir=None
         for section in [42,54,58,102,114]:
@@ -99,11 +95,14 @@ class Parse:
                         ProcTerrain(bgl, srcfile, output)
                     except:
                         output.log("Can't parse Terrain section in file %s" % name)
-                elif section==58:
-                    # OBJECT
+                elif section==58:	# OBJECT
+                    # Per-BGL counts
                     old=False
                     rrt=False
                     anim=False
+                    first=True
+                    gencache={}	# cache of generic building names, by args
+                    objcache=[]	# objects generated in this BGL, for dupe detection
                     if not texdir:
                         texdir=normpath(join(dirname(srcfile), pardir))
                         # For case-sensitive filesystems
@@ -144,8 +143,7 @@ class Parse:
                                 raise struct.error	# wtf?
                             try:
                                 output.refresh()
-                                p=ProcScen(bgl, posa+l, 1.0, None, srcfile,
-                                           texdir, output, None, None)
+                                p=ProcScen(bgl, posa+l, 1.0, None, srcfile, texdir, output, firstarea=first, gencache=gencache, objcache=objcache)
                                 if p.old:
                                     old=True
                                     if __debug__:
@@ -158,6 +156,7 @@ class Parse:
                                     anim=True
                                     if __debug__:
                                         if output.debug: output.debug.write("Animation\n")
+                                first=False
                             except:
                                 output.log("Can't parse area %x in file %s" % (posa, name))
                                 if output.debug: print_exc(None, output.debug)
@@ -192,7 +191,7 @@ class Parse:
 
 # handle section 9 area and 10 library. libname!=None if this is a library
 class ProcScen:
-    def __init__(self, bgl, enda, scale, libname, srcfile, texdir, output, scen=None, tran=None):
+    def __init__(self, bgl, enda, scale, libname, srcfile, texdir, output, scen=None, tran=None, firstarea=True, gencache=None, objcache=None):
 
         self.old=False	# Old style scenery found and skipped
         self.rrt=False	# Old style runways/roads found and skipped
@@ -203,6 +202,7 @@ class ProcScen:
         self.bgl=bgl
         self.enda=enda
         self.libname=libname
+        self.name=libname	# base name for generated objects
         self.srcfile=srcfile
         self.texdir=texdir
         if libname:
@@ -211,6 +211,9 @@ class ProcScen:
         else:
             self.comment="file %s" % asciify(basename(self.srcfile),False)	# Used for reporting
         self.output=output
+        self.firstarea=firstarea
+        self.gencache=gencache
+        self.objcache=objcache
 
         self.start=bgl.tell()
         if tran: self.tran=self.start+tran	# Location of TRAN table
@@ -275,30 +278,31 @@ class ProcScen:
         self.altmsl=0
         self.layer=None
         self.matrix=[None]
-        self.scale=1.0	# don't know what to do with scale value in FS8 libs
+        self.scale=1.0		# don't know what to do with scale value in FS8 libs
         self.basescale=self.scale
-        self.stack=[]	# (return address, layer, pop matrix?)
+        self.stack=[]		# (return address, layer, pop matrix?)
         self.tex=[]
-        self.mat=[[(1.0,1.0,1.0),(0,0,0),(0,0,0),0]]	# [[a,s,e,p]]
+        self.mat=[]
         self.vtx=[None] * 2048	# DefRes/ResList limit
-        self.idx=[]	# Indices into vtx
-        self.m=0	# Index into mat
-        self.t=None	# Index into tex
+        self.idx=[]		# Indices into vtx
+        self.m=None		# Index into mat
+        self.t=None		# Index into tex
         self.lightcol=(1,1,1)
         self.billboard=None	# Emulating billboarding in a libary defn
 
         self.nodes=[]
         self.links=[]
         self.linktype=None	# Last road/river/taxiway (type, width, centerline)
-        self.haze=0	# Whether palette-based transparency. 0=none
-        self.zbias=0	# Polygon offsetting
+        self.haze=0		# Whether palette-based transparency. 0=none
+        self.zbias=0		# Polygon offsetting
         self.surface=False	# StrRes/CntRes does lines not surface by default
         self.concave=False
         
-        self.objdat={}	# (mat, vtx[], idx[]) by (loc, layer, alt, altmsl, matrix, scale, tex, lit)
-        self.lightdat={}# ((x,y,z), (r,g,b)) by (loc, layer, alt, altmsl, matrix, scale, None, None)
-        self.effectdat={}# ((x,y,z), (effect, s)) by (loc, layer, alt, altmsl, matrix, scale, None, None)
-        self.polydat=[]	# ((points, layer, heading, scale, tex, lit))
+        self.objdat={}		# (mat, vtx[], idx[]) by (name, loc, layer, alt, altmsl, matrix, scale, Texture)
+        self.lightdat={}	# ((x,y,z), (r,g,b)) by (name, loc, layer, alt, altmsl, matrix, scale, None)
+        self.effectdat={}	# ((x,y,z), (effect, s)) by (name, loc, layer, alt, altmsl, matrix, scale, None)
+        self.keys=[]		# ordered list of keys for indexing the above
+        self.polydat=[]		# ((points, layer, heading, scale, Texture))
 
         self.neednight=False
         self.dayloc=None
@@ -429,6 +433,7 @@ class ProcScen:
               0x9e:self.Interpolate,
               0x9f:self.NOPi,
               0xa0:self.Object,
+              0xa4:self.NOPh,
               0xa6:self.TargetIndicator,
               0xa7:self.SpriteVICall,
               0xa8:self.TextureRoadStart,
@@ -501,6 +506,8 @@ class ProcScen:
             self.daypolydat=self.polydat
             self.objdat={}
             self.lightdat={}
+            self.effectdat={}
+            #self.keys=[]	# Don't reset keys - needed to catch day-only objs
             self.polydat=[]
             self.complexity=1
             self.loc=None
@@ -511,11 +518,11 @@ class ProcScen:
             self.scale=self.basescale
             self.stack=[]	# (return address, layer, pop matrix?)
             self.tex=[]
-            self.mat=[[(1.0,1.0,1.0),(0,0,0),(0,0,0),0]]	# [[a,s,e,p]]
+            self.mat=[]
             self.vtx=[None] * 2048	# DefRes limit
-            self.idx=[]	# Indices into vtx
-            self.m=0	# Index into mat
-            self.t=None	# Index into tex
+            self.idx=[]		# Indices into vtx
+            self.m=None		# Index into mat
+            self.t=None		# Index into tex
             self.lightcol=(1,1,1)
             self.nodes=[]
             self.links=[]
@@ -526,51 +533,42 @@ class ProcScen:
             return True
         return False
 
-    def makekey(self, dotex):
-        # 3 cases:
-        # 1. just looking for a colour for lights or lines - dotex=False
-        # 2. looking for a colour for texture for FaceT - dotex=True
-        # 3. looking for a texture - dotex=True
-
-        mat=self.mat[self.m]
-        tex=lit=None
-
-        if not dotex:
-            if not mat:
-                # must have a colour for lights and lines
-                mat=[(1.0,1.0,1.0),(0,0,0),(0,0,0),0]
-        elif self.t==None:
-            tex=self.output.palettetex
+    def makekey(self, dotex=True):
+        # Return a key suitable for indexing self.objdat
+        if self.t==None:
+            tex=None
             if __debug__:
-                if self.debug and not mat: self.debug.write("Transparent\n")
+                if self.debug and not tex: self.debug.write("No texture\n")
         else:
-            # we don't use ambient colour
-            if not mat:	# SColor24 alpha value only applies to untextured
-                mat=[(1.0,1.0,1.0),(0,0,0),(0,0,0),0]
-            else:
-                mat[0]=(1.0,1.0,1.0)
-            if self.vars[0x28c]!=1:
-                tex=None
-                lit=self.tex[self.t]
-                # Look for _lm version, eg LIEE cittadella universitaria-dm_liee_44
-                (src,ext)=splitext(basename(lit))
-                litlit=findtex(src+'_lm', self.texdir, self.output.addtexdir, True)
-                if litlit: lit=litlit
-                if self.haze: self.output.haze[lit]=self.haze
-            else:
-                tex=self.tex[self.t]
-                if self.haze: self.output.haze[tex]=self.haze
-                (src,ext)=splitext(basename(tex))
-                lit=findtex(src+'_lm', self.texdir, self.output.addtexdir, True)
-                if lit and self.haze: self.output.haze[lit]=self.haze
+            tex=self.tex[self.t]
+            if self.haze and tex.d: self.output.haze[tex.d]=self.haze
+            if self.haze and tex.e: self.output.haze[tex.e]=self.haze
+
+        if self.m==None:
+            mat=Material(self.output.xpver, (0,0,0))
+            if __debug__:
+                if self.debug and not mat: self.debug.write("No material\n")
+        else:
+            mat=self.mat[self.m].clone()
+        mat.dblsided=bool(self.billboard)
+
         layer=self.layer
         if layer>=40:	# ground element
             layer=None
-        elif layer>=24:
-            layer=24
-        if not layer and self.zbias:
-            layer=24
-        return ((self.loc,layer,self.alt,self.altmsl,self.matrix[-1],self.scale,tex,lit), mat)
+        #elif layer>=24:
+        #    layer=24
+        #if not layer and self.zbias:
+        #    layer=24
+        return ((self.name,self.loc,layer,self.alt,self.altmsl,self.matrix[-1],self.scale,tex), mat)
+
+    def makename(self):
+        # make a unique base filename
+        assert not self.libname	# Shouldn't be called in library objects
+        if self.firstarea:
+            self.name=asciify(splitext(basename(self.srcfile))[0])
+        else:
+            self.name="%s@%X" % (asciify(splitext(basename(self.srcfile))[0]), self.bgl.tell()-2)
+        self.firstarea=False
 
     def Surface(self):		# 05
         self.surface=True	# StrRes/CntRes does surface not lines
@@ -603,12 +601,20 @@ class ProcScen:
         else:
             idx=[]
             for i in range(1,len(vtx)-1):
-                idx.extend([0,i,i+1])
-        (key,mat)=self.makekey(True)
-        if not mat: return
+                idx.extend([0,i,i+1])	# make a fan
+        # Change order if necessary to face in direction of normal
+        (x0,y0,z0,c,c,c,c,c)=vtx[idx[0]]
+        (x1,y1,z1,c,c,c,c,c)=vtx[idx[1]]
+        (x2,y2,z2,c,c,c,c,c)=vtx[idx[2]]
+        (x,y,z)=cross((x1-x0,y1-y0,z1-z0), (x2-x0,y2-y0,z2-z0))
+        if dot((x,y,z), (nx,ny,nz))>0:	# arbitrary normal from last point
+            idx.reverse()
+        (key,mat)=self.makekey()
+        mat.poly=True	# This command sort-of implies ground-level
         if not key in self.objdat:
             self.objdat[key]=[]
-        self.objdat[key].append((mat, vtx, idx, True))
+            self.keys.append(key)
+        self.objdat[key].append((mat, vtx, idx))
         self.checkmsl()
         
     def Jump(self):		# 0d, 1b: IfInBoxRawPlane, 73: IfInBoxP
@@ -630,29 +636,27 @@ class ProcScen:
         
     def SColor(self):	# 14:Scolor, 50:GColor, 52:NewSColor
         (c,)=unpack('H', self.bgl.read(2))
+        self.mat=[Material(self.output.xpver, self.unicol(c))]
         self.m=0
-        self.mat=[[self.unicol(c), (0,0,0), (0,0,0), 0]]
         
-    def TextureEnable(self):		# 17
+    def TextureEnable(self):	# 17
         (c,)=unpack('<H', self.bgl.read(2))
-        if not c:
-            self.t=None
-        else:
-            self.t=0
+        if not c: self.t=None
 
     def Texture(self):		# 18
+        self.surface=True	# StrRes/CntRes does surface not lines
         (c,x,c,y)=unpack('<4h', self.bgl.read(8))
         tex=self.bgl.read(14).rstrip(' \0')
         l=tex.find('.')
         if l!=-1:	# Sometimes formatted as 8.3 with spaces
             tex=tex[:l].rstrip(' \0')+tex[l:]
-        self.tex=[findtex(tex, self.texdir, self.output.addtexdir)]
+        tex=findtex(tex, self.texdir, self.output.addtexdir)
+        self.tex=[tex and Texture(self.output.xpver, tex, None) or None]
         self.t=0
         if __debug__:
             if self.debug:
-                self.debug.write("%s\n" % basename(self.tex[0]).encode("latin1",'replace'))
-                if x or y:
-                    self.debug.write("!Tex offsets %d,%d\n" % (x,y))
+                self.debug.write("%s\n" % self.tex[0])
+                if x or y: self.debug.write("!Tex offsets %d,%d\n" % (x,y))
         
     def ResList(self):		# 1a
         (index,count)=unpack('<2H', self.bgl.read(4))
@@ -691,18 +695,23 @@ class ProcScen:
         self.bgl.seek(size-4,1)
         
     def FaceTTMap(self):	# 20:FaceTTMap, 7a:GFaceTTMap
-        (count,nx,ny,nz,)=unpack('<H3h', self.bgl.read(8))
+        (count,fnx,fny,fnz,)=unpack('<H3h', self.bgl.read(8))
         if count<=4: self.concave=False	# Don't bother
-        nx=nx/32767.0
-        ny=ny/32767.0
-        nz=nz/32767.0
+        fnx=fnx/32767.0
+        fny=fny/32767.0
+        fnz=fnz/32767.0
         self.bgl.read(4)
         vtx=[]
+        maxy=-maxint
         for i in range(count):
             (idx,tu,tv)=unpack('<H2h', self.bgl.read(6))
-            (x,y,z,c,c,c,c,c)=self.vtx[idx]
-            vtx.append((x,y,z, nx,ny,nz, tu/255.0,tv/255.0))
-        if not self.objdat and blueskyre.match(basename(self.tex[self.t])):
+            (x,y,z,nx,ny,nz,c,c)=self.vtx[idx]
+            maxy=max(maxy,y)
+            if self.cmd==0x7a:
+                vtx.append((x,y,z, nx,ny,nz, tu/255.0,tv/255.0))
+            else:
+                vtx.append((x,y,z, fnx,fny,fnz, tu/255.0,tv/255.0))
+        if not self.objdat and blueskyre.match(basename(self.tex[self.t].d)):
             if __debug__:
                 if self.debug: self.debug.write("Photoscenery\n")
             return	# handled in ProcPhoto
@@ -716,17 +725,19 @@ class ProcScen:
             for i in range(1,len(vtx)-1):
                 idx.extend([0,i,i+1])
         # Change order if necessary to face in direction of normal
-        (x0,y0,z0,c,c,c,c,c)=vtx[0]
-        (x1,y1,z1,c,c,c,c,c)=vtx[1]
-        (x2,y2,z2,c,c,c,c,c)=vtx[2]
+        (x0,y0,z0,c,c,c,c,c)=vtx[idx[0]]
+        (x1,y1,z1,c,c,c,c,c)=vtx[idx[1]]
+        (x2,y2,z2,c,c,c,c,c)=vtx[idx[2]]
         (x,y,z)=cross((x1-x0,y1-y0,z1-z0), (x2-x0,y2-y0,z2-z0))
-        if dot((x,y,z), (nx,ny,nz))>0:
+        if dot((x,y,z), (fnx,fny,fnz))>0:
             idx.reverse()
-        (key,mat)=self.makekey(True)
-        if not mat: return
+        (key,mat)=self.makekey()
+        if maxy+self.alt <= groundfudge:
+            mat.poly=True
         if not key in self.objdat:
             self.objdat[key]=[]
-        self.objdat[key].append((mat, vtx, idx, False))
+            self.keys.append(key)
+        self.objdat[key].append((mat, vtx, idx))
         self.checkmsl()
         
     def IfIn3(self):		# 21
@@ -798,20 +809,23 @@ class ProcScen:
     def FaceT(self):		# 1d:Face, 2a:GFaceT, 3e:FaceT
         (count,)=unpack('<H', self.bgl.read(2))
         if self.cmd==0x1d: self.bgl.read(6)	# point
-        (nx,ny,nz)=unpack('<3h', self.bgl.read(6))
+        (fnx,fny,fnz)=unpack('<3h', self.bgl.read(6))
         if count<=4: self.concave=False	# Don't bother
-        nx=nx/32767.0
-        ny=ny/32767.0
-        nz=nz/32767.0
+        fnx=fnx/32767.0
+        fny=fny/32767.0
+        fnz=fnz/32767.0
         if self.cmd!=0x1d: self.bgl.read(4)	# dot_ref
         vtx=[]
+        maxy=-maxint
         for i in range(count):
             (idx,)=unpack('<H', self.bgl.read(2))
-            (x,y,z,c,c,c,c,c)=self.vtx[idx]
-            vtx.append((x,y,z, nx,ny,nz, x*self.scale/256, z*self.scale/256))
+            (x,y,z,nx,ny,nz,c,c)=self.vtx[idx]
+            if self.cmd==0x2a:
+                vtx.append((x,y,z, nx,ny,nz, x*self.scale/256, z*self.scale/256))
+            else:
+                vtx.append((x,y,z, fnx,fny,fnz, x*self.scale/256, z*self.scale/256))
         if count<3: return	# wtf?
         if self.makepoly(False, vtx):
-            # self.m==None and If color defined then use it in preference to bitmap
             return
         if self.concave:
             self.concave=False
@@ -819,47 +833,39 @@ class ProcScen:
             if not vtx:
                 if self.debug: self.debug.write("!Subdivision failed\n")
                 return
-
         else:
             idx=[]
             for i in range(1,len(vtx)-1):
                 idx.extend([0,i,i+1])
         # Change order if necessary to face in direction of normal
-        (x0,y0,z0,c,c,c,c,c)=vtx[0]
-        (x1,y1,z1,c,c,c,c,c)=vtx[1]
-        (x2,y2,z2,c,c,c,c,c)=vtx[2]
+        (x0,y0,z0,c,c,c,c,c)=vtx[idx[0]]
+        (x1,y1,z1,c,c,c,c,c)=vtx[idx[1]]
+        (x2,y2,z2,c,c,c,c,c)=vtx[idx[2]]
         (x,y,z)=cross((x1-x0,y1-y0,z1-z0), (x2-x0,y2-y0,z2-z0))
-        if dot((x,y,z), (nx,ny,nz))>0:
+        if dot((x,y,z), (fnx,fny,fnz))>0:
             idx.reverse()
-        # If color defined then use it in preference to bitmap
-        #if self.m==None or self.t==None:
-        #    tex=None
-        #    if self.m==None:
-        #        mat=self.mat[0]
-        #    else:
-        #        mat=self.mat[self.m]
-        #        if not mat:
-        #            if self.debug: self.debug.write("Transparent\n")
-        #            return	# transparent
-        #else:
-        (key,mat)=self.makekey(True)
-        if not mat: return
+        (key,mat)=self.makekey(self.cmd!=0x1d)
+        if maxy+self.alt <= groundfudge:
+            mat.poly=True
         if not key in self.objdat:
             self.objdat[key]=[]
-        self.objdat[key].append((mat, vtx, idx, False))
+            self.keys.append(key)
+        self.objdat[key].append((mat, vtx, idx))
         self.checkmsl()
         
     def SColor24(self):		# 2d: SColor24
         (r,a,g,b)=unpack('4B', self.bgl.read(4))
-        self.m=0
         if a==0xf0:	# unicol
-            self.mat=[[self.unicol(0xf000+r), (0,0,0), (0,0,0), 0]]
-        elif (a>=0xb0 and a<=0xb4) or (a>=0xe0 and a<=0xe4):
+            self.mat=[Material(self.output.xpver, self.unicol(0xf000+r))]
+            self.m=0
+        elif (a>=0xb0 and a<=0xb7) or (a>=0xe0 and a<=0xe7):
             # E0 = transparent ... EF=opaque. Same for B?
             # Treat semi-transparent as fully transparent
-            self.mat=[None]
+            self.mat=[]
+            self.m=None
         else:
-            self.mat=[[(r/255.0,g/255.0,b/255.0), (0,0,0), (0,0,0), 0]]
+            self.mat=[Material(self.output.xpver, (r/255.0,g/255.0,b/255.0))]
+            self.m=0
         
     def LColor24(self):		# 2e: SColor24
         (r,a,g,b)=unpack('4B', self.bgl.read(4))
@@ -873,6 +879,7 @@ class ProcScen:
             self.lightcol=(r/255.0,g/255.0,b/255.0)
 
     def Scale(self):		# 2f
+        self.makename()
         self.bgl.read(8)	# jump,range (LOD) (may be 0),size,reserved
         (scale,)=unpack('<I', self.bgl.read(4))
         self.scale=65536.0/scale
@@ -933,6 +940,7 @@ class ProcScen:
         (key,mat)=self.makekey(False)
         if not key in self.lightdat:
             self.lightdat[key]=[]
+            self.keys.append(key)
         for i in range(count):
             self.lightdat[key].append(((sx+i*dx,sy+i*dy,sz+i*dz), self.lightcol))
         self.checkmsl()
@@ -942,7 +950,10 @@ class ProcScen:
         (key,mat)=self.makekey(False)
         if not key in self.lightdat:
             self.lightdat[key]=[]
+            self.keys.append(key)
         self.lightdat[key].append(((x,y,z), self.lightcol))
+        if __debug__:
+            if self.debug: self.debug.write("%s %s\n" % ((x,y,z), self.lightcol))
         self.checkmsl()
 
     def Concave(self):		# 38
@@ -981,6 +992,7 @@ class ProcScen:
         self.bgl.seek(off-6,1)
 
     def Position(self):		# 3c
+        self.makename()
         self.bgl.read(8)	# jump,range (LOD) (may be 0),size,reserved
         (lat,lon,self.altmsl)=self.LLA()
         self.alt=0
@@ -1100,18 +1112,22 @@ class ProcScen:
 
     def Texture2(self):		# 43
         self.surface=True	# StrRes/CntRes does surface not lines
-        (size,)=unpack('<H', self.bgl.read(2))
-        self.bgl.read(8)	# 00, flags0, unicol
+        (size,dummy,flags,dummy,dummy)=unpack('<HHBBI', self.bgl.read(10))
         tex=self.bgl.read(size-12)
         # This is often incorrectly implemented - texture name can overrun. So read on up to first non-null.
         while '\0' not in tex:
             # Hope we're not at end of area - cos this will overrun.
             tex=tex+self.bgl.read(1)
-        tex=tex.split('\0')[0].rstrip()
-        self.tex=[findtex(tex, self.texdir, self.output.addtexdir)]
-        if __debug__:
-            if self.debug: self.debug.write("%s\n" % basename(self.tex[0]).encode("latin1",'replace'))
+        tex=findtex(tex.split('\0')[0].rstrip(), self.texdir, self.output.addtexdir)
+        if tex and flags&128:
+            (lit,ext)=splitext(tex)
+            lit=findtex(lit+'_lm', self.texdir, self.output.addtexdir)
+        else:
+            lit=None
+        self.tex=[tex and Texture(self.output.xpver, tex, lit) or None]
         self.t=0
+        if __debug__:
+            if self.debug: self.debug.write("%s\n" % self.tex[0])
         
     def PointVICall(self):	# 46
         (off,x,y,z,p,vp,b,vb,h,vh)=unpack('<4h6H', self.bgl.read(20))
@@ -1166,24 +1182,22 @@ class ProcScen:
         else:
             roof=0
         newobj=None
-        name="%s-generic-%d.obj" % (asciify(basename(self.srcfile)[:-4]),
-                                    self.output.gencount)
+        name="%s-generic-%d" % (asciify(basename(self.srcfile)[:-4]), len(self.gencount)+1)
         if typ==3:
             foo=(8,size_x, size_z, tuple(heights), tuple(texs))
-            if foo in self.output.gencache:
-                name=self.output.gencache[foo]
+            if foo in self.gencache:
+                name=self.gencache[foo]
             else:
-                newobj=makegenmulti(name, self.output.palettetex, *foo)
+                newobj=makegenmulti(name, self.output, *foo)
         else:
             foo=(size_x, size_z, incx, incz, tuple(heights), tuple(texs), roof)
-            if foo in self.output.gencache:
-                name=self.output.gencache[foo]
+            if foo in self.gencache:
+                name=self.gencache[foo]
             else:
-                newobj=makegenquad(name, self.output.palettetex, *foo)
+                newobj=makegenquad(name, self.output, *foo)
         if newobj:
             self.output.objdat[name]=[newobj]
-            self.output.gencache[foo]=name
-            self.output.gencount += 1
+            self.gencache[foo]=name
         if self.matrix[-1]:
             heading=self.matrix[-1].heading()	# not really
             # handle translation
@@ -1211,7 +1225,6 @@ class ProcScen:
     def LColor(self):		# 51
         (c,)=unpack('H', self.bgl.read(2))
         self.lightcol=self.unicol(c)
-        self.m=0
 
     def SurfaceType(self):	# 55
         (sfc, x, z, alt)=unpack('<Hhhh', self.bgl.read(8))
@@ -1229,6 +1242,7 @@ class ProcScen:
 
     def TextureRepeat(self):	# 5d
         (x,c,y)=unpack('<3h', self.bgl.read(6))
+        self.t=0
         if __debug__:
             if self.debug and (x or y): self.debug.write("!Tex offsets %d,%d\n" % (x,y))
         
@@ -1340,6 +1354,7 @@ class ProcScen:
         self.bgl.seek(off-6,1)
 
     def ScaleAGL(self):		# 77
+        self.makename()
         self.bgl.read(8)	# jump,range (LOD) (may be 0),size,reserved
         (scale,)=unpack('<I', self.bgl.read(4))
         self.scale=65536.0/scale
@@ -1361,6 +1376,7 @@ class ProcScen:
         (key,mat)=self.makekey(False)
         if not key in self.lightdat:
             self.lightdat[key]=[]
+            self.keys.append(key)
         self.lightdat[key].append(((x,y,z), self.lightcol))
         self.checkmsl()
         
@@ -1506,7 +1522,9 @@ class ProcScen:
                 self.output.log('Unsupported effect "%s" at (%12.8f, %13.8f) in %s' % (name, self.loc.lat, self.loc.lon, self.comment))
             else:
                 (key,mat)=self.makekey(False)
-                if not key in self.effectdat: self.effectdat[key]=[]
+                if not key in self.effectdat:
+                    self.effectdat[key]=[]
+                    self.keys.append(key)
                 self.effectdat[key].append(((0,0,0), effects[name]))
                 self.checkmsl()
             self.bgl.seek(end)
@@ -1525,24 +1543,22 @@ class ProcScen:
             heading=0
             loc=self.loc
         newobj=None
-        name="%s-generic-%d.obj" % (asciify(basename(self.srcfile)[:-4]),
-                                    self.output.gencount)
+        name="%s-generic-%d" % (asciify(basename(self.srcfile)[:-4]), len(self.gencount)+1)
         if typ in [10,11]:
             foo=(sides, size_x, size_z, tuple(heights), tuple(texs))
-            if foo in self.output.gencache:
-                name=self.output.gencache[foo]
+            if foo in self.gencache:
+                name=self.gencache[foo]
             else:
-                newobj=makegenmulti(name, self.output.palettetex, *foo)
+                newobj=makegenmulti(name, self.output, *foo)
         else:
             foo=(size_x, size_z, incx, incz, tuple(heights), tuple(texs), roof)
-            if foo in self.output.gencache:
-                name=self.output.gencache[foo]
+            if foo in self.gencache:
+                name=self.gencache[foo]
             else:
-                newobj=makegenquad(name, self.output.palettetex, *foo)
+                newobj=makegenquad(name, self.output, *foo)
         if newobj:
             self.output.objdat[name]=[newobj]
-            self.output.gencache[foo]=name
-            self.output.gencount += 1
+            self.gencache[foo]=name
         self.output.objplc.append((loc, heading, self.complexity, name, 1))
         if self.altmsl:
             pass
@@ -1756,17 +1772,16 @@ class ProcScen:
         self.bgl.read(20).rstrip(' \0')	# what's this for?
         
     def Light(self):		# b2
-        (type,x,y,z,intens,i,i,b,g,r,a,i,i,i)=unpack('<HfffIffBBBBfff',
-                                                     self.bgl.read(42))
+        (typ,x,y,z,intens,i,i,b,g,r,a,i,i,i)=unpack('<HfffIffBBBBfff', self.bgl.read(42))
         # Typical intensities are 20 and 40 - so say 40=max
         if intens<40:
             intens=intens/(40.0*255.0)
         else:
             intens=1/255.0
         (key,mat)=self.makekey(False)
-        if not mat or mat[0]==(0,0,0): return
         if not key in self.lightdat:
             self.lightdat[key]=[]
+            self.keys.append(key)
         self.lightdat[key].append(((x,y,z), (r*intens,g*intens,b*intens)))
         self.checkmsl()
         
@@ -1792,75 +1807,74 @@ class ProcScen:
             self.vtx.append(unpack('<8f', self.bgl.read(32)))
 
     def MaterialList(self):	# b6
+        (count,dummy)=unpack('<HI', self.bgl.read(6))
         self.mat=[]
-        self.m=0
-        (count,)=unpack('<H', self.bgl.read(2))
-        self.bgl.read(4)
+        self.m=None
         for i in range(count):
             (dr,dg,db,da)=unpack('<4f', self.bgl.read(16))
             (ar,ag,ab,aa)=unpack('<4f', self.bgl.read(16))
-            # average of diffuse & ambient
-            #m=[((dr+ar)/2, (dg+ag)/2, (db+ab)/2)]
-            m=[(1,1,1)]			# ignore diffuse and ambient
-            for j in range(2):		# specular and emissive
-                (r,g,b,a)=unpack('<4f', self.bgl.read(16))
-                m.append((r,g,b))
+            self.bgl.read(16*2)			# specular, emissive ignored according to BGLFP.doc
             (p,)=unpack('<f', self.bgl.read(4))	# specular power
-            if m[1]==(0.0,0.0,0.0): p=0	# sometimes bogus value
-            m.append(p)
-            # ignore alpha
-            #if da<0.2:	# eg KBOS taxilines.bgl uses 0.2
-            #    self.mat.append(None)	# transparent
-            #else:
-            self.mat.append(m)
+            # according to BGLFP.doc ambient is ignored. But in practice seems to hold fallback color for textured materials,
+            # and holds same r,g,b values as diffuse for untextured materials. Which makes it a better choice.
+            self.mat.append(Material(self.output.xpver, (ar,ag,ab), alphacutoff=(1-da or None)))
+        if __debug__:
+            if self.debug: self.debug.write("%d materials\n" % len(self.mat))
 
     def TextureList(self):	# b7
         self.tex=[]
-        self.t=0		# undefined - assume first
+        self.t=None
         (count,)=unpack('<H', self.bgl.read(2))
         self.bgl.read(4)
         for i in range(count):
-            cls=unpack('<I', self.bgl.read(4))
+            (cls,)=unpack('<I', self.bgl.read(4))
             self.bgl.read(12)
-            self.tex.append(findtex(self.bgl.read(64).rstrip(' \0'), self.texdir, self.output.addtexdir))
+            tex=findtex(self.bgl.read(64).rstrip(' \0'), self.texdir, self.output.addtexdir)
+            if not cls&0x700 or not self.tex[-1]:
+                pass	# Not a multitexture, or no primary texture
+            elif cls==0x100:			# NightMap: Blends with diffuse texture
+                self.tex[-1].e=tex
+            elif cls==0x300 or cls==0x400:	# LightMap: Replaces diffuse texture
+                self.tex[-1].e=tex
+            elif not self.tex[-1] or self.output.xpver<=10:
+                pass	# Remaining options not supported in<=10
+            elif cls==0x200:			# RelectMap
+                self.tex[-1].r=tex
+            self.tex.append(tex and Texture(self.output.xpver, tex, None) or None)
+        if __debug__:
+            if self.debug: self.debug.write("%d textures\n" % len(self.tex))
 
     def SetMaterial(self):	# b8
         (self.m,self.t)=unpack('<2h', self.bgl.read(4))
         if self.m>=len(self.mat):
             if __debug__:
                 if self.debug: self.debug.write("Bad material %d/%d\n"%(self.m,len(self.mat)))
-            self.m=0
-        if self.t<0:
+            self.m=None
+        if self.t<0 or self.t>=len(self.tex):
             self.t=None
-        elif self.t>=len(self.tex):
             if __debug__:
-                if self.debug: self.debug.write("Bad texture %d/%d\n" %(self.t,len(self.tex)))
-            self.t=None
+                if self.debug and self.t>=len(self.tex): self.debug.write("Bad texture %d/%d\n" %(self.t,len(self.tex)))
         if __debug__:
-            if self.debug:
-                if self.t!=None and self.tex[self.t]:
-                    self.debug.write("%s\n" % basename(self.tex[self.t]).encode("latin1",'replace'))
-                else:
-                    self.debug.write("Bad tex %s\n" % self.t)
-            
+            if self.debug: self.debug.write("%s: %s\t%s: %s\n" % (self.m, self.m!=None and self.mat[self.m], self.t, self.t!=None and self.tex[self.t]))
         
     def DrawTriList(self):	# b9
         idx=[]
-        (base,vcount,icount)=unpack('<3H', self.bgl.read(6))
-        for i in range(icount/3):
-            (a,b,c)=unpack('<3H', self.bgl.read(6))
-            idx.extend([a+base,b+base,c+base])
-        if self.makepoly(True, self.vtx, idx):
+        (vbase,vcount,icount)=unpack('<3H', self.bgl.read(6))
+        if __debug__: self.debug.write("%d, %d, %d\n" % (vbase,vcount,icount))
+        vtx=self.vtx[vbase:vbase+vcount]
+        idx=unpack('<%dH' % icount, self.bgl.read(2*icount))
+        if self.makepoly(True, vtx, idx):
             return
-        first=min(idx)
-        last=max(idx)
-        for i in range(len(idx)):
-            idx[i]=idx[i]-first
-        (key,mat)=self.makekey(True)
-        if not mat: return
+        (key,mat)=self.makekey()
+        maxy=-maxint
+        for (x,y,z,nx,ny,nz,tu,tv) in vtx:
+            maxy=max(maxy,y)
+        if maxy+self.alt <= groundfudge:
+            mat.poly=True
         if not key in self.objdat:
             self.objdat[key]=[]
-        self.objdat[key].append((mat, self.vtx[first:last+1], idx, False))
+            self.keys.append(key)
+        self.objdat[key].append((mat, vtx, idx))
         self.checkmsl()
 
     def DrawLineList(self):	# ba
@@ -1909,7 +1923,7 @@ class ProcScen:
         pass
 
     def NOPh(self):
-        # 30:Brightness, 3f:ShadowCall, 81:AntiAlias, 93: Specular?
+        # 30:Brightness, 3f:ShadowCall, 81:AntiAlias, 93: Specular?, a4:VAlpha
         self.bgl.read(2)
 
     def NOPi(self):
@@ -1957,7 +1971,7 @@ class ProcScen:
         if self.t==None: return False	# Only care about textured polygons
         if not self.loc: return False	# Not for library objects
         if __debug__:
-            if self.debug: self.debug.write("Poly: %s %s %s %d " % (basename(self.tex[self.t]).encode("latin1",'replace'), self.alt, self.layer, self.zbias))
+            if self.debug: self.debug.write("Poly: %s %s %s %d " % (self.tex[self.t], self.alt, self.layer, self.zbias))
 
         if idx:
             # Altitude test
@@ -2041,7 +2055,7 @@ class ProcScen:
             if __debug__:
                 if self.debug: self.debug.write("No vertices!\n")
             return False	# Eh?
-        else:            
+        else:	# no idx
             # Altitude test
             if self.matrix[-1]:
                 (x,y,z)=self.matrix[-1].transform(*vtx[0][:3])
@@ -2104,8 +2118,8 @@ class ProcScen:
             loc=self.loc.biased(x,z)
             points[0].append((loc,max(0,min(1,tu-minu)),max(0,min(1,tv-minv))))
 
-        if haveuv:
-            # Really small - better dealt with as an object
+        if False: #haveuv:
+            # Really small - better dealt with as an object - Why?
             if (maxx-minx)<10 and (maxz-minz)<10:	# arbitrary
                 if __debug__:
                     if self.debug: self.debug.write("Too small %s %s\n" % (maxx-minx, maxz-minz))
@@ -2218,30 +2232,20 @@ class ProcScen:
             heading=self.matrix[-1].heading()
         else:
             heading=0
-        # handle day&night properly (eg spotlights)
-        if self.vars[0x28c]!=1:
-            tex=None
-            lit=self.tex[self.t]
-            # Look for _lm version, eg LIEE cittadella universitaria-dm_liee_44
-            (src,ext)=splitext(basename(lit))
-            litlit=findtex(src+'_lm', self.texdir, self.output.addtexdir, True)
-            if litlit: lit=litlit
-            if self.haze: self.output.haze[lit]=self.haze
-        else:
-            tex=self.tex[self.t]
-            if self.haze: self.output.haze[tex]=self.haze
-            (src,ext)=splitext(basename(tex))
-            lit=findtex(src+'_lm', self.texdir, self.output.addtexdir, True)
-            if lit and self.haze: self.output.haze[lit]=self.haze
+
+        tex=self.tex[self.t]
+        if self.haze and tex.d: self.output.haze[tex.d]=self.haze
+        if self.haze and tex.e: self.output.haze[tex.e]=self.haze
+
         layer=self.layer
         if layer>=40:	# ground element
             layer=None
-        elif layer>=24:
-            layer=24
-        if not layer and self.zbias:
-            layer=24
+        #elif layer>=24:
+        #    layer=24
+        #if not layer and self.zbias:
+        #    layer=24
         for p in points:
-            self.polydat.append((p, layer, heading, max(1,int(self.scale*256)), tex, lit))
+            self.polydat.append((p, layer, heading, max(1,int(self.scale*256)), tex))
         if __debug__:
             if self.debug: self.debug.write("OK %s %s\n" % (maxx-minx, maxz-minz))
         return True
@@ -2251,130 +2255,68 @@ class ProcScen:
     def makeobjs(self):
 
         if self.neednight:
-            # Merge day & night objects, removing dupes
-            for lkey in self.daylightdat.keys():
-                if lkey in self.lightdat:
-                    for thing in self.daylightdat[lkey]:
-                        if not thing in self.lightdat[lkey]:
-                            self.lightdat[lkey].append(thing)
-                else:
-                    self.lightdat[lkey]=self.daylightdat[lkey]
+            # Detect night-only objects, e.g. LIEE2008 cag_pc spotlight, and objects that manually change texture at night
 
-            self.effectdat=self.dayeffectdat	# just use daylight
-            
+            self.effectdat=self.dayeffectdat	# just use daylight effects
+            # just use nighttime lights
+
             nightpolydat=self.polydat
             self.polydat=[]
-            i=0
-            while i<len(self.daypolydat):
-                (points, layer, heading, scale, tex, lit)=self.daypolydat[i]
-                #dump=tex and 'CONCRET2' in tex
-                #if dump: print "day:", self.daypolydat[i]
-                for j in range(len(nightpolydat)):
-                    (npoints, nlayer, nheading, nscale, ntex, nlit)=nightpolydat[j]
-                    #if dump: print nightpolydat[j]
-                    if len(points)!=len(npoints) or layer!=nlayer or heading!=nheading or scale!=nscale: continue
-                    #if dump: print "here"
+            for npoly in nightpolydat:
+                (npoints, nlayer, nheading, nscale, ntex)=npoly
+                for dpoly in self.daypolydat:
+                    (points, layer, heading, scale, tex)=dpoly
+                    if len(points)==len(npoints) and layer==nlayer and heading==nheading and scale==nscale: break
                     for k in range(len(points)):
-                        if points[k][0].lat!=npoints[k][0].lat or points[k][0].lon!=npoints[k][0].lon or points[k][1]!=npoints[k][1] or points[k][2]!=npoints[k][2]:
+                        if points[k][0]!=npoints[k][0] or points[k][1]!=npoints[k][1] or points[k][2]!=npoints[k][2]:
                             break
                     else:
-                        #if dump: print "here2"
-                        if tex==nlit:
-                            self.polydat.append((points, layer, heading, scale, tex, None))
-                        else:
-                            self.polydat.append((points, layer, heading, scale, tex, nlit))
-                        self.daypolydat.pop(i)
-                        nightpolydat.pop(j)
-                        break
+                        break	# dupe
                 else:
-                    i+=1
-            self.polydat.extend(self.daypolydat)	# Day-only polys
-            self.polydat.extend(nightpolydat)		# Night-only polys
+                    # nighttime-only poly
+                    if __debug__:
+                        if self.debug: self.debug.write("Night-only poly: %s\n" % ntex)
+                    if not ntex.e: ntex=Texture(self.output.xpver, None, ntex.d)	# texture manually managed
+                    self.polydat.append((npoints, nlayer, nheading, nscale, ntex))
+                    continue
+                # Duplicate
+                if not tex.e and tex.d!=ntex.d: tex.e=ntex.d	# texture manually managed
+            self.polydat.extend(self.daypolydat)
 
             nightobjdat=self.objdat
-            self.objdat={}
-            for lkey in self.dayobjdat.keys():
-                (loc, layer, alt, altmsl, matrix, scale, tex, lit)=lkey
-                #dump=tex and 'EZEMAINX' in tex
-                #if dump: print "day:", lkey
-                for nkey in nightobjdat.keys():
-                    (nloc,nlayer,nalt,naltmsl,nmatrix,nscale,ntex,nlit)=nkey
-                    #if dump: print nkey
-                    if (loc and loc.lat)==(nloc and nloc.lat) and (loc and loc.lon)==(nloc and nloc.lon) and layer==nlayer and alt==nalt and altmsl==naltmsl and (matrix and matrix.m)==(nmatrix and nmatrix.m) and scale==nscale:
-                        # Extract objects in both day & night
-                        #if dump: print "here"
-                        if tex==nlit:
-                            bkey=(loc,layer,alt,altmsl,matrix,scale,tex,None)
-                        else:
-                            bkey=(loc,layer,alt,altmsl,matrix,scale,tex,nlit)
-                        i=0
-                        while i<len(self.dayobjdat[lkey]):
-                            thing=self.dayobjdat[lkey][i]
-                            if thing in nightobjdat[nkey]:
-                                if not bkey in self.objdat:
-                                    self.objdat[bkey]=[]
-                                self.objdat[bkey].append(thing)
-                                self.dayobjdat[lkey].pop(i)
-                                nightobjdat[nkey].remove(thing)
-                            else:
-                                i+=1
-                        if not nightobjdat[nkey]:
-                            nightobjdat.pop(nkey)
-                        if not self.dayobjdat[lkey]:
-                            self.dayobjdat.pop(lkey)
-                            break
-                if lkey not in self.dayobjdat: continue
-
-                # check for same vertices but moved textures. 2 cases:
-                # same day&night tex (eg SAEZ EZEMAINX) - just do day
-                # diff day&night tex - do both (ignore any uv changes)
-                for nkey in nightobjdat.keys():
-                    (nloc,nlayer,nalt,naltmsl,nmatrix,nscale,ntex,nlit)=nkey
-                    #if dump: print nkey
-                    if (loc and loc.lat)==(nloc and nloc.lat) and (loc and loc.lon)==(nloc and nloc.lon) and layer==nlayer and alt==nalt and altmsl==naltmsl and (matrix and matrix.m)==(nmatrix and nmatrix.m) and scale==nscale:
-                        #if dump: print "here2"
-                        if tex==nlit:
-                            bkey=(loc,layer,alt,altmsl,matrix,scale,tex,None)
-                        else:
-                            bkey=(loc,layer,alt,altmsl,matrix,scale,tex,nlit)
-                        i=0
-                        while i<len(self.dayobjdat[lkey]):
-                            (m, vtx, idx, dbl)=self.dayobjdat[lkey][i]
-                            for j in range(len(nightobjdat[nkey])):
-                                (nm, nvtx, nidx,ndbl)=nightobjdat[nkey][j]
-                                if len(vtx)!=len(nvtx) or dbl!=ndbl: continue
-                                for k in range(len(vtx)):
-                                    if vtx[k][0]!=nvtx[k][0] or vtx[k][1]!=nvtx[k][1] or vtx[k][2]!=nvtx[k][2]: break
-                                else:
-                                    if not bkey in self.objdat:
-                                        self.objdat[bkey]=[]
-                                    self.objdat[bkey].append((m, vtx, idx,dbl))
-                                    self.dayobjdat[lkey].pop(i)
-                                    nightobjdat[nkey].pop(j)
-                                    break
-                            else:
-                                i+=1
-                        if not nightobjdat[nkey]:
-                            nightobjdat.pop(nkey)
-                        if not self.dayobjdat[lkey]:
-                            self.dayobjdat.pop(lkey)
-                            break                        
-
-            self.objdat.update(self.dayobjdat)	# Day-only objects
-            self.objdat.update(nightobjdat)	# Night-only objects
+            self.objdat=self.dayobjdat
+            for nkey in nightobjdat:
+                if nkey in self.objdat: continue	# dupe
+                (nname, nloc, nlayer, nalt, naltmsl, nmatrix, nscale, ntex)=nkey
+                for (name, loc, layer, alt, altmsl, matrix, scale, tex) in self.objdat:
+                    if name==nname and loc==nloc and layer==nlayer and alt==nalt and altmsl==naltmsl and matrix==nmatrix and scale==nscale:
+                        # Duplicate. TODO: Night-time only geometry?
+                        if tex and not tex.e and tex.d!=ntex.d: tex.e=ntex.d	# texture manually managed
+                        break
+                else:
+                    # nighttime-only obj
+                    if __debug__:
+                        if self.debug: self.debug.write("Night-only obj: %s %s\n" % (nname, ntex))
+                    tex=ntex
+                    if ntex:
+                        if not ntex.e: tex=Texture(self.output.xpver, None, ntex.d)	# texture manually managed
+                    elif __debug__:
+                        if self.debug: self.debug.write("!Untextured")
+                    key=(nname, nloc, nlayer, nalt, naltmsl, nmatrix, nscale, tex)
+                    if not key in self.objdat:
+                        self.objdat[key]=[]
+                        self.keys.append(key)
+                    self.objdat[key].extend(nightobjdat[nkey])
+                    continue
         
         if not self.lightdat and not self.effectdat and not self.objdat and not self.polydat and not self.links:
             return	# Only contained non-scenery stuff
         elif self.libname:
-            bname=self.libname
             if self.loc:
                 if self.debug: self.debug.write("!Location given for library object\n")
                 raise struct.error	# Code assumes no spurious location
         elif self.loc or self.dayloc:
             if not self.loc: self.loc=self.dayloc
-            bname=basename(self.srcfile)
-            if bname.lower()[-4:]=='.bgl':
-                bname=bname[:-4]
         else:
             # Must have a location for placement
             if self.debug: self.debug.write("!No location\n")
@@ -2393,18 +2335,15 @@ class ProcScen:
             taxilayout(allnodes, alllinks, 0, self.output)
 
         # Do polygons
-        for (points, layer, heading, scale, tex, lit) in self.polydat:
-            if tex:
-                (fname,ext)=splitext(basename(tex))
-            else:
-                (fname,ext)=splitext(basename(lit))
-                # base and lit textures may not have same case
-                if fname[-3:].lower()=='_lm': fname=fname[:-3]+"_LIT"
+        for (points, layer, heading, scale, tex) in self.polydat:
+            (fname,ext)=splitext(basename(tex.d or tex.e))
+            # base and lit textures may not have same case
+            if fname[-3:].lower()=='_lm': fname=fname[:-3]+"_LIT"
             if not ext.lower() in ['.dds', '.bmp', '.png']:
-                fname+=ext	# For *.xAF etc
+                fname+=ext[1:].lower()	# For *.xAF etc
             # Spaces not allowed in textures. Avoid Mac/PC interop problems
             fname=asciify(fname)
-            poly=Polygon(fname+'.pol', tex, lit, heading==65535, scale, layer)
+            poly=Polygon(fname, tex, heading==65535, scale, layer)
             if fname in self.output.polydat:
                 iname=fname
                 i=0
@@ -2412,235 +2351,162 @@ class ProcScen:
                     # See if this is a duplicate
                     if i:
                         fname="%s-%d" % (iname, i)
-                        poly.filename=fname+'.pol'
+                        poly.name=fname
                     if not fname in self.output.polydat:
                         break	# no match - new object
                     if poly==self.output.polydat[fname]:
-                        # 8.60 has a bug with polygons at different layers
-                        # sharing textures, so use lowest layer
-                        if __debug__:
-                            if self.debug and poly.layer!=self.output.polydat[fname].layer: self.debug.write("!Flattened polygon %s layers %s and %s\n" % (fname, poly.layer, self.output.polydat[fname].layer))
-                        self.output.polydat[fname].layer=min(poly.layer,self.output.polydat[fname].layer)
+                        if self.output.xpver<9:
+                            # 8.60 has a bug with polygons at different layers
+                            # sharing textures, so use lowest layer
+                            if __debug__:
+                                if self.debug and poly.layer!=self.output.polydat[fname].layer: self.debug.write("!Flattened polygon %s layers %s and %s\n" % (fname, poly.layer, self.output.polydat[fname].layer))
+                            self.output.polydat[fname].layer=min(poly.layer,self.output.polydat[fname].layer)
                         break	# matched - re-use this object
                     i+=1
-                if __debug__:
-                    if self.debug and lit and not tex: self.debug.write("Night-only polygon %s\n" % fname)
                     
             self.output.polydat[fname]=poly
             self.output.polyplc.append((fname, heading, points))
 
 
-        objdat={}	# [(tex, lit, vlight, vline, veffect, vt, idx, mattri)] by (lat, lon, layer, altmsl, hdg)
+        # Sort throught lights and geometry to create Objects.
+        # Lights first so are combined with untextured Objects.
+        # Keys must be unique to avoid duplicates, and a sort order must be defined in order to detect duplicates across Areas.
+        # Matrix is applied here to allow for detection of data in a bgl that is duplicated apart from by heading
 
-        # Sort throught lights, lines and objects.
-        # Lights & lines first so are combined with untextured objects.
-        # Keys must be unique to avoid duplicates.
-        # Matrix is applied here to allow for detection of data in a bgl
-        # that is duplicated apart from by heading
-        for lkey in unique(self.lightdat.keys()+self.effectdat.keys()+self.objdat.keys()):
-            (loc, layer, alt, altmsl, matrix, scale, tex, lit)=lkey
+        objs={}		# [Object] by (loc, layer, altmsl, hdg)
+        identity=Matrix()
+
+        for lkey in self.keys:
+            (name, loc, layer, alt, altmsl, matrix, scale, tex)=lkey
+            if __debug__:
+                if self.debug: self.debug.write("%s %s %s %s %s %s %s %s\n" % (name, loc, layer, alt, altmsl, scale, tex, matrix))
             if layer>=40:
                 layer=None
-            elif layer>=24:
-                layer=24
+            #elif layer>=24:
+            #    layer=24
             newmatrix=matrix
             heading=0
             
             if loc and matrix and matrix.m[1][1]==1:	# No pitch or bank?
-                # Rotate at placement time in hope of commonality
+                # Rotate at placement time in hope of commonality with Objects produced in other Areas
                 heading=matrix.heading()
                 # unrotate translation
-                (x,y,z)=Matrix().headed(-heading).rotate(
-                    matrix.m[3][0], matrix.m[3][1], matrix.m[3][2])
+                (x,y,z)=Matrix().headed(-heading).rotate(matrix.m[3][0], matrix.m[3][1], matrix.m[3][2])
                 scale2=scale/2.0
                 newmatrix=Matrix().offset(round(x+scale2-(x+scale2)%scale,3), round(y+scale2-(y+scale2)%scale,3), round(z+scale2-(z+scale2)%scale,3))	# round to nearest unit to encourage a match
                 if __debug__:
-                    if self.debug:
-                        if tex: thing=basename(tex).encode("latin1",'replace')
-                        elif lit: thing=basename(lit).encode("latin1",'replace')
-                        else: thing=None
-                        self.debug.write("New heading %6.2f, offset (%7.3f,%7.3f,%7.3f) for %s\n" % (heading, newmatrix.m[3][0], newmatrix.m[3][1], newmatrix.m[3][2], thing))
-            if loc:
-                okey=(loc.lat, loc.lon, layer, altmsl, heading)
-            else:
-                okey=(None, None, layer, altmsl, None)
+                    if self.debug: self.debug.write("New heading %6.2f, offset (%7.3f,%7.3f,%7.3f) %s\n" % (heading, newmatrix.m[3][0], newmatrix.m[3][1], newmatrix.m[3][2], newmatrix.m==identity.m))
+                if newmatrix.m==identity.m: newmatrix=None
 
-            # Find existing data at this location with same tex to consolidate
-            if okey in objdat:
-                for i in range(len(objdat[okey])):
-                    (otex,olit, vlight, vline, lines, veffect, vt, idx, mattri)=objdat[okey][i]
-                    if not vt or (tex==otex and lit==olit):
-                        # if no vertices in existing data then tex irrelevant
-                        objdat[okey].pop(i)
+            # Find existing Object at this location with same tex to consolidate
+            okey=(loc, layer, altmsl, heading)
+            if okey in objs:
+                for obj in objs[okey]:
+                    if tex==obj.tex or not obj.vt:			# If no geometry in obj then tex irrelevant
+                        if not obj.vt or (tex and tex.e): obj.tex=tex	# Because we don't compare on emissive
+                        if __debug__:
+                            if self.debug: self.debug.write("Merging into %s %s\n" % (obj.name, obj.tex))
                         break
                 else:
                     # new data at existing location
-                    vlight=[]
-                    vline=[]
-                    lines=[]
-                    veffect=[]
-                    vt=[]
-                    idx=[]
-                    mattri=[]
+                    obj=Object(name, self.comment, tex, layer, [])
+                    objs[okey].append(obj)
             else:
                 # new data at new location
-                objdat[okey]=[]
-                vlight=[]
-                vline=[]
-                lines=[]
-                veffect=[]
-                vt=[]
-                idx=[]
-                mattri=[]
+                obj=Object(name, self.comment, tex, layer, [])
+                objs[okey]=[obj]
 
             if lkey in self.lightdat:
                 for ((x,y,z),(r,g,b)) in self.lightdat[lkey]:
                     if newmatrix:
                         (x,y,z)=newmatrix.transform(x,y,z)
-                    vlight.append([x*scale,alt+y*scale,-z*scale, r,g,b])
+                    obj.vlight.append((x*scale,alt+y*scale,-z*scale, r,g,b))
                 
             if lkey in self.effectdat:
                 for ((x,y,z),(effect,s)) in self.effectdat[lkey]:
                     if newmatrix:
                         (x,y,z)=newmatrix.transform(x,y,z)
-                    veffect.append([x*scale,alt+y*scale,-z*scale, effect, s])
+                    obj.veffect.append((x*scale,alt+y*scale,-z*scale, effect, s))
 
             if lkey in self.objdat:
-                # Sort to minimise attribute changes
-                #self.objdat[lkey].sort()
-                for (m, vtx, i, dbl) in self.objdat[lkey]:
-                    
-                    vbase=len(vt)
-                    firsttri=len(idx)
-
+                for (mat, vtx, idx) in self.objdat[lkey]:
+                    newvt=[]
                     # Break out common cases for speed
                     if newmatrix:
                         nrmmatrix=newmatrix.adjoint()
-                        if tex==self.output.palettetex:
-                            (pu,pv)=rgb2uv(m[0])
+                        if not tex:
+                            (pu,pv)=rgb2uv(mat.d)
                             for v in vtx:
                                 (x,y,z,nx,ny,nz,tu,tv)=v
                                 (x,y,z)=newmatrix.transform(x,y,z)
                                 (nx,ny,nz)=nrmmatrix.rotateAndNormalize(nx,ny,nz)
                                 # replace materials with palette texture
-                                vt.append([x*scale,alt+y*scale,-z*scale, nx,ny,-nz, pu,pv])
+                                newvt.append([x*scale,alt+y*scale,-z*scale, nx,ny,-nz, pu,pv])
                         else:
                             for v in vtx:
                                 (x,y,z,nx,ny,nz,tu,tv)=v
                                 (x,y,z)=newmatrix.transform(x,y,z)
                                 (nx,ny,nz)=nrmmatrix.rotateAndNormalize(nx,ny,nz)
-                                vt.append([x*scale,alt+y*scale,-z*scale, nx,ny,-nz, tu,tv])
+                                newvt.append([x*scale,alt+y*scale,-z*scale, nx,ny,-nz, tu,tv])
                     else:
                         for v in vtx:
                             (x,y,z,nx,ny,nz,tu,tv)=v
-                            if tex==self.output.palettetex:
+                            if not tex:
                                 # replace materials with palette texture
-                                (tu,tv)=rgb2uv(m[0])
-                            vt.append([x*scale,alt+y*scale,-z*scale, nx,ny,-nz, tu,tv])
+                                (tu,tv)=rgb2uv(mat.d)
+                            newvt.append([x*scale,alt+y*scale,-z*scale, nx,ny,-nz, tu,tv])
                         
-                    # Reverse order of tris
-                    for j in range(0,len(i),3):
+                    # Reverse order of individual tris
+                    newidx=[]
+                    for j in range(0,len(idx),3):
                         for k in range(2,-1,-1):
-                            idx.append(vbase+i[j+k])
-    
-                    if mattri:
-                        # Consolidate TRI commands if possible
-                        (xm, xfirsttri, xlen, xdbl)=mattri[-1]
-                        if m==xm and dbl==xdbl:
-                            mattri[-1]=(m, xfirsttri, xlen+len(idx)-firsttri, dbl)
-                            continue
-                    mattri.append((m, firsttri, len(idx)-firsttri, dbl))
+                            newidx.append(idx[j+k])
 
-            if not vlight and not vline and not veffect and not vt:
-                continue	# Only contained non-scenery stuff
+                    obj.addgeometry(mat, newvt, newidx)
 
-            objdat[okey].append((tex, lit, vlight, vline, lines, veffect, vt, idx, mattri))
 
-        # If altmsl adjust to ground level of all objects with same placement
-        for okey in objdat:
-            (lat, lon, layer, altmsl, heading)=okey
+        # If altmsl adjust all objects with same placement to ground level
+        for okey in objs:
+            (loc, layer, altmsl, heading)=okey
             if not altmsl: continue
+            # Check whether this object is a 'decal' and apply poly_os
             miny=maxint
-            for (tex, lit, vlight, vline, lines, veffect, vt, idx, mattri) in objdat[okey]:
-                for v in vlight + vline + veffect + vt:
+            for obj in objs[okey]:
+                for v in obj.vt:
                     miny=min(miny,v[1])
-            if not miny: continue	# already at ground level
-            for (tex, lit, vlight, vline, lines, veffect, vt, idx, mattri) in objdat[okey]:
-                for v in vlight + vline + veffect + vt:
+            if miny <= groundfudge:
+                continue	# already at ground level
+            for obj in objs[okey]:
+                for v in obj.vlight + obj.veffect + obj.vt:
                     v[1]=v[1]-miny
 
-        objs=[]
-        for okey in objdat:
-            (lat, lon, layer, altmsl, heading)=okey
-            loc=Point(lat, lon)
-            for (tex, lit, vlight, vline, lines, veffect, vt, idx, mattri) in objdat[okey]:
-                if tex==self.output.palettetex or (not tex and not lit):
-                    fname=asciify(bname)
-                else:
-                    if tex:
-                        (fname,ext)=splitext(basename(tex))
+        # Place objects
+        for okey in objs:
+            (loc, layer, altmsl, heading)=okey
+            if self.libname:
+                assert len(objs)==1
+                self.output.objdat[self.libname]=objs[okey]
+            else:
+                # Can have multiple objects at same loc, or same object at different locations, so place individually
+                for obj in objs[okey]:
+                    # See if this is a duplicate
+                    for old in self.objcache:
+                        if obj==old:
+                            if __debug__:
+                                if self.debug: self.debug.write("Dupe: %s and %s\n" % (obj.filename(1), old.filename(1)))
+                            self.output.objplc.append((loc, heading, self.complexity, old.filename(1), 1))
+                            break
+                        elif obj.filename(1)==old.filename(1):
+                            if __debug__:
+                                if self.debug: self.debug.write("!Couldn't merge %s\n" % obj.filename(1))
+                            obj.name+='x'	# Hack - different matrices at same loc eg LIEE2008 faro_icav
                     else:
-                        (fname,ext)=splitext(basename(lit))
-                        # base and lit textures may not have same case
-                        if fname[-3:].lower()=='_lm': fname=fname[:-3]+"_LIT"
-                    if not ext.lower() in ['.dds', '.bmp', '.png']:
-                        fname+=ext	# For *.xAF etc
-                    # Spaces not allowed in textures. Avoid Mac/PC interop problems
-                    fname="%s-%s" % (asciify(bname), asciify(fname))
-    
-                # Check whether this object is a 'decal' and apply poly_os
-                poly=0
-                minx=minz=maxint
-                maxx=maxz=maxy=-maxint
-                if vt:
-                    poly=2
-                    for (x,y,z, nx,ny,nz, tu,tv) in vt:
-                        minx=min(minx,x)
-                        maxx=max(maxx,x)
-                        maxy=max(maxy,y)
-                        minz=min(minz,z)
-                        maxz=max(maxz,z)
-                        if y>groundfudge: poly=0
-                        #if (maxx-minx)>NM2m/4 or (maxz-minz)>NM2m/4:    # arbitrary
-                        #    poly=1	# probably orthophoto
-                        #else:
-                        #    poly=2	# probably detail
-                    
-                # Finally build the object
-                obj=Object(fname+'.obj', self.comment, tex, lit, layer, vlight, veffect, vt, idx, mattri, poly)
-                if self.libname:
-                    objs.append(obj)
-                else:
-                    # handle multiple objs with same tex at different locs
-                    if fname in self.output.objdat:
-                        iname=fname
-                        i=0
-                        while True:
-                            # See if this is a duplicate
-                            if i:
-                                fname="%s-%d" % (iname, i)
-                                obj.filename=fname+'.obj'
-                            if not fname in self.output.objdat:
-                                if __debug__:
-                                    if self.debug:
-                                        if not tex and not lit:
-                                            self.debug.write("Textureless object %s\n" % fname)
-                                        elif not tex and lit:
-                                            self.debug.write("Night-only object %s\n" % fname)
-                                        if maxy>300:	# arbitrary
-                                            self.debug.write("!Ludicrous size for object %s\n" % fname)
-                                break	# no match - new object
-                            if obj==self.output.objdat[fname][0]:
-                                break	# matched - re-use this object
-                            i+=1
-                    
-                    self.output.objdat[fname]=[obj]
-                    self.output.objplc.append((loc, heading,
-                                               self.complexity, fname, 1))
-
-        # Add objs to library with one name
-        if self.libname and objs:
-            self.output.objdat[self.libname]=objs
+                        assert obj.filename(1) not in self.output.objdat, obj.filename(1)	# object filenames must be unique
+                        if __debug__:
+                            if self.debug: self.debug.write("New: %s\n" % obj.filename(1))
+                        self.objcache.append(obj)
+                        self.output.objdat[obj.filename(1)]=[obj]
+                        self.output.objplc.append((loc, heading, self.complexity, obj.filename(1), 1))
 
 
     def checkmsl(self):
@@ -2656,7 +2522,10 @@ class ProcScen:
     def getvar(self, var):
         if var in self.vars:
             val=self.vars[var]
-            if var==0x28c: self.neednight=True
+            if var==0x28c and self.vars[0x28c]==1:
+                self.neednight=True
+                if __debug__:
+                    if self.debug: self.debug.write('Need Night\n')
             return val
         else:
             if __debug__:
@@ -2923,7 +2792,7 @@ def maketexdict(texdir):
 
 
 # Helper to return fully-qualified case-sensitive texture filename
-def findtex(name, thistexdir, addtexdir, dropmissing=False):
+def findtex(name, thistexdir, addtexdir, dropmissing=True):
     for texdict in [thistexdir, addtexdir]:
         if not texdict: continue
         (texdir, d)=texdict
