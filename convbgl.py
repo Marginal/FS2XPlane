@@ -280,7 +280,7 @@ class ProcScen:
         self.matrix=[None]
         self.scale=1.0		# don't know what to do with scale value in FS8 libs
         self.basescale=self.scale
-        self.stack=[]		# (return address, layer, pop matrix?)
+        self.stack=[]		# (return address, layer, billboard, pop matrix?)
         self.tex=[]
         self.mat=[]
         self.vtx=[None] * 2048	# DefRes/ResList limit
@@ -288,7 +288,7 @@ class ProcScen:
         self.m=None		# Index into mat
         self.t=None		# Index into tex
         self.lightcol=(1,1,1)
-        self.billboard=None	# Emulating billboarding in a libary defn
+        self.billboard=None	# Emulating billboarding
 
         self.nodes=[]
         self.links=[]
@@ -516,7 +516,7 @@ class ProcScen:
             self.layer=None
             self.matrix=[None]
             self.scale=self.basescale
-            self.stack=[]	# (return address, layer, pop matrix?)
+            self.stack=[]	# (return address, layer, billboard, pop matrix?)
             self.tex=[]
             self.mat=[]
             self.vtx=[None] * 2048	# DefRes limit
@@ -524,6 +524,7 @@ class ProcScen:
             self.m=None		# Index into mat
             self.t=None		# Index into tex
             self.lightcol=(1,1,1)
+            self.billboard=None	# Emulating billboarding
             self.nodes=[]
             self.links=[]
             self.linktype=None	# Last road/river/taxiway (type, width, centerline)
@@ -707,7 +708,9 @@ class ProcScen:
             (idx,tu,tv)=unpack('<H2h', self.bgl.read(6))
             (x,y,z,nx,ny,nz,c,c)=self.vtx[idx]
             maxy=max(maxy,y)
-            if self.cmd==0x7a:
+            if self.billboard:
+                vtx.append((x,y,z, 0,1,0, x*self.scale/256, z*self.scale/256))
+            elif self.cmd==0x7a:
                 vtx.append((x,y,z, nx,ny,nz, tu/255.0,tv/255.0))
             else:
                 vtx.append((x,y,z, fnx,fny,fnz, tu/255.0,tv/255.0))
@@ -758,7 +761,7 @@ class ProcScen:
                 break
 
     def Return(self):		# 22
-        (off,self.layer,pop)=self.stack.pop()
+        (off,self.layer,self.billboard,pop)=self.stack.pop()
         if pop:
             self.matrix.pop()
             if __debug__:
@@ -820,7 +823,10 @@ class ProcScen:
         for i in range(count):
             (idx,)=unpack('<H', self.bgl.read(2))
             (x,y,z,nx,ny,nz,c,c)=self.vtx[idx]
-            if self.cmd==0x2a:
+            maxy=max(maxy,y)
+            if self.billboard:
+                vtx.append((x,y,z, 0,1,0, x*self.scale/256, z*self.scale/256))
+            elif self.cmd==0x2a:
                 vtx.append((x,y,z, nx,ny,nz, x*self.scale/256, z*self.scale/256))
             else:
                 vtx.append((x,y,z, fnx,fny,fnz, x*self.scale/256, z*self.scale/256))
@@ -1154,9 +1160,6 @@ class ProcScen:
         self.matrix.append(newmatrix)
         if __debug__:
             if self.debug: self.debug.write("Now\n%s\n" % self.matrix[-1])
-        if self.libname and h:
-            self.billboard=(x,y,z)
-            # XXX Implement me!
         self.bgl.seek(off-22,1)
 
     def Building(self):		# 49
@@ -1586,9 +1589,7 @@ class ProcScen:
         self.matrix.append(newmatrix)
         if __debug__:
             if self.debug: self.debug.write("Now\n%s\n" % self.matrix[-1])
-        if self.libname and h:
-            self.billboard=(x,y,z)
-            # XXX Implement me!
+        self.billboard=True
         self.bgl.seek(off-22,1)
 
     def TextureRoadStart(self):	# a8
@@ -1963,7 +1964,7 @@ class ProcScen:
         if len(self.stack)>100:		# arbitrary
             if __debug__: self.debug.write("!Recursion limit\n")
             raise struct.error
-        self.stack.append((self.bgl.tell(), self.layer, matrix and True))
+        self.stack.append((self.bgl.tell(), self.layer, self.billboard, matrix and True))
 
 
     # Try to make a draped polygon
