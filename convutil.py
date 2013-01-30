@@ -500,8 +500,11 @@ class Object:
                 self.mattri.pop(i)
                 self.mattri.insert(0, (mat,start,count))
                 poly=True
-        if poly and output.draped:
-            # Have to calculate an explicit LOD for draped-only geometry
+        # Have to calculate an explicit LOD for draped-only geometry
+        if not self.vt and len(self.vlight)<=1 and len(self.veffect)<=1:
+            # X-Plane optimises single lights away otherwise
+            lod=1000
+        else:
             minx=minz=maxint
             maxx=maxz=-maxint
             for (x,y,z, nx,ny,nz, tu,tv) in self.vt:
@@ -509,8 +512,10 @@ class Object:
                 maxx=max(maxx,x)
                 minz=min(minz,z)
                 maxz=max(maxz,z)
-            drapedlod=sqrt(max(maxx-minx,maxz-minz))*25	# Roughly twice what X-Plane 10 calculates if LOD not specified
-            drapedlod=round(drapedlod+5,-1)		# round up to next 10 for neatness
+            lod=sqrt((maxx-minx)*(maxz-minz))*120	# Roughly what X-Plane 10 calculates if LOD not specified?
+            lod=max(1000,round(lod+5,-1))		# round up to next 10 for neatness, and set a minimum size
+            if not (poly and output.draped) and lod>1000:
+                lod=None	# If larger than minimum, let X-Plane calculate for non-draped
 
         try:
             path=join(output.xppath, 'objects')
@@ -552,10 +557,6 @@ class Object:
                 objfile.write("IDX\t%d\n" % self.idx[j])
             if self.idx: objfile.write("\n")
 
-            if len(self.vlight)<=1 and len(self.veffect)<=1 and not self.vt:
-                # X-Plane optimises single lights away otherwise
-                objfile.write("ATTR_LOD\t0 1000\n")
-
             if self.tex and self.tex.s: objfile.write("GLOBAL_specular\t%5.3f\n" % 1)	# needed for specular map
             # default state
             poly=False
@@ -568,18 +569,27 @@ class Object:
                     if output.draped:
                         if self.layer:
                             objfile.write("ATTR_layer_group_draped\t%s\n" % fslayers[self.layer])
-                        objfile.write("ATTR_LOD_draped\t%d\nATTR_draped\n" % drapedlod)
+                        if lod:
+                            objfile.write("ATTR_LOD_draped\t%d\n" % lod)
+                        objfile.write("ATTR_draped\n")
                     else:
                         if self. layer:
                             objfile.write("ATTR_layer_group\t%s\n" % fslayers[self.layer])
                             #if layer and layer>4)	# can't remember where '4' is documented
                             #    objfile.write("ATTR_hard\tconcrete\n")
+                        if lod:
+                            objfile.write("ATTR_LOD\t0 %d\n" % lod)
                         objfile.write("ATTR_poly_os\t%d\n" % 2)
                 elif poly and not mat.poly:
                     if output.draped:
                         objfile.write("\nATTR_no_draped\n")
+                        if lod:
+                            objfile.write("ATTR_LOD\t0 %d\n" % lod)
                     else:
                         objfile.write("\nATTR_poly_os\t%d\n" % 0)
+                elif lod and not poly:	# assumes poly sorted first
+                    objfile.write("ATTR_LOD\t0 %d\n" % lod)
+                    lod=None
                 poly=mat.poly
 
                 if mat.shadow and not shadow:
