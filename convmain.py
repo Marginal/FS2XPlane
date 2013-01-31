@@ -663,6 +663,8 @@ class Output:
 
 
     def export(self):
+        divisions=32
+
         if self.apt or self.nav or self.objplc or self.polyplc:
             if not isdir(self.xppath): mkdir(self.xppath)
         else:
@@ -1016,7 +1018,7 @@ class Output:
                 objplc[tile][complexity].append((i,loc.lon,loc.lat,heading))
 
         for (name, heading, points) in self.polyplc:
-            tile=(int(floor(points[0][0].lat)), int(floor(points[0][0].lon)))
+            tile=(int(floor(points[0][0][0].lat)), int(floor(points[0][0][0].lon)))
             if not tile in polydef:
                 objdef[tile]=[[] for i in range(complexities)]
                 objplc[tile]=[[] for i in range(complexities)]
@@ -1086,6 +1088,8 @@ class Output:
             dst.write('PROPERTY sim/north\t%d\n' %  ne.lat)
             dst.write('PROPERTY sim/south\t%d\n' %  sw.lat)
             dst.write('\n')
+            dst.write('DIVISIONS\t%d\n' % divisions)
+            dst.write('\n')
 
             for i in range(complexities-1,-1,-1):
                 for name in objdefs[i]:
@@ -1099,23 +1103,21 @@ class Output:
             for i in range(complexities-1,-1,-1):
                 for plc in objplcs[i]:
                     (idx,lon,lat,heading)=plc
-                    dst.write('OBJECT %3d %13.8f %12.8f %6.2f\n' % (
+                    dst.write('OBJECT %3d %14.9f %14.9f %6.2f\n' % (
                         base[i]+idx, lon, lat, heading))
             dst.write('\n')
 
-            for (idx,heading,points) in polyplcs:
-                if heading==65535:	# have UVs
-                    dst.write('BEGIN_POLYGON %d 65535 4\nBEGIN_WINDING\n' %idx)
-                    for p in points:
-                        dst.write('POLYGON_POINT %13.8f %12.8f %9.4f %8.4f\n'%(
-                            p[0].lon, p[0].lat, p[1], p[2]))
-                            #p[0].lon, p[0].lat, sw.lon+p[1], sw.lat+p[2]))
-                else:
-                    dst.write('BEGIN_POLYGON %d %d 2\nBEGIN_WINDING\n' % (idx, heading))
-                    for p in points:
-                        dst.write('POLYGON_POINT %13.8f %12.8f\n' % (
-                            p[0].lon, p[0].lat))
-                dst.write('END_WINDING\nEND_POLYGON\n')
+            for (idx,heading,poly) in polyplcs:
+                dst.write('BEGIN_POLYGON %d %d %d\n' % (idx, heading, heading==65535 and 4 or 2))
+                for w in poly:
+                    dst.write('BEGIN_WINDING\n')
+                    for p in w:
+                        if heading==65535:	# have UVs
+                            dst.write('POLYGON_POINT %14.9f %14.9f %8.4f %8.4f\n' % (p[0].lon, p[0].lat, p[1], p[2]))
+                        else:
+                            dst.write('POLYGON_POINT %14.9f %14.9f\n' % (p[0].lon, p[0].lat))
+                    dst.write('END_WINDING\n')
+                dst.write('END_POLYGON\n')
             if polyplcs: dst.write('\n')
 
             dst.close()

@@ -675,7 +675,7 @@ class Polygon:
                     objfile.write("TEXTURE_LIT%s\t%s\n" % (suffix, lit))
             else:
                 objfile.write("TEXTURE\t\n")
-            objfile.write("SCALE\t\t%d %d\n" % (self.scale, self.scale))
+            objfile.write("SCALE\t\t%.1f %.1f\n" % (self.scale, self.scale))
             if self.layer!=None:
                 objfile.write("LAYER_GROUP\t%s\n" % fslayers[self.layer])
             if self.paging:

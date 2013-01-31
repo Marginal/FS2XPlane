@@ -7,7 +7,7 @@ Group: Amusements/Games
 URL: http://marginal.org.uk/x-planescenery
 Vendor: Jonathan Harris <x-plane@marginal.org.uk>
 Prefix: /usr/local
-Requires: bash, python >= 2.4, wxPython >= 2.6, python-opengl >= 3.0.1, wine
+Requires: bash, numpy, python >= 2.4, wxPython >= 2.6, python-opengl >= 3.0.1, wine
 BuildArch: noarch
 
 %description

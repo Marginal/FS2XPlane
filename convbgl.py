@@ -1,4 +1,5 @@
-from math import acos, atan, atan2, cos, fmod, floor, pow, sin, pi, radians, degrees
+from math import acos, atan, atan2, cos, fmod, floor, hypot, pow, sin, pi, radians, degrees
+from numpy import array, array_equal
 from os import listdir
 from os.path import basename, dirname, exists, join, normpath, pardir, splitext
 import struct
@@ -7,7 +8,7 @@ from sys import maxint
 from traceback import print_exc
 import types
 
-from OpenGL.GL import GL_TRIANGLES, GL_TRUE
+from OpenGL.GL import GL_LINE_LOOP, GL_TRUE, GLfloat
 from OpenGL.GLU import *
 try:
     # apparently older PyOpenGL version didn't define gluTessVertex
@@ -594,7 +595,8 @@ class ProcScen:
             vtx.append((x,y,z, nx,ny,nz, x*self.scale/256, z*self.scale/256))
         self.idx=[]
         self.surface=False
-        if self.makepoly(False, vtx):
+        (key,mat)=self.makekey()
+        if not key in self.objdat and self.makepoly(False, vtx):	# don't generate poly if there's already geometry here
             return
         if self.concave:
             (vtx,idx)=subdivide(vtx)
@@ -610,7 +612,6 @@ class ProcScen:
         (x,y,z)=cross((x1-x0,y1-y0,z1-z0), (x2-x0,y2-y0,z2-z0))
         if dot((x,y,z), (nx,ny,nz))>0:	# arbitrary normal from last point
             idx.reverse()
-        (key,mat)=self.makekey()
         mat.poly=True	# This command sort-of implies ground-level
         if not key in self.objdat:
             self.objdat[key]=[]
@@ -718,7 +719,8 @@ class ProcScen:
             if __debug__:
                 if self.debug: self.debug.write("Photoscenery\n")
             return	# handled in ProcPhoto
-        if self.makepoly(True, vtx):
+        (key,mat)=self.makekey()
+        if not key in self.objdat and self.makepoly(True, vtx):	# don't generate poly if there's already geometry here
             return
         if self.concave:
             (vtx,idx)=subdivide(vtx)
@@ -734,7 +736,6 @@ class ProcScen:
         (x,y,z)=cross((x1-x0,y1-y0,z1-z0), (x2-x0,y2-y0,z2-z0))
         if dot((x,y,z), (fnx,fny,fnz))>0:
             idx.reverse()
-        (key,mat)=self.makekey()
         if maxy+self.alt <= groundfudge:
             mat.poly=True
         if not key in self.objdat:
@@ -831,7 +832,8 @@ class ProcScen:
             else:
                 vtx.append((x,y,z, fnx,fny,fnz, x*self.scale/256, z*self.scale/256))
         if count<3: return	# wtf?
-        if self.makepoly(False, vtx):
+        (key,mat)=self.makekey(self.cmd!=0x1d)
+        if not key in self.objdat and self.makepoly(False, vtx):	# don't generate poly if there's already geometry here
             return
         if self.concave:
             self.concave=False
@@ -850,7 +852,6 @@ class ProcScen:
         (x,y,z)=cross((x1-x0,y1-y0,z1-z0), (x2-x0,y2-y0,z2-z0))
         if dot((x,y,z), (fnx,fny,fnz))>0:
             idx.reverse()
-        (key,mat)=self.makekey(self.cmd!=0x1d)
         if maxy+self.alt <= groundfudge:
             mat.poly=True
         if not key in self.objdat:
@@ -1864,9 +1865,9 @@ class ProcScen:
         if __debug__: self.debug.write("%d, %d, %d\n" % (vbase,vcount,icount))
         vtx=self.vtx[vbase:vbase+vcount]
         idx=unpack('<%dH' % icount, self.bgl.read(2*icount))
-        if self.makepoly(True, vtx, idx):
-            return
         (key,mat)=self.makekey()
+        if not key in self.objdat and self.makepoly(True, vtx, idx):	# don't generate poly if there's already geometry here
+            return
         maxy=-maxint
         for (x,y,z,nx,ny,nz,tu,tv) in vtx:
             maxy=max(maxy,y)
@@ -1956,6 +1957,8 @@ class ProcScen:
         else:
             alt=-(~hi+(~lo+1)/65536.0)
 
+        if __debug__:
+            self.debug.write("New location: %s %.3f\n" % (Point(lat,lon), alt))
         return (lat,lon,alt)
 
 
@@ -1967,6 +1970,52 @@ class ProcScen:
         self.stack.append((self.bgl.tell(), self.layer, self.billboard, matrix and True))
 
 
+    def tessbegin(self, typ, polys):
+        # New output polygon
+        assert typ==GL_LINE_LOOP
+        polys.append([[]])
+
+    def tessvertex(self, vertex, polys):
+        (x,y,z, nx,ny,nz, tu,tv)=vertex
+        polys[-1][0].append((self.loc.biased(x,z), tu,tv))
+
+    tesscombine2=array([0.5,0.5,0,0], GLfloat)
+    def tesscombine(self, coords, vertex, weight, polys):
+        # two cases:
+        # - two co-located vertices: check that UVs match
+        # - new vertex: fail - polygon is not simple
+        #self.debug.write("combine: %s %s %s\n" % (coords, vertex, weight))
+        if not array_equal(weight, ProcScen.tesscombine2) and vertex[0]==vertex[1]:
+            if __debug__:
+                if self.debug and polys[0]:
+                    if not array_equal(weight, ProcScen.tesscombine2):
+                        self.debug.write("Non-simple\n")
+                    else:
+                        self.debug.write("UV mismatch\n")
+            polys[0]=False	# Can't raise an exception so do this instead
+        return vertex[0]
+
+    def csgtvertex(self, vertex, polys):
+        polys[-1][0].append(vertex)
+
+    def csgtcombine(self, coords, vertex, weight, polys):
+        # Polygon meets tile border. Need to work out UV coords from polygon vertices.
+        #self.debug.write("combine: %s %s %s\n" % (coords, vertex, weight))
+        newtu=newtv=0
+        cumw=0
+        for i in range(4):
+            if vertex[i] is None:
+                polys[0]=False	# Shouldn't happen - Something went wrong with initial tessellation
+                if __debug__:
+                    if self.debug: self.debug.write("WTF?\n")
+            else:
+                (loc, tu, tv)=vertex[i]
+                if tu is not None:	# Polygon point not tile border
+                    newtu+=tu
+                    newtv+=tv
+                    cumw +=weight[i]
+        return (Point(float(coords[2]), float(coords[0])), newtu/cumw, newtv/cumw)
+
     # Try to make a draped polygon
     def makepoly(self, haveuv, vtx, idx=None):
         if self.t==None: return False	# Only care about textured polygons
@@ -1974,259 +2023,130 @@ class ProcScen:
         if __debug__:
             if self.debug: self.debug.write("Poly: %s %s %s %d " % (self.tex[self.t], self.alt, self.layer, self.zbias))
 
-        if idx:
-            # Altitude test
-            if self.matrix[-1]:
-                (x,y,z)=self.matrix[-1].transform(*vtx[idx[0]][:3])
-            else:
-                (x,y,z)=vtx[idx[0]][:3]
-            yval=y*self.scale
-            if (self.altmsl and not self.layer) or yval+self.alt>groundfudge:
-                if __debug__:
-                    if self.debug: self.debug.write("Above ground %s\n" % (yval+self.alt))
-                return False
-
-            # Transform
-            newvtx=[]
-            for (x,y,z, nx,ny,nz, tu,tv) in vtx:
-                if self.matrix[-1]:
-                    (x,y,z)=self.matrix[-1].transform(x,y,z)
-                newvtx.append((x*self.scale,y*self.scale,z*self.scale, nx,ny,nz, tu,tv))
-            vtx=newvtx
-
-            # Remove duplicates - O(n2) - eg EGPF Terraindetail.bmp
-            if len(idx)<1000:	# arbitrary, gets too slow
-                idx=list(idx)
-                for i in range(len(idx)):
-                    vi=vtx[idx[i]]
-                    for j in range(i+1,len(idx)):
-                        vj=vtx[idx[j]]
-                        if vi[0]==vj[0] and vi[1]==vj[1] and vi[2]==vj[2] and vi[6]==vj[6] and vi[7]==vj[7]:
-                            idx[j]=idx[i]                                
-            
-            allidx=unique(idx)	# unique set of points
-            edges={}
-            for i in range(0,len(idx),3):
-                for j in range(3):
-                    e=idx[i+j]
-                    #self.debug.write("%s\n" % vtx[e][1])
-                    if abs(vtx[e][1]-yval)>planarfudge:
-                        if __debug__:
-                            if self.debug: self.debug.write("Not coplanar\n")
-                        return False
-                    if not e in edges: edges[e]=[]
-                    if not idx[i+(j-1)%3] in edges[e]:
-                        edges[e].append(idx[i+(j-1)%3])
-                    if not idx[i+(j+1)%3] in edges[e]:
-                        edges[e].append(idx[i+(j+1)%3])
-
-            # West most vertex
-            minx=maxint
-            for i in allidx:
-                if vtx[i][0]<minx:
-                    minx=vtx[i][0]
-                    bestidx=i
-            myidx=[bestidx]
-            allidx.remove(bestidx)
-            thisheading=270
-
-            # Arrange points in order. Assumes all points are on the edge
-            while allidx:
-                thisidx=bestidx
-                thispoint=Point(vtx[thisidx][2], vtx[thisidx][0])
-                bestidx=None
-                bestheading=thisheading-360
-                for i in edges[thisidx]:
-                    if not i in allidx: continue
-                    h=degrees(atan2(vtx[i][0]-vtx[thisidx][0],
-                                    vtx[i][2]-vtx[thisidx][2]))
-                    if h>thisheading: h=h-360
-                    if h>bestheading:
-                        bestidx=i
-                        bestheading=h
-                if bestidx==None:
-                    if __debug__:
-                        if self.debug: self.debug.write("Disjoint\n")
-                    return False
-                myidx.append(bestidx)
-                allidx.remove(bestidx)
-                thisheading=(bestheading-180)%360-360
-            vtx=[vtx[i] for i in myidx]
-        elif not vtx:
+        # Altitude test on first vertex
+        if self.matrix[-1]:
+            (x,y,z)=self.matrix[-1].transform(*vtx[idx[0]][:3])
+        else:
+            (x,y,z)=vtx[idx[0]][:3]
+        yval=y*self.scale
+        if (self.altmsl and not self.layer) or yval+self.alt>groundfudge:
             if __debug__:
-                if self.debug: self.debug.write("No vertices!\n")
-            return False	# Eh?
-        else:	# no idx
-            # Altitude test
-            if self.matrix[-1]:
-                (x,y,z)=self.matrix[-1].transform(*vtx[0][:3])
-            else:
-                (x,y,z)=vtx[0][:3]
-            yval=y*self.scale
-            if (self.altmsl and not self.layer) or yval+self.alt>groundfudge:
-                if __debug__:
-                    if self.debug: self.debug.write("Above ground %s\n" % (yval+self.alt))
-                return False
+                if self.debug: self.debug.write("Above ground %s\n" % (yval+self.alt))
+            return False
+        elif __debug__:
+            if self.debug: self.debug.write("Ground %s " % (yval+self.alt))
 
-            # Transform
-            newvtx=[]
-            for (x,y,z, nx,ny,nz, tu,tv) in vtx:
-                if self.matrix[-1]:
-                    (x,y,z)=self.matrix[-1].transform(x,y,z)
-                newvtx.append((x*self.scale,y*self.scale,z*self.scale, nx,ny,nz, tu,tv))
-            vtx=newvtx
-
-            # Order must be CCW
-            count=len(vtx)
-            area2=0
-            for i in range(count):
-                if abs(vtx[i][1]-yval)>planarfudge:
-                    if __debug__:
-                        if self.debug: self.debug.write("Not coplanar\n")
-                    return False
-                area2+=(vtx[i][0]*vtx[(i+1)%count][2] - vtx[(i+1)%count][0]*vtx[i][2])
-            if area2<0:	# Tested on SAEZ, LIRF
-                vtx.reverse()
-
-        # Trim textures that spill over edge
-        TEXFUDGE=0.01
+        # Transform & Co-planar test
+        newvtx=[]
         minu=minv=maxint
+        maxu=maxv=-maxint
         for (x,y,z, nx,ny,nz, tu,tv) in vtx:
+            if self.matrix[-1]:
+                (x,y,z)=self.matrix[-1].transform(x,y,z)
+            if abs(y*self.scale-yval)>planarfudge:
+                if __debug__:
+                    if self.debug: self.debug.write("Not coplanar\n")
+                return False
             minu=min(minu,tu)
             minv=min(minv,tv)
-        if minu%1 >= 1-TEXFUDGE:
-            minu=floor(minu)+1
-        else:
-            minu=floor(minu)            
-        if minv%1 >= 1-TEXFUDGE:
-            minv=floor(minv)+1
-        else:
-            minv=floor(minv)
+            maxu=max(maxu,tu)
+            maxv=max(maxv,tv)
+            newvtx.append((x*self.scale,y*self.scale,z*self.scale, nx,ny,nz, tu,tv))
+        vtx=newvtx
 
-        # Bounding box
-        points=[[]]
-        minx=minz=maxint
-        maxx=maxz=-maxint
-        for (x,y,z, nx,ny,nz, tu,tv) in vtx:
-            minx=min(minx,x)
-            maxx=max(maxx,x)
-            minz=min(minz,z)
-            maxz=max(maxz,z)
-            if len(vtx)>4 and (tu-minu > 1+TEXFUDGE or tv-minv > 1+TEXFUDGE):
-                if __debug__:
-                    if self.debug and haveuv: self.debug.write("Dropping textures - %s,%s\n" % (tu-minu,tv-minv))
-                haveuv=False
-            loc=self.loc.biased(x,z)
-            points[0].append((loc,max(0,min(1,tu-minu)),max(0,min(1,tv-minv))))
+        TEXFUDGE=0.01
+        uvscale=max(0.1,round(self.scale*256, 0))	# Mustn't be zero
 
-        if False: #haveuv:
-            # Really small - better dealt with as an object - Why?
-            if (maxx-minx)<10 and (maxz-minz)<10:	# arbitrary
+        # Check for tiled textures
+        if haveuv and (maxu-minu > 1+2*TEXFUDGE or maxv-minv > 1+2*TEXFUDGE):
+            # maybe do this test after tessellation - could have some orthos, some repeats, and some objs?
+            if maxu-minu <= 1+2*TEXFUDGE or maxv-minv <= 1+2*TEXFUDGE:
+                # Texture repeats on only one axis - can't handle this at all since we can either generate ortho with 0<=UVs<=1 or generate fully repeating texture
                 if __debug__:
-                    if self.debug: self.debug.write("Too small %s %s\n" % (maxx-minx, maxz-minz))
-                return False	# probably detail
-        elif self.output.xpver<9:
-            # 8.60 has a bug with polygons at different layers sharing
-            # textures, so minimise use of polygons by making this an object
-            # if it's small enough to be unlikely to cause Z-buffer issues.
-            # Assume that polys with explicit UV coords won't be shared.
-            if (maxx-minx)<NM2m/8 and (maxz-minz)<NM2m/8:	# arbitrary
-                if __debug__:
-                    if self.debug: self.debug.write("Too small %s %s\n" % (maxx-minx, maxz-minz))
-                return False	# probably detail
-
-        # Split EW
-        while True:
-            minlon=maxint
-            maxlon=-maxint
-            p=points[0]
-            n=len(p)
-            for i in range(n):
-                (loc,tu,tv)=p[i]
-                if loc.lon<minlon:
-                    minlon=loc.lon
-                    west=i
-                if loc.lon>maxlon:
-                    maxlon=loc.lon
-            if maxlon<=floor(minlon)+1: break
-            # Crosses tile boundary
+                    if self.debug: self.debug.write("UVs on one axis %.3f,%.3f\n " % (maxu-minu,maxv-minv))
+                return False
             if __debug__:
-                if self.debug: self.debug.write("Boundary EW: %s,%s " % (minlon,maxlon))
-            for p1 in range(west,west+n):
-                (loc,tu,tv)=p[p1%n]
-                if loc.lon>floor(minlon)+1:
-                    (ploc,ptu,ptv)=p[(p1-1)%n]
-                    ratio=(floor(loc.lon)-ploc.lon)/(loc.lon-ploc.lon)
-                    point1=(Point(ploc.lat+ratio*(loc.lat-ploc.lat),floor(loc.lon)),
-                            ptu+ratio*(tu-ptu), ptv+ratio*(tv-ptv))
-                    #print ratio
-                    #print (ploc.lat,ploc.lon,ptu,ptv)
-                    #print (loc.lat,loc.lon,tu,tv)
-                    #print (point1[0].lat,point1[0].lon,point1[1],point1[2])
-                    #print
+                if self.debug: self.debug.write("Dropping UVs %.3f,%.3f " % (maxu-minu,maxv-minv))
+            haveuv=False        # Trim textures that spill over edge
+            # Estimate scale, assuming not distorted or disjoint
+            (x0,y0,z0, nx0,ny0,nz0, tu0,tv0)=vtx[0]
+            for i in range(len(vtx)-1,0,-1):
+                (x1,y1,z1, nx1,ny1,nz1, tu1,tv1)=vtx[i]
+                if (x0,z0) != (x1,z1):
+                    uvscale=max(0.1, hypot(x1-x0, z1-z0) / hypot(tu1-tu0, tv1-tv0))
+                    if __debug__:
+                        if self.debug: self.debug.write("New UV scale %.1f " % uvscale)
                     break
-            p1=p1%n
-            for p2 in range(p1,p1+n):
-                (loc,tu,tv)=p[p2%n]
-                if loc.lon<=floor(minlon)+1:
-                    (ploc,ptu,ptv)=p[(p2-1)%n]
-                    ratio=(ploc.lon-floor(ploc.lon))/(ploc.lon-loc.lon)
-                    point2=(Point(ploc.lat+ratio*(loc.lat-ploc.lat),floor(ploc.lon)),
-                            ptu+ratio*(tu-ptu), ptv+ratio*(tv-ptv))
-                    #print ratio
-                    #print (ploc.lat,ploc.lon,ptu,ptv)
-                    #print (loc.lat,loc.lon,tu,tv)
-                    #print (point2[0].lat,point2[0].lon,point2[1],point2[2])
-                    #print
-                    break
-            points.append([point2,point1]+[points[0][i%n] for i in range(p1,p2)])
-            p2=p2%n
-            if p1<p2: p1=p1+n
-            points[0]=[points[0][i%n] for i in range(p2,p1)]+[point1,point2]
 
-        # Split NS
-        for pnt in range(len(points)):
-            while True:
-                minlat=maxint
-                maxlat=-maxint
-                p=points[pnt]
-                n=len(p)
-                for i in range(n):
-                    (loc,tu,tv)=p[i]
-                    if loc.lat<minlat:
-                        minlat=loc.lat
-                        south=i
-                    if loc.lat>maxlat:
-                        maxlat=loc.lat
-                if maxlat<=floor(minlat)+1: break
-                #print basename(self.tex[self.t]), minlat, maxlat, floor(minlat)+1
-                #print n
-                #for i in p: print "%s,%s" % (i[0].lat,i[0].lon)
-                if __debug__:
-                    if self.debug: self.debug.write("Boundary NS: %s,%s " % (minlat,maxlat))
-                for p1 in range(south,south+n):
-                    (loc,tu,tv)=p[p1%n]
-                    if loc.lat>floor(minlat)+1:
-                        (ploc,ptu,ptv)=p[(p1-1)%n]
-                        ratio=(floor(loc.lat)-ploc.lat)/(loc.lat-ploc.lat)
-                        point1=(Point(floor(loc.lat),ploc.lon+ratio*(loc.lon-ploc.lon)),
-                                ptu+ratio*(tu-ptu), ptv+ratio*(tv-ptv))
-                        break
-                p1=p1%n
-                #print "%d: %s,%s" % (p1, p[p1][0].lat,p[p1][0].lon)
-                for p2 in range(p1,p1+n):
-                    (loc,tu,tv)=p[p2%n]
-                    #print p2, loc.lat<=floor(minlat)+1
-                    if loc.lat<=floor(minlat)+1:
-                        (ploc,ptu,ptv)=p[(p2-1)%n]
-                        ratio=(ploc.lat-floor(ploc.lat))/(ploc.lat-loc.lat)
-                        point2=(Point(floor(ploc.lat),ploc.lon+ratio*(loc.lon-ploc.lon)),
-                                ptu+ratio*(tu-ptu), ptv+ratio*(tv-ptv))
-                        break
-                points.append([point2,point1]+[points[pnt][i%n] for i in range(p1,p2)])
-                p2=p2%n
-                if p1<p2: p1=p1+n
-                points[pnt]=[points[pnt][i%n] for i in range(p2,p1)]+[point1,point2]
+        # Trim textures that spill over edge
+        if haveuv:
+            if minu%1 >= 1-TEXFUDGE:
+                minu=floor(minu)+1
+            else:
+                minu=floor(minu)
+            if minv%1 >= 1-TEXFUDGE:
+                minv=floor(minv)+1
+            else:
+                minv=floor(minv)
+
+        # Tessellate - two cases:
+        # - without idx we have a (potentially convex) polygon described by vtx.
+        # - with idx we have a set of triangles (which may have already been tessellated from a larger plane because
+        #   FSX doesn't do draping) that may or may not be disjoint.
+        tessObj = gluNewTess()
+        gluTessNormal(tessObj, 0, -1, 0)
+        gluTessProperty(tessObj, GLU_TESS_WINDING_RULE,  GLU_TESS_WINDING_NONZERO)
+        gluTessProperty(tessObj, GLU_TESS_BOUNDARY_ONLY, GL_TRUE)
+        gluTessCallback(tessObj, GLU_TESS_BEGIN_DATA,    self.tessbegin)
+        gluTessCallback(tessObj, GLU_TESS_VERTEX_DATA,   self.tessvertex)
+        gluTessCallback(tessObj, GLU_TESS_COMBINE_DATA,  self.tesscombine)
+        polys=[True]	# First element is a success value
+        try:
+            gluTessBeginPolygon(tessObj, polys)
+            if idx:
+                for i in range(0,len(idx),3):
+                    gluTessBeginContour(tessObj)
+                    for j in idx[i:i+3]:
+                        v=vtx[j]
+                        (x,y,z, nx,ny,nz, tu, tv)=v
+                        gluTessVertex(tessObj, [x, y, z], v)
+                    gluTessEndContour(tessObj)
+            else:
+                gluTessBeginContour(tessObj)
+                for v in vtx:
+                    (x,y,z, nx,ny,nz, tu, tv)=v
+                    gluTessVertex(tessObj, [x, y, z], v)
+                gluTessEndContour(tessObj)
+            gluTessEndPolygon(tessObj)
+        except:
+            gluDeleteTess(tessObj)
+            if self.debug: print_exc(None, self.debug)
+            raise GLUerror
+        gluDeleteTess(tessObj)
+
+        if not polys[0]:
+            return False	# Failed
+        else:
+            polys.pop(0)
+
+        # Output from tessellation is a list of windings.
+        # Holes are CW and precede the polygon that contains them. Easier if they're the other way round.
+        polys.reverse()
+        i=0
+        while i<len(polys):
+            w=polys[i][0]
+            count=len(w)
+            area2=0
+            for j in range(count):
+                area2+=(w[j][0].lat*w[(j+1)%count][0].lon - w[(j+1)%count][0].lat*w[j][0].lon)
+            if __debug__:
+                self.debug.write("points: %d %s\n" % (count, area2<=0 and 'CCW' or 'CW'))
+            if area2>0:
+                polys[i-1].append(w)	# Add hole winding to the containing polygon
+                polys.pop(i)
+            else:
+                i+=1
+
         if haveuv:
             heading=65535
         elif self.matrix[-1] and self.matrix[-1].m[1][1]==1:	# No pitch or bank?
@@ -2245,10 +2165,87 @@ class ProcScen:
         #    layer=24
         #if not layer and self.zbias:
         #    layer=24
-        for p in points:
-            self.polydat.append((p, layer, heading, max(1,int(self.scale*256)), tex))
+
+        # Adjust for straddling tile boundaries
+        for i in range(len(polys)-1,-1,-1):
+            points=polys[i]
+            w=points[0]	# exterior winding
+            minlat=minlon=maxint
+            maxlat=maxlon=-maxint
+            for (loc,tu,tv) in w:
+                minlat=min(minlat,loc.lat)
+                minlon=min(minlon,loc.lon)
+                maxlat=max(maxlat,loc.lat)
+                maxlon=max(maxlon,loc.lon)
+
+            latrange=range(int(floor(minlat)), 1+int(floor(maxlat)))
+            lonrange=range(int(floor(minlon)), 1+int(floor(maxlon)))
+
+            # Strictly we don't have to do this tessellation if we don't straddle, but do it anyway as a sanity test
+            #if len(latrange)==len(lonrange)==1:
+            #    continue	# doesn't straddle a tile border
+
+            # More tessellation, this time in CSG mode
+            tessObj = gluNewTess()
+            gluTessNormal(tessObj, 0, -1, 0)
+            gluTessProperty(tessObj, GLU_TESS_WINDING_RULE,  GLU_TESS_WINDING_ABS_GEQ_TWO)
+            gluTessProperty(tessObj, GLU_TESS_BOUNDARY_ONLY, GL_TRUE)
+            gluTessCallback(tessObj, GLU_TESS_BEGIN_DATA,    self.tessbegin)
+            gluTessCallback(tessObj, GLU_TESS_VERTEX_DATA,   self.csgtvertex)
+            gluTessCallback(tessObj, GLU_TESS_COMBINE_DATA,  self.csgtcombine)
+
+            polys.pop(i)
+            try:
+                for lat in latrange:
+                    for lon in lonrange:
+                        newpolys=[True]
+                        gluTessBeginPolygon(tessObj, newpolys)
+                        gluTessBeginContour(tessObj)
+                        gluTessVertex(tessObj, [lon,   0, lat],   (Point(lat,   lon),   None, None))
+                        gluTessVertex(tessObj, [lon+1, 0, lat],   (Point(lat,   lon+1), None, None))
+                        gluTessVertex(tessObj, [lon+1, 0, lat+1], (Point(lat+1, lon+1), None, None))
+                        gluTessVertex(tessObj, [lon,   0, lat+1], (Point(lat+1, lon),   None, None))
+                        gluTessEndContour(tessObj)
+                        for w in points:
+                            gluTessBeginContour(tessObj)
+                            for p in w:
+                                (loc, tu, tv)=p
+                                gluTessVertex(tessObj, [loc.lon, 0, loc.lat], p)
+                            gluTessEndContour(tessObj)
+                        gluTessEndPolygon(tessObj)
+
+                        if not newpolys[0]:
+                            return False	# Failed
+                        else:
+                            newpolys.pop(0)
+
+                        newpolys.reverse()	# So holes follow containing polygon
+                        j=0
+                        while j<len(newpolys):
+                            neww=newpolys[j][0]
+                            count=len(neww)
+                            area2=0
+                            for k in range(count):
+                                area2+=(neww[k][0].lat*neww[(k+1)%count][0].lon - neww[(k+1)%count][0].lat*neww[k][0].lon)
+                            if area2>0:
+                                newpolys[j-1].append(neww)	# Add hole winding to the containing polygon
+                                newpolys.pop(j)
+                            else:
+                                j+=1
+
+                        polys.extend(newpolys)
+            except:
+                gluDeleteTess(tessObj)
+                if self.debug: print_exc(None, self.debug)
+                raise GLUerror
+            gluDeleteTess(tessObj)
+
+        # Add polygons
         if __debug__:
-            if self.debug: self.debug.write("OK %s %s\n" % (maxx-minx, maxz-minz))
+            if self.debug: self.debug.write("OK\n")
+        for points in polys:
+            self.polydat.append((points, layer, heading, uvscale, tex))
+
         return True
 
 

@@ -3,7 +3,7 @@ Section: graphics
 Priority: extra
 Architecture: all
 Installed-Size: 6960
-Depends: bash, desktop-file-utils, python (>=2.4), python-wxgtk2.8, python-opengl (>=3.0.1~a1), wine
+Depends: bash, desktop-file-utils, python (>=2.4), python-wxgtk2.8, python-numpy, python-opengl (>=3.0.1~a1), wine
 Provides: fs2xplane
 Maintainer: Jonathan Harris <x-plane@marginal.org.uk>
 Description: MSFS add-on scenery converter for X-Plane
