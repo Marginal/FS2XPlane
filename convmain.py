@@ -664,6 +664,10 @@ class Output:
 
     def export(self):
         divisions=32
+        resolution=divisions*65535
+        minres=1.0/resolution
+        maxres=1-minres
+        minhdg=360.0/65535
 
         if self.apt or self.nav or self.objplc or self.polyplc:
             if not isdir(self.xppath): mkdir(self.xppath)
@@ -1103,8 +1107,8 @@ class Output:
             for i in range(complexities-1,-1,-1):
                 for plc in objplcs[i]:
                     (idx,lon,lat,heading)=plc
-                    dst.write('OBJECT %3d %14.9f %14.9f %6.2f\n' % (
-                        base[i]+idx, lon, lat, heading))
+                    # DSFTool<=2.0 rounds down rather than to nearest encodable value, so round up here first
+                    dst.write('OBJECT %3d %14.9f %14.9f %6.2f\n' % (base[i]+idx, min(ne.lon, lon+minres/4), min(ne.lat, lat+minres/4), (heading+minhdg/4)%360))
             dst.write('\n')
 
             for (idx,heading,poly) in polyplcs:
@@ -1113,9 +1117,9 @@ class Output:
                     dst.write('BEGIN_WINDING\n')
                     for p in w:
                         if heading==65535:	# have UVs
-                            dst.write('POLYGON_POINT %14.9f %14.9f %8.4f %8.4f\n' % (p[0].lon, p[0].lat, p[1], p[2]))
+                            dst.write('POLYGON_POINT %14.9f %14.9f %8.4f %8.4f\n' % (min(ne.lon, p[0].lon+minres/4), min(ne.lat, p[0].lat+minres/4), p[1], p[2]))
                         else:
-                            dst.write('POLYGON_POINT %14.9f %14.9f\n' % (p[0].lon, p[0].lat))
+                            dst.write('POLYGON_POINT %14.9f %14.9f\n' % (min(ne.lon, p[0].lon+minres/4), min(ne.lat, p[0].lat+minres/4)))
                     dst.write('END_WINDING\n')
                 dst.write('END_POLYGON\n')
             if polyplcs: dst.write('\n')
