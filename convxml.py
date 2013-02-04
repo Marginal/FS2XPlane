@@ -124,7 +124,7 @@ class SceneryObject:
                 output.misc.append((19, loc, [a]))
 
         # Don't add placements if we're doing a second round of apt.dat
-        if output.doexcfac: return
+        if output.doingexcfac: return
         
         for l in self.genericbuilding:
             scale=1.0

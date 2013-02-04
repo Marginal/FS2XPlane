@@ -67,7 +67,7 @@ MSFS scenery packages tend to use lots of small texture files)</small>.</p>
   <dd>Requires Mac OS 10.5 (Leopard) or later.<br>
 Users of Mac OS 10.7 (Lion) should first <a target="_blank" href="http://www.wxpython.org/download.php">download</a>
 and install wxPython for Cocoa and Python 2.7 - the lastest version at time of writing is
-<a href="http://downloads.sourceforge.net/wxpython/wxPython2.9-osx-2.9.3.1-cocoa-py2.7.dmg">wxPython2.9-osx-cocoa-py2.7</a>.<br>
+<a href="http://downloads.sourceforge.net/wxpython/wxPython2.9-osx-2.9.4.0-cocoa-py2.7.dmg">wxPython 2.9 Cocoa</a>.<br>
 Makes use of <a target="_blank" href="http://www.codeweavers.com/products/cxmac/">CrossOver Mac</a> or
 <a target="_blank" href="http://winebottler.kronenberg.org/">Wine</a>
 if installed to produce more complete X-Plane scenery in some cases.</dd>
@@ -89,7 +89,7 @@ library; for best results install this library before using the converted scener
   <dt><b>Windows</b></dt>
   <dd>Run the <samp>FS2XPlane</samp> application.<br>
 If you don't have FSX installed then FS2XPlane creates a fake MSFS installation in
-<code> Program&nbsp;Files\Microsoft&nbsp;Games\Microsoft&nbsp;Flight&nbsp;Simulator&nbsp;X</code>,
+<code>C:\Program&nbsp;Files\Microsoft&nbsp;Games\Microsoft&nbsp;Flight&nbsp;Simulator&nbsp;X</code>,
 and sets up the subfolders and registry entries that some MSFS scenery package installer programs require.<br>
 You should install scenery packages that you want to convert under your real FSX installation (if you have one)
 or under this fake FSX installation (if you don't).</dd>
@@ -244,10 +244,12 @@ You need not include this file in your scenery package.</td>
       <td style="vertical-align: top; background-color: white;"><code>Earth&nbsp;nav&nbsp;data\apt.dat</code></td>
       <td style="background-color: white;">Airport, runway, taxiway and COM data.</td>
     </tr>
+<!--
     <tr>
       <td style="vertical-align: top; background-color: white;"><code>Earth&nbsp;nav&nbsp;data\fullapt.dat</code></td>
       <td style="background-color: white;">Alternative version of the above. See <a href="#pavement">below</a>.</td>
     </tr>
+-->
     <tr>
       <td style="vertical-align: top; background-color: white;"><code>Earth&nbsp;nav&nbsp;data\nav.dat</code></td>
       <td style="background-color: white;">ILS,
@@ -299,7 +301,7 @@ transparent or opaque. (But transparent textures work fine).</li>
   <li>Many MSFS scenery packages supply ground-level textures
 (eg aprons and taxiways) as scenery objects on top of flattened terrain.
 This can lead to these textures "floating" above the ground in X-Plane.
-See <a href="#pavement">below</a> for one method of dealing with this.</li>
+<!-- See <a href="#pavement">below</a> for one method of dealing with this. --></li>
   <li>"Generic" MSFS buildings are not textured.</li>
 </ul>
 <p>The following MSFS scenery data are discarded:</p>
@@ -313,6 +315,7 @@ See <a href="#pavement">below</a> for one method of dealing with this.</li>
   <li>Areas that make use of some of the more obscure pre-FS2002 BGL commands.</li>
 </ul>
 
+<!--
 <h3><a name="pavement">Pavement</a></h3>
 <p>Sometimes the designer of a MSFS scenery package chooses or is forced to
 hide some or all of the pavement (aprons and taxiways) and associated lights
@@ -328,6 +331,7 @@ better in X-Plane than the designers' "fake" pavement. But if you do this
 then you may need to edit the converted package to remove the scenery
 objects and polygons that make up the "fake" pavement, otherwise you may
 see duplicated aprons, taxiways, lights and/or lines.</p>
+-->
 
 <h3><a name="license"></a>License and terms</h3>
 

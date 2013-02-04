@@ -554,14 +554,7 @@ class ProcScen:
             mat=self.mat[self.m].clone()
         mat.dblsided=bool(self.billboard)
 
-        layer=self.layer
-        if layer>=40:	# ground element
-            layer=None
-        #elif layer>=24:
-        #    layer=24
-        #if not layer and self.zbias:
-        #    layer=24
-        return ((self.name,self.loc,layer,self.alt,self.altmsl,self.matrix[-1],self.scale,tex), mat)
+        return ((self.name,self.loc,self.layer,self.alt,self.altmsl,self.matrix[-1],self.scale,tex), mat)
 
     def makename(self):
         # make a unique base filename
@@ -769,7 +762,7 @@ class ProcScen:
                 if self.debug: self.debug.write("Now\n%s\n" % self.matrix[-1])
         self.bgl.seek(off)
 
-    def Call(self):		# 23:Call, 32:PerspectiveCall, 75:AddMnt
+    def Call(self):		# 23:Call, 32:PerspectiveCall/AddObj, 75:AddMnt
         (off,)=unpack('<h', self.bgl.read(2))
         if not off: raise struct.error	# infloop
         self.precall(False)
@@ -893,7 +886,7 @@ class ProcScen:
         (lat,lon,self.altmsl)=self.LLA()
         self.alt=0
         if __debug__:
-            if self.debug: self.debug.write("AltMSL %s\n" % self.altmsl)
+            if self.debug: self.debug.write("AltMSL %.3f\n" % self.altmsl)
         if lat>=-90 and lat<=90 and lon>=-180 and lon<=180:
             self.loc=Point(lat,lon)
             if lat<0 and not self.output.hemi:
@@ -1364,6 +1357,8 @@ class ProcScen:
         self.scale=65536.0/scale
         (lat,lon,self.alt)=self.LLA()
         self.altmsl=0
+        if __debug__:
+            if self.alt and self.debug: self.debug.write("!Altitude %.3f\n" % self.altmsl)	# docs say alt should be 0
         if lat>=-90 and lat<=90 and lon>=-180 and lon<=180:
             self.loc=Point(lat,lon)
             if lat<0 and not self.output.hemi:
@@ -1421,7 +1416,9 @@ class ProcScen:
         self.bgl.seek(off-4,1)
         
     def Interpolate(self):	# 9e
-        # XXX ignored
+        # Ignored
+        if __debug__:
+            if self.debug: self.debug.write("!Interpolate\n")
         self.anim=True
         self.bgl.read(18)
 
@@ -2158,14 +2155,6 @@ class ProcScen:
         if self.haze and tex.d: self.output.haze[tex.d]=self.haze
         if self.haze and tex.e: self.output.haze[tex.e]=self.haze
 
-        layer=self.layer
-        if layer>=40:	# ground element
-            layer=None
-        #elif layer>=24:
-        #    layer=24
-        #if not layer and self.zbias:
-        #    layer=24
-
         # Adjust for straddling tile boundaries
         for i in range(len(polys)-1,-1,-1):
             points=polys[i]
@@ -2244,7 +2233,7 @@ class ProcScen:
         if __debug__:
             if self.debug: self.debug.write("OK\n")
         for points in polys:
-            self.polydat.append((points, layer, heading, uvscale, tex))
+            self.polydat.append((points, self.layer, heading, uvscale, tex))
 
         return True
 
@@ -2378,10 +2367,6 @@ class ProcScen:
             (name, loc, layer, alt, altmsl, matrix, scale, tex)=lkey
             if __debug__:
                 if self.debug: self.debug.write("%s %s %s %s %s %s %s %s\n" % (name, loc, layer, alt, altmsl, scale, tex, matrix))
-            if layer>=40:
-                layer=None
-            #elif layer>=24:
-            #    layer=24
             newmatrix=matrix
             heading=0
             

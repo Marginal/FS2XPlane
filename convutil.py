@@ -356,7 +356,7 @@ class Material:
         self.s=xpver>10 and specular or None	# specular color or None if default. <=v10 has no support for specular color - http://xplanescenery.blogspot.co.uk/2006/01/obj8-what-not-to-use.html
         self.poly=poly		# poly_os or draped
         self.dblsided=dblsided	# True or False
-        self.alpha=alphacutoff	# AlphaTestValue or None
+        self.alpha=poly and alphacutoff or None	# AlphaTestValue or None - neither draped objs nor polygons support this
         self.shiny=shiny	# True or False
         self.shadow=xpver<10 or shadow	# True or False. v9 has no explicit support for shadows
         if poly:
@@ -575,8 +575,6 @@ class Object:
                     else:
                         if self. layer:
                             objfile.write("ATTR_layer_group\t%s\n" % fslayers[self.layer])
-                            #if layer and layer>4)	# can't remember where '4' is documented
-                            #    objfile.write("ATTR_hard\tconcrete\n")
                         if lod:
                             objfile.write("ATTR_LOD\t0 %d\n" % lod)
                         objfile.write("ATTR_poly_os\t%d\n" % 2)

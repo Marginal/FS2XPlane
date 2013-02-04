@@ -37,6 +37,7 @@ class Output:
         self.dds=(xpver>=9)
         self.draped=(xpver>=10)
         self.doatc=(xpver>=10)
+        self.doexcfac=False	# Apply exclusions to airport data?
         self.usesopensceneryx=False
 
         # Callbacks
@@ -52,7 +53,7 @@ class Output:
         self.done={}	# BGL files that we've already processed
         self.exc=[]	# Exclusion rectangles: (type, bottomleft, topright)
         self.excfac=[]	# Exclusion rectangles for facility data
-        self.doexcfac=False	# Process exclusions?
+        self.doingexcfac=False	# Process exclusions?
         self.needfull=False	# Some apt.dat features are excluded?
         self.libobj={}	# Lib objects: (MDL, f, cmp, offset, size, name, scale) by uid
         self.objplc=[]	# Object placements:	(loc, hdg, cmplx, name, scale)
@@ -499,11 +500,11 @@ class Output:
         self.excfac=self.exc
 
         # Do airport facilities last so that exclusions have been set up
-        for self.doexcfac in [False, True]:
+        for self.doingexcfac in [False, True]:
             n = len(xmls)
             for i in range(n):
                 bglname=xmls[i]
-                if not self.doexcfac:
+                if not self.doingexcfac:
                     self.status(i*100.0/n, bglname[len(self.fspath)+1:])
                 tmp=join(gettempdir(), basename(bglname[:-3])+'xml')
                 x=helper(self.xmlexe, '-t', bglname, tmp)
@@ -521,7 +522,7 @@ class Output:
                 else:
                     self.log("Can't parse file %s" % basename(bglname))
                     if self.debug: self.debug.write("%s\nError: %s\n" % (bglname,x))
-            if self.doexcfac or not self.needfull: break
+            if not self.doexcfac or self.doingexcfac or not self.needfull: break
             # Do them again, this time with exclusions
             self.aptfull=self.apt
             self.apt={}
@@ -802,7 +803,7 @@ class Output:
             path=join(self.xppath, 'Earth nav data')
             if not isdir(path): mkdir(path)
             for (filename, apt) in [(join(path, 'apt.dat'), self.apt), (join(path, 'fullapt.dat'), self.aptfull)]:
-                if not apt: break
+                if not apt: continue
                 f=file(filename, 'wt')
                 f.write("I\n%d\t# %s\n\n" % (self.doatc and 1000 or 850, banner))
                 keys=apt.keys()
@@ -876,34 +877,30 @@ class Output:
                 objdef[name].append(scale)
 
         # do layer mapping
+        # In FSX any layer overwrites runways and taxiways. layer>=16 also overwrites markings and lights.
+        # We have to map these to 8 X-Plane layers below markings and 8 above.
+        # In X-Plane 9, polygons with surface at layer airports+1 or later also suppresses lights. But not in X-Plane 10.
+        # Note: In X-Plane 10.20, airports layer doesn't work for draped objs
         fslayers={}
         for name in objdef:
             if name in self.objdat:
                 for obj in self.objdat[name]:
-                    if obj.layer and obj.layer>4: fslayers[obj.layer]=None
+                    if obj.layer: fslayers[obj.layer]=None
         for poly in self.polydat.values():
-            if poly.layer and poly.layer>4: fslayers[poly.layer]=None
-        keys=fslayers.keys()
-        keys.sort()
-        # Need runway lights so objects must be below runways.
-        # Should really use "taxiways -1" and earlier for strobes to show up.
-        # But prefer apron markings to be above implicit taxiways (but this
-        # hides taxi lights)
-        layermap=["taxiways +1", "taxiways +2", "taxiways +3", "taxiways +4", "taxiways +5", "runways -5", "runways -4", "runways -3", "runways -2", "runways -1"]
-        # explicit taxiways/roads ought to be on top of objects at layers<24
-        #layermap=["shoulders +1", "shoulders +2", "shoulders +3", "shoulders +4", "shoulders +5", "taxiways -5", "taxiways -4", "taxiways -3", "taxiways -2", "taxiways -1"]
-        for i in range(len(keys)):
-            if keys[i]>=24:
-                fslayers[keys[i]]="objects -1"
-            elif i>=len(layermap):
-                fslayers[keys[i]]=layermap[-1]
-            else:
-                fslayers[keys[i]]=layermap[i]
-        fslayers[0]="terrain +1"
-        fslayers[1]="terrain +2"
-        fslayers[2]="terrain +3"
-        fslayers[3]="terrain +4"
-        fslayers[4]="terrain +5"
+            if poly.layer: fslayers[poly.layer]=None
+        lokeys=sorted([key for key in fslayers.keys() if key<16])
+        hikeys=sorted([key for key in fslayers.keys() if key>=16])
+        for (keys, mapping) in [(lokeys, ['runways +1', 'runways +2', 'runways +3', 'runways +4', 'runways +5', 'markings -5', 'markings -4', 'markings -3', 'markings -2', 'markings -1']),
+                                (hikeys, ['roads +1', 'roads +2', 'roads +3', 'roads +4', 'roads +5', 'objects -5', 'objects -4', 'objects -3', 'objects -2', 'objects -1'])]:
+            divisor=(len(keys)+7)/8	# have to map to 8 values
+            for i in range(len(keys)):
+                fslayers[keys[i]]=mapping[i/divisor]
+        if __debug__:
+            if fslayers and self.debug:
+                self.debug.write("\nLayer mapping:\n")
+                for key in sorted(fslayers.keys()):
+                    self.debug.write("%02d -> %s\n" % (key, fslayers[key]))
+                self.debug.write("\n")
 
         # write out objects
         keys=objdef.keys()
