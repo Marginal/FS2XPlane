@@ -243,7 +243,7 @@ class Output:
                     (c,)=unpack('<H', c)
                     if c&0xff00==0:
                         # Old-style
-                        for section in [42,54,58,102]:
+                        for section in [42,46,54,58,102]:
                             bgl.seek(section)
                             (secbase,)=unpack('<I',bgl.read(4))
                             if secbase: done=False	# Includes other data
@@ -295,46 +295,48 @@ class Output:
                                 if self.debug: print_exc(None, self.debug)
                         if not libbase: continue
                         bgl.seek(libbase)
-                        while True:
-                            pos=bgl.tell()
-                            (off,)=unpack('<I', bgl.read(4))
-                            if off==0: break
-                            (a,b,c,d)=unpack('<IIII',bgl.read(16))
-                            uid = "%08x%08x%08x%08x" % (a,b,c,d)
-                            bgl.seek(libbase+off)
-                            (a,b,c,d,x)=unpack('<IIIIB',bgl.read(17))
-                            if a==1 and b==2 and c==3 and d==4:	# fs98 library
-                                (rcsize,)=unpack('<H', bgl.read(2))
-                                hdsize=19
-                                scale=1.0
-                            else:
-                                (hdsize,rcsize,radius,scale,typ,prop)=unpack('<6I',bgl.read(24))
-                                if scale:
-                                    scale=65536.0/scale
-                                else:
+                        try:
+                            while True:
+                                pos=bgl.tell()
+                                (off,)=unpack('<I', bgl.read(4))
+                                if off==0: break
+                                (a,b,c,d)=unpack('<IIII',bgl.read(16))
+                                uid = "%08x%08x%08x%08x" % (a,b,c,d)
+                                bgl.seek(libbase+off)
+                                (a,b,c,d,x)=unpack('<IIIIB',bgl.read(17))
+                                if a==1 and b==2 and c==3 and d==4:	# fs98 library
+                                    (rcsize,)=unpack('<H', bgl.read(2))
+                                    hdsize=19
                                     scale=1.0
-                            name=None
-                            if hdsize>42:
-                                # Use "friendly" name instead of id
-                                name=asciify(bgl.read(hdsize-(41)).rstrip(' \0'))
-                            if uid in self.friendly:
-                                name=self.friendly[uid]
-                            elif not name and asciify(splitext(filename)[0]) not in self.names:
-                                name=asciify(splitext(filename)[0])
-                                self.friendly[uid]=name
-                                self.names[name]=True
-                            elif name and name not in self.names:
-                                self.friendly[uid]=name
-                                self.names[name]=True
-                            else:
-                                name=uid
+                                else:
+                                    (hdsize,rcsize,radius,scale,typ,prop)=unpack('<6I',bgl.read(24))
+                                    if scale:
+                                        scale=65536.0/scale
+                                    else:
+                                        scale=1.0
+                                name=None
+                                if hdsize>42:
+                                    # Use "friendly" name instead of id
+                                    name=asciify(bgl.read(hdsize-(41)).rstrip(' \0'))
+                                if uid in self.friendly:
+                                    name=self.friendly[uid]
+                                elif not name and asciify(splitext(filename)[0]) not in self.names:
+                                    name=asciify(splitext(filename)[0])
+                                    self.friendly[uid]=name
+                                    self.names[name]=True
+                                elif name and name not in self.names:
+                                    self.friendly[uid]=name
+                                    self.names[name]=True
+                                else:
+                                    name=uid
 
-                            if not uid in self.libobj:	# 1st wins
-                                if self.debug and toppath==self.fspath: self.debug.write("%s:\t%s\t%s\tFS8\n" % (uid, name, bglname[len(toppath)+1:]))
-                                self.libobj[uid]=(8, bglname, tmp,
-                                                  libbase+off+hdsize, rcsize,
-                                                  name, scale)
-                            bgl.seek(pos+20)
+                                if not uid in self.libobj:	# 1st wins
+                                    if self.debug and toppath==self.fspath: self.debug.write("%s:\t%s\t%s\tFS8\n" % (uid, name, bglname[len(toppath)+1:]))
+                                    self.libobj[uid]=(8, bglname, tmp, libbase+off+hdsize, rcsize, name, scale)
+                                bgl.seek(pos+20)
+                        except:
+                            self.log("Error parsing FS8 library %s" % filename)
+                            if self.debug: print_exc(None, self.debug)
 
                     elif c==0x201:
                         # FS9 or FSX
@@ -348,7 +350,12 @@ class Output:
                             (typ,x,subsections,subsectiontbl)=unpack('<IIIi', bgl.read(16))
                             #print "%x %x %d" % (typ,x,subsections)
                             if typ!=0x2b:	# 2b=MDL data
-                                done=False
+                                if typ==0x6e:	# Ortho and DEM BGLs seem to have a 6e section
+                                    self.log('Skipping terrain data in file %s' % filename)
+                                elif typ==0x65:
+                                    self.log("Skipping traffic data in file %s" % filename)
+                                else:
+                                    done=False	# Something else - perhaps Facility data
                                 continue
                             if not islib:
                                 self.status(i*100.0/n,bglname[len(toppath)+1:])
