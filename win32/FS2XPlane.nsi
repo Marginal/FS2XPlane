@@ -110,7 +110,7 @@ Section "Install"
   ;goto fs9
   ;
   ;fs9notinstalled:
-  ;StrCpy $fs9root "$PROGRAMFILES\Microsoft Games\Flight Simulator 9"
+  ;StrCpy $fs9root "$PROGRAMFILES\Microsoft Games\Flight Simulator 9\"
   ;WriteRegStr HKLM "SOFTWARE\Microsoft\Microsoft Games\Flight Simulator\9.0" "EXE Path" $fs9root
   ;WriteRegStr HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Flight Simulator 9.0" "InstallLocation" $fs9root
   ;goto fs9
@@ -140,7 +140,7 @@ Section "Install"
   ReadRegStr $fsxroot HKCU "SOFTWARE\Microsoft\Microsoft Games\Flight Simulator\10.0" "AppPath"
   ExpandEnvStrings $fsxroot $fsxroot
   StrCmp $fsxroot "" +1 fsxhaveapppath
-  StrCpy $fsxroot "$PROGRAMFILES\Microsoft Games\Microsoft Flight Simulator X"
+  StrCpy $fsxroot "$PROGRAMFILES\Microsoft Games\Microsoft Flight Simulator X\"
   fsxhaveapppath:
   WriteRegStr HKLM "SOFTWARE\Microsoft\Microsoft Games\Flight Simulator\10.0" "SetupPath" $fsxroot
   WriteRegStr HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\{9527A496-5DF9-412A-ADC7-168BA5379CA6}" "InstallLocation" $fsxroot
