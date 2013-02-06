@@ -33,7 +33,6 @@ class Output:
 
         # X-Plane features
         self.xpver=xpver
-        self.docomplexity=(xpver>=9)
         self.dds=(xpver>=9)
         self.draped=(xpver>=10)
         self.doatc=(xpver>=10)
@@ -963,29 +962,14 @@ class Output:
                         
         
         self.status(-1, 'Writing DSFs')
-        # poly_os objects need to be drawn first to prevent them from
-        # swallowing other objects.
-        # X-Plane 8.20 and 8.30 draw in order of definition (not placement)
-        # in the DSF file. We therefore need poly_os objects to be defined
-        # first. This is incompatible with prioritisation, since lower
-        # priority objects come last. So disable prioritisation.
         cmplx={}
         for loc, heading, complexity, name, scale in self.objplc:
             tile=(int(floor(loc.lat)), int(floor(loc.lon)))
             key=(name,scale)
-            if self.docomplexity:
-                newc=complexity
-            else:
-                newc=1				# Disable prioritisation
-                if name in self.objdat:
-                    for obj in self.objdat[name]:
-                        if obj.poly:
-                            newc=complexities-1	# ... apart from for poly_os
             if not cmplx.has_key(tile):
                 cmplx[tile]={}
-            if (not cmplx[tile].has_key(key) or
-                cmplx[tile][key]>newc):
-                cmplx[tile][key]=newc
+            if (not cmplx[tile].has_key(key) or cmplx[tile][key]>complexity):
+                cmplx[tile][key]=complexity
 
         #expand names & create indices & create per-complexity placements
         objdef={}	# filenames (maybe more than one per Object)

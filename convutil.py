@@ -35,7 +35,7 @@ NM2m=1852	# 1 international nautical mile [m]
 groundfudge=0.22	# arbitrary: 0.124 used in UNNT, 0.172 in KBOS, 2.19 in LIRP
 planarfudge=0.1	# arbitrary
 
-complexities=3		# We map to X-plane complexity 1-3 (defauilt, a lot, tons)
+complexities=2		# We map to X-plane complexity 1-2 (default, a lot)
 
 apronlightspacing=60.96	# [m] = 200ft
 taxilightspacing=30.48	# [m] = 100ft
@@ -97,10 +97,9 @@ def sortfolded(seq):
     seq.sort(lambda x,y: cmp(x.lower(), y.lower()))
 
 def complexity(fscmplx):
-    mapping=[-1,0,0,1,2,2]
-    if fscmplx>5:
-        return 2
-    return mapping[fscmplx]
+    mapping=[-1,0,0,0,1,1]
+    assert mapping[-1]==complexities-1
+    return mapping[min( max(fscmplx,1), 5)]
 
 
 class FS2XError(Exception):
