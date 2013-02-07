@@ -881,6 +881,10 @@ class Output:
                 objdef[name]=[scale]
             elif not scale in objdef[name]:
                 objdef[name].append(scale)
+        polydef={}
+        for (name, param, points) in self.polyplc:
+            if not name in polydef:
+                polydef[name]=True
 
         # do layer mapping
         # In FSX any layer overwrites runways and taxiways. layer>=16 also overwrites markings and lights.
@@ -892,8 +896,10 @@ class Output:
             if name in self.objdat:
                 for obj in self.objdat[name]:
                     if obj.layer: fslayers[obj.layer]=None
-        for poly in self.polydat.values():
-            if poly.layer: fslayers[poly.layer]=None
+        for name in polydef:
+            if name in self.polydat:
+                poly=self.polydat[name]
+                if poly.layer: fslayers[poly.layer]=None
         lokeys=sorted([key for key in fslayers.keys() if key<16])
         hikeys=sorted([key for key in fslayers.keys() if key>=16])
         for (keys, mapping) in [(lokeys, ['runways +1', 'runways +2', 'runways +3', 'runways +4', 'runways +5', 'markings -5', 'markings -4', 'markings -3', 'markings -2', 'markings -1']),
@@ -1017,7 +1023,10 @@ class Output:
                 polydef[tile]=[]
                 polyplc[tile]=[]
 
-            fname="objects/"+self.polydat[name].filename()
+            if '/' in name:		# Substituted library object
+                fname=name
+            else:
+                fname="objects/"+self.polydat[name].filename()
             if not fname in polydef[tile]:
                 polyplc[tile].append((len(polydef[tile]),heading,points))
                 polydef[tile].append(fname)

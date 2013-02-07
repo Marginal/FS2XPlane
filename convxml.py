@@ -309,6 +309,7 @@ class Airport:
         self.taxiwaysign=[]
         self.aprons=[]
         self.apronedgelights=[]
+        self.blastfence=[]
         self.boundaryfence=[]
 
     class Tower:
@@ -476,17 +477,27 @@ class Airport:
                     for k, v in attrs.iteritems():
                         exec("self.%s=v" % k)
 
-    # XXX TODO: BoundaryFence
-    #class BoundaryFence:
-    #    def __init__(self, attrs):
-    #        for k, v in attrs.iteritems():
-    #            exec("self.%s=v" % k)
-    #        self.vertex=[]
-    #
-    #    class Vertex:
-    #        def __init__(self, attrs):
-    #            for k, v in attrs.iteritems():
-    #                exec("self.%s=v" % k)
+    class BlastFence:
+        def __init__(self, attrs):
+            for k, v in attrs.iteritems():
+                exec("self.%s=v" % k)
+            self.vertex=[]
+
+        class Vertex:
+            def __init__(self, attrs):
+                for k, v in attrs.iteritems():
+                    exec("self.%s=v" % k)
+
+    class BoundaryFence:
+        def __init__(self, attrs):
+            for k, v in attrs.iteritems():
+                exec("self.%s=v" % k)
+            self.vertex=[]
+
+        class Vertex:
+            def __init__(self, attrs):
+                for k, v in attrs.iteritems():
+                    exec("self.%s=v" % k)
 
 
     # Export airport to apt.dat and nav.dat
@@ -1030,15 +1041,18 @@ class Airport:
             for l in hotlinks:
                 l.hotness=runway.hotness
 
-
-        # XXX TODO: BoundaryFence
-        #for b in self.boundaryfence:
-        #    if len(b.vertex)>1:
-        #        vert=[Point(v.lat, v.lon) for v in b.vertex]
-        #        if vert[0]==vert[-1]:
-        #            output.facplc.append('opensceneryx/facades/fences/chainlink/1/closed.fac', vert[0:-1])
-        #        else:
-        #            output.facplc.append('opensceneryx/facades/fences/chainlink/1/open.fac', vert)
+        # Fences
+        for (thing, libobj, height) in [(self.blastfence,    output.xpver>=10 and 'lib/airport/Ramp_Equipment/Jet_Blast_Shield.fac' or None, 3),
+                                        (self.boundaryfence, output.xpver>=10 and 'lib/airport/Common_Elements/Fence_Facades/Fence.fac' or 'opensceneryx/facades/fences/chainlink/1/open.fac', output.xpver>=10 and 3 or 2)]:
+            if not libobj: continue	# No blast fence for v9
+            # Ignore fence type (instanceId, profile) since we don't have much of a choice of fences
+            for b in thing:
+                if len(b.vertex)>1:
+                    vert=[(Point(float(v.lat), float(v.lon)), 0, 0) for v in b.vertex]
+                    vert.reverse()
+                    output.polyplc.append((libobj, height, [vert]))
+                    if libobj.startswith('opensceneryx/'):
+                        output.usesopensceneryx=True
 
         # Tower view location
         if D(self, 'name'):
