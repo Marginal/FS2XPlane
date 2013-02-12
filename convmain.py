@@ -900,13 +900,17 @@ class Output:
             if name in self.polydat:
                 poly=self.polydat[name]
                 if poly.layer: fslayers[poly.layer]=None
-        lokeys=sorted([key for key in fslayers.keys() if key<16])
+        lokeys=sorted([key for key in fslayers.keys() if 4<=key<16])
         hikeys=sorted([key for key in fslayers.keys() if key>=16])
         for (keys, mapping) in [(lokeys, ['runways +1', 'runways +2', 'runways +3', 'runways +4', 'runways +5', 'markings -5', 'markings -4', 'markings -3', 'markings -2', 'markings -1']),
                                 (hikeys, ['roads +1', 'roads +2', 'roads +3', 'roads +4', 'roads +5', 'objects -5', 'objects -4', 'objects -3', 'objects -2', 'objects -1'])]:
             divisor=(len(keys)+7)/8	# have to map to 8 values
             for i in range(len(keys)):
                 fslayers[keys[i]]=mapping[i/divisor]
+            fslayers[0]='terrain +1'	# for FS2004 photoscenery
+            fslayers[1]='terrain +2'	# for Blue Sky photoscenery
+            fslayers[2]='terrain +3'	#  "
+            fslayers[3]='terrain +4'	#  "
         if __debug__:
             if fslayers and self.debug:
                 self.debug.write("\nLayer mapping:\n")
