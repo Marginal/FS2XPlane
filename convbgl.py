@@ -17,7 +17,7 @@ except NameError:
     from OpenGL import GLU
     gluTessVertex = GLU._gluTessVertex
 
-from convutil import cirp, m2f, NM2m, complexity, asciify, unicodeify, normalize, rgb2uv, cross, dot, AptNav, Object, Polygon, Material, Texture, Point, Matrix, FS2XError, unique, groundfudge, planarfudge, effects
+from convutil import cirp, m2f, complexity, asciify, unicodeify, normalize, rgb2uv, cross, dot, AptNav, Object, Material, Texture, Point, Matrix, FS2XError, unique, groundfudge, effects
 from convobjs import makegenquad, makegenmulti
 from convtaxi import taxilayout, Node, Link
 from convphoto import blueskyre

@@ -19,6 +19,9 @@ from version import appname, appversion
 
 banner="Converted by %s %4.2f\n" % (appname, appversion)
 
+radius=6378145.0	# from sim/physics/earth_radius_m
+onedeg=360/(radius*2*pi)
+
 # MSFS oblate spheroid
 diae=12756270	# Equatorial diameter [m]
 diap=12734620	# Polar diameter [m]
@@ -30,7 +33,6 @@ diaa=12748000	# Average diameter [m]	= 12756000 in X-Plane
 twopi=pi+pi
 
 m2f=3.28084	# 1 metre [ft]
-NM2m=1852	# 1 international nautical mile [m]
 
 groundfudge=0.22	# arbitrary: 0.124 used in UNNT, 0.172 in KBOS, 2.19 in LIRP
 planarfudge=0.1	# arbitrary
@@ -117,8 +119,8 @@ class Point:
 
     def biased(self, biasX, biasZ):
         # Biases are in m. Z is North. Approximation.
-        return Point(self.lat+biasZ*360.0/cirp,
-                     self.lon+biasX*360.0/(cire*cos(radians(self.lat))))
+        return Point(self.lat+biasZ*onedeg,
+                     self.lon+biasX*onedeg/cos(radians(self.lat)))
 
     # From http://www.mathforum.com/library/drmath/view/51711.html
     def distanceto(self, to):

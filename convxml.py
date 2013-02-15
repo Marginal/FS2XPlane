@@ -5,10 +5,12 @@ from sys import maxint
 import xml.parsers.expat
 from tempfile import gettempdir
 
-from convutil import m2f, NM2m, complexity, asciify, AptNav, Object, Point, Matrix, FS2XError, D, T, E
+from convutil import m2f, complexity, asciify, AptNav, Object, Point, Matrix, FS2XError, D, T, E
 from convobjs import makegenquad, makegenmulti
 from convtaxi import apronlayout, designators, surfaces, taxilayout, Node, Link
 from convatc  import atclayout
+
+NM2m=1852	# 1 international nautical mile [m] for nav ranges
 
 
 # Set up XML parser for new-style scenery
