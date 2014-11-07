@@ -692,9 +692,9 @@ class ProcScen:
     def FaceTTMap(self):	# 20:FaceTTMap, 7a:GFaceTTMap
         (count,fnx,fny,fnz,)=unpack('<H3h', self.bgl.read(8))
         if count<=4: self.concave=False	# Don't bother
-        fnx=fnx/32767.0
-        fny=fny/32767.0
-        fnz=fnz/32767.0
+        fnx /= 32767.0
+        fny /= 32767.0
+        fnz /= 32767.0
         self.bgl.read(4)
         vtx=[]
         maxy=-maxint
@@ -808,9 +808,9 @@ class ProcScen:
         if self.cmd==0x1d: self.bgl.read(6)	# point
         (fnx,fny,fnz)=unpack('<3h', self.bgl.read(6))
         if count<=4: self.concave=False	# Don't bother
-        fnx=fnx/32767.0
-        fny=fny/32767.0
-        fnz=fnz/32767.0
+        fnx /= 32767.0
+        fny /= 32767.0
+        fnz /= 32767.0
         if self.cmd!=0x1d: self.bgl.read(4)	# dot_ref
         vtx=[]
         maxy=-maxint
@@ -1035,7 +1035,7 @@ class ProcScen:
                 if self.debug: self.debug.write("!Bogus Runway location %s\n"%cloc)
             raise struct.error
         (heading, length, width, markers, identifiers, surface_lights, specials, surface_type, threshold_flags, base_threshold, base_blast_pad, recip_threshold, recip_blast_pad)=unpack('<HHHBBBBBBHHHH', self.bgl.read(20))
-        heading=heading*(360.0/65536)
+        heading *= 360.0 / 65536
         length=length/m2f	# includes displaced threshold
         width=width/m2f
         displaced=[base_threshold/m2f, recip_threshold/m2f]
@@ -1067,8 +1067,8 @@ class ProcScen:
         number=["%02d" % (identifiers&63), "%02d" % (((identifiers&63)+18)%36)]
         if number[0]=='00': number[0]='36'
         if number[1]=='00': number[1]='36'
-        number[0]=number[0]+[' ','L','R','C'][identifiers/64]
-        number[1]=number[1]+[' ','R','L','C'][identifiers/64]
+        number[0] += [' ', 'L', 'R', 'C'][identifiers / 64]
+        number[1] += [' ', 'R', 'L', 'C'][identifiers / 64]
         angle=[3,3]
         if markers&0x44:	# precision or touchdown
             markings=[3,3]
@@ -1099,7 +1099,7 @@ class ProcScen:
                 lights[end]=[0,11,9,8,6,5,1,1,12,3,4][system]
             # UK-style markings if Calvert approach lights
             if lights[end] in [3,4] and markings[end] in [2,3]:
-                markings[end]=markings[end]+2
+                markings[end] += 2
 
         # Recalculate centre ignoring displaced thresholds
         clen=(displaced[0]+length-displaced[1])/2
@@ -1107,7 +1107,9 @@ class ProcScen:
                            cos(radians(heading))*clen)
         txt="%5.2f %02d %02d %4.2f %d %d %d" % (width, surface, shoulder, smoothing, centrelights, edgelights, distance)
         for end in [0,1]:
-            txt=txt+(" %-3s %12.8f %13.8f %5.1f %5.1f %02d %02d %d %d" % (number[end], loc[end].lat, loc[end].lon, displaced[end], overrun[end], markings[end], lights[end], tdzl[end], reil[end]))
+            txt += " %-3s %12.8f %13.8f %5.1f %5.1f %02d %02d %d %d" % (
+            number[end], loc[end].lat, loc[end].lon, displaced[end], overrun[end], markings[end], lights[end],
+            tdzl[end], reil[end])
         self.output.misc.append((100, cloc, [AptNav(100, txt)]))
 
     def Texture2(self):		# 43
@@ -1622,7 +1624,7 @@ class ProcScen:
                 if self.debug: self.debug.write("!Bogus Runway location %s\n"%cloc)
             raise struct.error
         (heading, length, width, markers, surface_type, surface_lights, identifiers)=unpack('<HHHHBBB', self.bgl.read(11))
-        heading=heading*(360.0/65536)
+        heading *= 360.0 / 65536
         length=length/m2f	# includes displaced threshold
         width=width/m2f
         displaced=[0,0]
@@ -1657,8 +1659,8 @@ class ProcScen:
         number=["%02d" % (identifiers&63), "%02d" % (((identifiers&63)+18)%36)]
         if number[0]=='00': number[0]='36'
         if number[1]=='00': number[1]='36'
-        number[0]=number[0]+[' ','L','R','C'][identifiers/64]
-        number[1]=number[1]+[' ','R','L','C'][identifiers/64]
+        number[0] += [' ', 'L', 'R', 'C'][identifiers / 64]
+        number[1] += [' ', 'R', 'L', 'C'][identifiers / 64]
         angle=[3,3]
         if markers&0x44:	# precision or touchdown
             markings=[3,3]
@@ -1711,7 +1713,7 @@ class ProcScen:
         # UK-style markings if Calvert approach lights
         for end in [0,1]:
             if lights[end] in [3,4] and markings[end] in [2,3]:
-                markings[end]=markings[end]+2
+                markings[end] += 2
 
         # Recalculate centre ignoring displaced thresholds
         clen=(displaced[0]+length-displaced[1])/2
@@ -1719,7 +1721,9 @@ class ProcScen:
                            cos(radians(heading))*clen)
         txt="%5.2f %02d %02d %4.2f %d %d %d" % (width, surface, shoulder, smoothing, centrelights, edgelights, distance)
         for end in [0,1]:
-            txt=txt+(" %-3s %12.8f %13.8f %5.1f %5.1f %02d %02d %d %d" % (number[end], loc[end].lat, loc[end].lon, displaced[end], overrun[end], markings[end], lights[end], tdzl[end], reil[end]))
+            txt += " %-3s %12.8f %13.8f %5.1f %5.1f %02d %02d %d %d" % (
+            number[end], loc[end].lat, loc[end].lon, displaced[end], overrun[end], markings[end], lights[end],
+            tdzl[end], reil[end])
         self.output.misc.append((100, cloc, [AptNav(100, txt)]))
 
     def ZBias(self):	# ac
@@ -1774,7 +1778,7 @@ class ProcScen:
         (typ,x,y,z,intens,i,i,b,g,r,a,i,i,i)=unpack('<HfffIffBBBBfff', self.bgl.read(42))
         # Typical intensities are 20 and 40 - so say 40=max
         if intens<40:
-            intens=intens/(40.0*255.0)
+            intens /= 40.0 * 255.0
         else:
             intens=1/255.0
         (key,mat)=self.makekey(False)

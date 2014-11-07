@@ -96,7 +96,7 @@ class SceneryObject:
             if D(bias, 'biasX') and D(bias, 'biasZ'):
                 loc=loc.biased(float(bias.biasX), float(bias.biasZ))
             if D(bias, 'biasY'):
-                alt=alt+float(bias.biasY)
+                alt += float(bias.biasY)
 
         # Unattached beacon
         for b in self.beacon:
@@ -722,8 +722,8 @@ class Airport:
             if runway.surface=='WATER':
                 txt="%5.2f %d" %(width, distance or markings[0] or markings[1])
                 for end in [0,1]:
-                    txt=txt+(" %-3s %12.8f %13.8f" % (
-                        runway.numbers[end], loc[end].lat, loc[end].lon))
+                    txt += " %-3s %12.8f %13.8f" % (
+                        runway.numbers[end], loc[end].lat, loc[end].lon)
                 aptdat.append(AptNav(101, txt))
             else:
                 if output.excluded(cloc):
@@ -733,7 +733,9 @@ class Airport:
                 
                 txt="%5.2f %2d %d %4.2f %d %d %d" % (width, surface, shoulder, smoothing, centrelights, edgelights, distance)
                 for end in [0,1]:
-                    txt=txt+(" %-3s %12.8f %13.8f %5.1f %5.1f %d %2d %d %d" % (runway.numbers[end], loc[end].lat, loc[end].lon, displaced[end], overrun[end], markings[end], lights[end], tdzl[end], reil[end]))
+                    txt += " %-3s %12.8f %13.8f %5.1f %5.1f %d %2d %d %d" % (
+                    runway.numbers[end], loc[end].lat, loc[end].lon, displaced[end], overrun[end], markings[end],
+                    lights[end], tdzl[end], reil[end])
                 aptdat.append(AptNav(100, txt))
                 
             # VASIs
@@ -758,10 +760,10 @@ class Airport:
                 z=float(vasi.biasZ)
                 # location in MSFS is of rear innermost light
                 if vtype==1:
-                    z=z+75
-                    x=x+1
+                    z += 75
+                    x += 1
                 else:
-                    x=x+12
+                    x += 12
                 if vasi.side=='RIGHT': x=-x
                 h=radians(vheading)
                 vloc=cloc.biased(-cos(h)*x-sin(h)*z, sin(h)*x-cos(h)*z)

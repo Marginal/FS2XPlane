@@ -756,7 +756,10 @@ class Output:
                                 base=end
                             # Dimensions from XML.
                             # Lights from either, BGL takes precedence
-                            txt=txt+(" %-3s %12.8f %13.8f %5.1f %5.1f %02d %02d %d %d" % (c[end+7], float(c[end+8]), float(c[end+9]), float(c[end+10]), float(c[end+11]), int(d[base+12]), int(d[base+13]) or int(c[end+13]), int(d[base+14]) or int(c[end+14]), int(d[base+15]) or int(c[end+15])))
+                            txt += " %-3s %12.8f %13.8f %5.1f %5.1f %02d %02d %d %d" % (
+                            c[end + 7], float(c[end + 8]), float(c[end + 9]), float(c[end + 10]), float(c[end + 11]),
+                            int(d[base + 12]), int(d[base + 13]) or int(c[end + 13]),
+                            int(d[base + 14]) or int(c[end + 14]), int(d[base + 15]) or int(c[end + 15]))
                         lines[i].text=txt
                         break
                     else:

@@ -60,15 +60,17 @@ def ProcPhoto(texdir, output):
         # find NW point
         lat=lon=0
         for i in tex[-21:-6]:
-            lat=lat+lat
-            lon=lon+lon
-            if i=='1': lon=lon+1
-            elif i=='2': lat=lat+1
+            lat += lat
+            lon += lon
+            if i=='1':
+                lon += 1
+            elif i=='2':
+                lat += 1
             elif i=='3':
-                lat=lat+1
-                lon=lon+1
+                lat += 1
+                lon += 1
         lat=8192-lat	# = 90
-        lon=lon-12288	# = -180
+        lon -= 12288  # = -180
 
         if ishigher(name, 0, lat,lon, blueskydict, output): continue
 
@@ -78,8 +80,8 @@ def ProcPhoto(texdir, output):
         else:
             lit=None
 
-        lat=lat*LATRES
-        lon=lon*LONRES
+        lat *= LATRES
+        lon *= LONRES
         makephoto(name, Texture(output.xpver, join(texdir,tex), lit), lat, lon, 1, 0, 256, output)
 
 

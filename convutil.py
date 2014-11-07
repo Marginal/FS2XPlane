@@ -299,14 +299,14 @@ class Matrix:
             for j in range(4):
                 x=0
                 for k in range(4):
-                    x=x+a[i][k]*b[k][j]
+                    x += a[i][k] * b[k][j]
                 n.m[i][j]=x
         return n
 
     def __str__(self):
         s=''
         for i in range(4):
-            s=s+' [%8.3f %8.3f %8.3f %8.3f]\n' % (self.m[i][0], self.m[i][1], self.m[i][2], self.m[i][3])
+            s += ' [%8.3f %8.3f %8.3f %8.3f]\n' % (self.m[i][0], self.m[i][1], self.m[i][2], self.m[i][3])
         s='['+s[1:-1]+']'
         return s
 
@@ -459,7 +459,7 @@ class Object:
         if scale!=1:
             filename="%s_%02d%02d.obj" % (filename, int(scale), round(scale*100,0)%100)
         else:
-            filename=filename+'.obj'
+            filename += '.obj'
         return filename
         
     def export(self, scale, output, fslayers):
@@ -732,9 +732,9 @@ def maketex(src, dstdir, output, palno, substituteblank=False):
 
     if not exists(src):
         if output.dds:
-            tex=tex+'.dds'
+            tex += '.dds'
         else:
-            tex=tex+'.png'
+            tex += '.png'
         for f in listdir('Resources'):
             if f.lower()==tex.lower():
                 copy2(join(os.getcwdu(),'Resources',tex), dstdir)
@@ -871,13 +871,13 @@ def asciify(s, forfilename=True):
     a=''
     for c in s:
         if ord(c)<32 or ord(c)>255:
-            a=a+'_'
+            a += '_'
         elif c in ' \\/:*?"<>|"' and forfilename:
-            a=a+'_'
+            a += '_'
         elif ord(c)<0x7b:
-            a=a+chr(ord(c))	# convert from unicode string
+            a += chr(ord(c))  # convert from unicode string
         else:			# X-Plane won't show {|}~ either
-            a=a+asciitbl[ord(c)-0x7b]
+            a += asciitbl[ord(c) - 0x7b]
     return a
 
 

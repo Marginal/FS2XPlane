@@ -301,7 +301,7 @@ def edgefeature(link1, side1, link2=None, side2=None):
             code='21'	# Displayed as chequerboard in MSFS
     if link1.lights[side1] or link2.lights[side2]:
         if code:
-            code=code+' 102'
+            code += ' 102'
         else:
             code='102'
     return code
@@ -926,7 +926,7 @@ def taxilayout(allnodes, alllinks, surfaceheading, output, aptdat=None, ident="u
             else:
                 code="51"
             if link.centrelights:
-                code=code+" 101"
+                code += " 101"
         else:
             out=[AptNav(120,"Centrelights for %s"%link.name)]
             code="101"
@@ -1061,7 +1061,7 @@ def taxilayout(allnodes, alllinks, surfaceheading, output, aptdat=None, ident="u
                     else:
                         code="22"
                     if n.links[i].centrelights or n.links[j].centrelights:
-                        code=code+" 101"
+                        code += " 101"
                 else:
                     name="Centrelights"
                     code="101"
