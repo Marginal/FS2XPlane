@@ -150,8 +150,8 @@ class Point:
         return atan2(to.lon-self.lon, to.lat-self.lat)
 
     def within(self, bl, tr):
-        return (self.lat>=bl.lat and self.lat<=tr.lat and
-                self.lon>=bl.lon and self.lon<=tr.lon)
+        return (bl.lat <= self.lat <= tr.lat and
+                bl.lon <= self.lon <= tr.lon)
     
     def __str__(self):
         return "%12.8f %13.8f" % (self.lat, self.lon)
@@ -769,7 +769,7 @@ def maketex(src, dstdir, output, palno, substituteblank=False):
     dst=join(dstdir,tex)
     try:
         newsrc=src
-        if stat(src).st_size>=65536 and stat(src).st_size<65600:
+        if 65536 <= stat(src).st_size < 65600:
             # Fucking nl2000 guys append crud to eof
             f=file(src, 'rb')
             c=f.read(4)

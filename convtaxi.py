@@ -464,7 +464,7 @@ def taxilayout(allnodes, alllinks, surfaceheading, output, aptdat=None, ident="u
             else:
                 a=((loc2.lon-p3.lon)*(p1.lat-p3.lat)-(loc2.lat-p3.lat)*(p1.lon-p3.lon))/d
                 b=((loc1.lon-p1.lon)*(p1.lat-p3.lat)-(loc1.lat-p1.lat)*(p1.lon-p3.lon))/d
-            if a>=0 and a<=1 and b>=0 and b<=1:
+            if 0 <= a <= 1 and 0 <= b <= 1:
                 # link is too small and intersection points cross so beziers
                 # will loop weirdly. Just let tessellator sort it out.
                 # Also make other links' intersections with this link not bez.

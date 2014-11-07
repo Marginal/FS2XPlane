@@ -858,7 +858,7 @@ class ProcScen:
         if a==0xf0:	# unicol
             self.mat=[Material(self.output.xpver, self.unicol(0xf000+r))]
             self.m=0
-        elif (a>=0xb0 and a<=0xb7) or (a>=0xe0 and a<=0xe7):
+        elif (0xb0 <= a <= 0xb7) or (0xe0 <= a <= 0xe7):
             # E0 = transparent ... EF=opaque. Same for B?
             # Treat semi-transparent as fully transparent
             self.mat=[]
@@ -871,7 +871,7 @@ class ProcScen:
         (r,a,g,b)=unpack('4B', self.bgl.read(4))
         if a==0xf0:	# unicol
             self.lightcol=self.unicol(0xf000+r)
-        elif (a>=0xb0 and a<=0xb7) or (a>=0xe0 and a<=0xe7):
+        elif (0xb0 <= a <= 0xb7) or (0xe0 <= a <= 0xe7):
             # E0 = transparent ... EF=opaque. Same for B?
             # Treat semi-transparent as fully transparent
             self.lightcol=None
@@ -887,7 +887,7 @@ class ProcScen:
         self.alt=0
         if __debug__:
             if self.debug: self.debug.write("AltMSL %.3f\n" % self.altmsl)
-        if lat>=-90 and lat<=90 and lon>=-180 and lon<=180:
+        if -90 <= lat <= 90 and -180 <= lon <= 180:
             self.loc=Point(lat,lon)
             if lat<0 and not self.output.hemi:
                 self.output.hemi=1
@@ -998,7 +998,7 @@ class ProcScen:
         self.alt=0
         if __debug__:
             if self.debug: self.debug.write("Position %s\n" % self.altmsl)
-        if lat>=-90 and lat<=90 and lon>=-180 and lon<=180:
+        if -90 <= lat <= 90 and -180 <= lon <= 180:
             pt=Point(lat,lon)
             if self.loc:
                 (x,y,z)=Matrix().headed(self.loc.headingto(pt)).rotate(0,0,self.loc.distanceto(pt))
@@ -1030,7 +1030,7 @@ class ProcScen:
         # sometimes used to put back lights on an excluded runway
         (lat,lon,alt)=self.LLA()
         cloc=Point(lat,lon)
-        if not (lat>=-90 and lat<=90 and lon>=-180 and lon<=180):
+        if not (-90 <= lat <= 90 and -180 <= lon <= 180):
             if __debug__:
                 if self.debug: self.debug.write("!Bogus Runway location %s\n"%cloc)
             raise struct.error
@@ -1359,7 +1359,7 @@ class ProcScen:
         self.altmsl=0
         if __debug__:
             if self.alt and self.debug: self.debug.write("!Altitude %.3f\n" % self.altmsl)	# docs say alt should be 0
-        if lat>=-90 and lat<=90 and lon>=-180 and lon<=180:
+        if -90 <= lat <= 90 and -180 <= lon <= 180:
             self.loc=Point(lat,lon)
             if lat<0 and not self.output.hemi:
                 self.output.hemi=1
@@ -1617,7 +1617,7 @@ class ProcScen:
         endop=self.bgl.tell()+size-5
         (lat,lon,alt)=self.LLA()
         cloc=Point(lat,lon)
-        if not (lat>=-90 and lat<=90 and lon>=-180 and lon<=180):
+        if not (-90 <= lat <= 90 and -180 <= lon <= 180):
             if __debug__:
                 if self.debug: self.debug.write("!Bogus Runway location %s\n"%cloc)
             raise struct.error

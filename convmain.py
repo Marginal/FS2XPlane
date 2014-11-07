@@ -832,7 +832,7 @@ class Output:
                                     l.code=17
                                 f.write("%s\n" % l)
                             doneheader=True
-                        elif l.code in [110,120,130,1000,1200,1300] or (l.code<110 and last>=110):
+                        elif l.code in [110,120,130,1000,1200,1300] or (l.code<110 <= last):
                             f.write("\n%s\n" % l)	# Hack - insert CR
                         elif l.code in [14,15] and last>=110:
                             f.write("\n%s\n" % l)	# Hack - insert CR
@@ -1132,7 +1132,7 @@ class Output:
     # Should taxiway node be suppressed?
     def excluded(self, p):
         for (typ, sw, ne) in self.excfac:
-            if p.lat>=sw.lat and p.lat<=ne.lat and p.lon>=sw.lon and p.lon<=ne.lon:
+            if sw.lat <= p.lat <= ne.lat and sw.lon <= p.lon <= ne.lon:
                 self.needfull=True
                 if self.debug: self.debug.write("Excluded: %s\n" % p)
                 return self.doexcfac
