@@ -110,7 +110,7 @@ Section "Install"
   ;goto fs9
   ;
   ;fs9notinstalled:
-  ;StrCpy $fs9root "$PROGRAMFILES\Microsoft Games\Flight Simulator 9"
+  ;StrCpy $fs9root "$PROGRAMFILES\Microsoft Games\Flight Simulator 9\"
   ;WriteRegStr HKLM "SOFTWARE\Microsoft\Microsoft Games\Flight Simulator\9.0" "EXE Path" $fs9root
   ;WriteRegStr HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Flight Simulator 9.0" "InstallLocation" $fs9root
   ;goto fs9
@@ -140,7 +140,7 @@ Section "Install"
   ReadRegStr $fsxroot HKCU "SOFTWARE\Microsoft\Microsoft Games\Flight Simulator\10.0" "AppPath"
   ExpandEnvStrings $fsxroot $fsxroot
   StrCmp $fsxroot "" +1 fsxhaveapppath
-  StrCpy $fsxroot "$PROGRAMFILES\Microsoft Games\Microsoft Flight Simulator X"
+  StrCpy $fsxroot "$PROGRAMFILES\Microsoft Games\Microsoft Flight Simulator X\"
   fsxhaveapppath:
   WriteRegStr HKLM "SOFTWARE\Microsoft\Microsoft Games\Flight Simulator\10.0" "SetupPath" $fsxroot
   WriteRegStr HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\{9527A496-5DF9-412A-ADC7-168BA5379CA6}" "InstallLocation" $fsxroot
@@ -171,16 +171,21 @@ Section "Uninstall"
   Delete "$SMPROGRAMS\FS2XPlane.lnk"	; old versions used current user
   SetShellVarContext all
   Delete "$SMPROGRAMS\FS2XPlane.lnk"
-  Delete "$INSTDIR\bglxml.copying.txt"
-  Delete "$INSTDIR\Squish_license.txt"
+  Delete "$INSTDIR\MSVCP71.dll"		; Old Python 2.5 runtime
+  Delete "$INSTDIR\MSVCR71.dll"		; Old Python 2.5 runtime
+  Delete "$INSTDIR\msvcr90.dll"
+  Delete "$INSTDIR\w9xpopen.exe"
   Delete "$INSTDIR\FakeFS2004.cmd"
   Delete "$INSTDIR\fs2xp.exe"
   Delete "$INSTDIR\FS2XPlane.exe"
   Delete "$INSTDIR\FS2XPlane.exe.log"
-  Delete "$INSTDIR\FS2XPlane.html"
-  Delete "$INSTDIR\library.zip"
-  Delete "$INSTDIR\msvcr90.dll"
-  Delete "$INSTDIR\w9xpopen.exe"
+  Delete "$INSTDIR\FS2XPlane.html"	; old location
+  Delete "$INSTDIR\bglxml.copying.txt"	; old location
+  Delete "$INSTDIR\Squish_license.txt"	; old location
+  Delete "$INSTDIR\library.zip"		; old DLLs etc
+  Delete "$INSTDIR\python27.dll"
+  Delete "$INSTDIR\*.pyd"
+  Delete "$INSTDIR\wx*.dll"
   Delete "$INSTDIR\uninstall.exe"
   RMDir /r "$INSTDIR\Microsoft.VC90.CRT"
   RMDir /r "$INSTDIR\Resources"

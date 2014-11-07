@@ -33,7 +33,6 @@ class Output:
 
         # X-Plane features
         self.xpver=xpver
-        self.docomplexity=(xpver>=9)
         self.dds=(xpver>=9)
         self.draped=(xpver>=10)
         self.doatc=(xpver>=10)
@@ -243,7 +242,7 @@ class Output:
                     (c,)=unpack('<H', c)
                     if c&0xff00==0:
                         # Old-style
-                        for section in [42,54,58,102]:
+                        for section in [42,46,54,58,102]:
                             bgl.seek(section)
                             (secbase,)=unpack('<I',bgl.read(4))
                             if secbase: done=False	# Includes other data
@@ -295,46 +294,48 @@ class Output:
                                 if self.debug: print_exc(None, self.debug)
                         if not libbase: continue
                         bgl.seek(libbase)
-                        while True:
-                            pos=bgl.tell()
-                            (off,)=unpack('<I', bgl.read(4))
-                            if off==0: break
-                            (a,b,c,d)=unpack('<IIII',bgl.read(16))
-                            uid = "%08x%08x%08x%08x" % (a,b,c,d)
-                            bgl.seek(libbase+off)
-                            (a,b,c,d,x)=unpack('<IIIIB',bgl.read(17))
-                            if a==1 and b==2 and c==3 and d==4:	# fs98 library
-                                (rcsize,)=unpack('<H', bgl.read(2))
-                                hdsize=19
-                                scale=1.0
-                            else:
-                                (hdsize,rcsize,radius,scale,typ,prop)=unpack('<6I',bgl.read(24))
-                                if scale:
-                                    scale=65536.0/scale
-                                else:
+                        try:
+                            while True:
+                                pos=bgl.tell()
+                                (off,)=unpack('<I', bgl.read(4))
+                                if off==0: break
+                                (a,b,c,d)=unpack('<IIII',bgl.read(16))
+                                uid = "%08x%08x%08x%08x" % (a,b,c,d)
+                                bgl.seek(libbase+off)
+                                (a,b,c,d,x)=unpack('<IIIIB',bgl.read(17))
+                                if a==1 and b==2 and c==3 and d==4:	# fs98 library
+                                    (rcsize,)=unpack('<H', bgl.read(2))
+                                    hdsize=19
                                     scale=1.0
-                            name=None
-                            if hdsize>42:
-                                # Use "friendly" name instead of id
-                                name=asciify(bgl.read(hdsize-(41)).rstrip(' \0'))
-                            if uid in self.friendly:
-                                name=self.friendly[uid]
-                            elif not name and asciify(splitext(filename)[0]) not in self.names:
-                                name=asciify(splitext(filename)[0])
-                                self.friendly[uid]=name
-                                self.names[name]=True
-                            elif name and name not in self.names:
-                                self.friendly[uid]=name
-                                self.names[name]=True
-                            else:
-                                name=uid
+                                else:
+                                    (hdsize,rcsize,radius,scale,typ,prop)=unpack('<6I',bgl.read(24))
+                                    if scale:
+                                        scale=65536.0/scale
+                                    else:
+                                        scale=1.0
+                                name=None
+                                if hdsize>42:
+                                    # Use "friendly" name instead of id
+                                    name=asciify(bgl.read(hdsize- 41).rstrip(' \0'))
+                                if uid in self.friendly:
+                                    name=self.friendly[uid]
+                                elif not name and asciify(splitext(filename)[0]) not in self.names:
+                                    name=asciify(splitext(filename)[0])
+                                    self.friendly[uid]=name
+                                    self.names[name]=True
+                                elif name and name not in self.names:
+                                    self.friendly[uid]=name
+                                    self.names[name]=True
+                                else:
+                                    name=uid
 
-                            if not uid in self.libobj:	# 1st wins
-                                if self.debug and toppath==self.fspath: self.debug.write("%s:\t%s\t%s\tFS8\n" % (uid, name, bglname[len(toppath)+1:]))
-                                self.libobj[uid]=(8, bglname, tmp,
-                                                  libbase+off+hdsize, rcsize,
-                                                  name, scale)
-                            bgl.seek(pos+20)
+                                if not uid in self.libobj:	# 1st wins
+                                    if self.debug and toppath==self.fspath: self.debug.write("%s:\t%s\t%s\tFS8\n" % (uid, name, bglname[len(toppath)+1:]))
+                                    self.libobj[uid]=(8, bglname, tmp, libbase+off+hdsize, rcsize, name, scale)
+                                bgl.seek(pos+20)
+                        except:
+                            self.log("Error parsing FS8 library %s" % filename)
+                            if self.debug: print_exc(None, self.debug)
 
                     elif c==0x201:
                         # FS9 or FSX
@@ -348,7 +349,12 @@ class Output:
                             (typ,x,subsections,subsectiontbl)=unpack('<IIIi', bgl.read(16))
                             #print "%x %x %d" % (typ,x,subsections)
                             if typ!=0x2b:	# 2b=MDL data
-                                done=False
+                                if typ==0x6e:	# Ortho and DEM BGLs seem to have a 6e section
+                                    self.log('Skipping terrain data in file %s' % filename)
+                                elif typ==0x65:
+                                    self.log("Skipping traffic data in file %s" % filename)
+                                else:
+                                    done=False	# Something else - perhaps Facility data
                                 continue
                             if not islib:
                                 self.status(i*100.0/n,bglname[len(toppath)+1:])
@@ -878,6 +884,10 @@ class Output:
                 objdef[name]=[scale]
             elif not scale in objdef[name]:
                 objdef[name].append(scale)
+        polydef={}
+        for (name, param, points) in self.polyplc:
+            if not name in polydef:
+                polydef[name]=True
 
         # do layer mapping
         # In FSX any layer overwrites runways and taxiways. layer>=16 also overwrites markings and lights.
@@ -889,15 +899,21 @@ class Output:
             if name in self.objdat:
                 for obj in self.objdat[name]:
                     if obj.layer: fslayers[obj.layer]=None
-        for poly in self.polydat.values():
-            if poly.layer: fslayers[poly.layer]=None
-        lokeys=sorted([key for key in fslayers.keys() if key<16])
+        for name in polydef:
+            if name in self.polydat:
+                poly=self.polydat[name]
+                if poly.layer: fslayers[poly.layer]=None
+        lokeys=sorted([key for key in fslayers.keys() if 4<=key<16])
         hikeys=sorted([key for key in fslayers.keys() if key>=16])
         for (keys, mapping) in [(lokeys, ['runways +1', 'runways +2', 'runways +3', 'runways +4', 'runways +5', 'markings -5', 'markings -4', 'markings -3', 'markings -2', 'markings -1']),
                                 (hikeys, ['roads +1', 'roads +2', 'roads +3', 'roads +4', 'roads +5', 'objects -5', 'objects -4', 'objects -3', 'objects -2', 'objects -1'])]:
             divisor=(len(keys)+7)/8	# have to map to 8 values
             for i in range(len(keys)):
                 fslayers[keys[i]]=mapping[i/divisor]
+            fslayers[0]='terrain +1'	# for FS2004 photoscenery
+            fslayers[1]='terrain +2'	# for Blue Sky photoscenery
+            fslayers[2]='terrain +3'	#  "
+            fslayers[3]='terrain +4'	#  "
         if __debug__:
             if fslayers and self.debug:
                 self.debug.write("\nLayer mapping:\n")
@@ -959,29 +975,14 @@ class Output:
                         
         
         self.status(-1, 'Writing DSFs')
-        # poly_os objects need to be drawn first to prevent them from
-        # swallowing other objects.
-        # X-Plane 8.20 and 8.30 draw in order of definition (not placement)
-        # in the DSF file. We therefore need poly_os objects to be defined
-        # first. This is incompatible with prioritisation, since lower
-        # priority objects come last. So disable prioritisation.
         cmplx={}
         for loc, heading, complexity, name, scale in self.objplc:
             tile=(int(floor(loc.lat)), int(floor(loc.lon)))
             key=(name,scale)
-            if self.docomplexity:
-                newc=complexity
-            else:
-                newc=1				# Disable prioritisation
-                if name in self.objdat:
-                    for obj in self.objdat[name]:
-                        if obj.poly:
-                            newc=complexities-1	# ... apart from for poly_os
             if not cmplx.has_key(tile):
                 cmplx[tile]={}
-            if (not cmplx[tile].has_key(key) or
-                cmplx[tile][key]>newc):
-                cmplx[tile][key]=newc
+            if not cmplx[tile].has_key(key) or cmplx[tile][key]>complexity:
+                cmplx[tile][key]=complexity
 
         #expand names & create indices & create per-complexity placements
         objdef={}	# filenames (maybe more than one per Object)
@@ -1029,7 +1030,10 @@ class Output:
                 polydef[tile]=[]
                 polyplc[tile]=[]
 
-            fname="objects/"+self.polydat[name].filename()
+            if '/' in name:		# Substituted library object
+                fname=name
+            else:
+                fname="objects/"+self.polydat[name].filename()
             if not fname in polydef[tile]:
                 polyplc[tile].append((len(polydef[tile]),heading,points))
                 polydef[tile].append(fname)

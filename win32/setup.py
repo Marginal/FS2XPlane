@@ -77,12 +77,9 @@ elif sys.platform.lower().startswith('darwin'):
               #  ]),
               ]
 
-res=["Resources/objects.txt",
-     "Resources/opensceneryx_library.txt",
-     "Resources/Rwy12.xml",
-     "Resources/substitutions.txt"]
+res=["Resources/FS2XPlane.html"]
 for f in listdir('Resources'):
-    if f[-4:] in ['.bgl','.dds','.fac','.for','.lin','.obj','.png','.pol']: res.append('Resources/%s' % f)
+     if f[-4:] in ['.bgl','.dds','.fac','.for','.lin','.obj','.png','.pol','.txt','.xml']: res.append('Resources/%s' % f)
     
 setup(name='FS2XPlane',
       version=("%4.2f" % appversion),
@@ -90,18 +87,12 @@ setup(name='FS2XPlane',
       author='Jonathan Harris',
       author_email='x-plane@marginal.org.uk',
       url='http://marginal.org.uk/xplanescenery',
-      data_files=[('',
-                   ['FS2XPlane.html',
-                    'bglxml.copying.txt',
-                    'Squish_license.txt',
-                    ]),
-                  ('Resources',
+      data_files=[('Resources',
                    res),
                   ] + platdata,
 
       options = {'py2exe': {'ascii':True,
-                            #'dll_excludes':['w9xpopen.exe'],
-                            'bundle_files':True,
+                            'dll_excludes':['msvcp90.dll', 'w9xpopen.exe'],
                             'compressed':True,
                             'includes':['OpenGL.platform.win32',
                                         'OpenGL.arrays',
@@ -110,17 +101,14 @@ setup(name='FS2XPlane',
                                         'OpenGL.arrays.ctypespointers',
                                         'OpenGL.arrays.lists',
                                         'OpenGL.arrays.nones',
-                                        'OpenGL.arrays.numarrays',
                                         'OpenGL.arrays.numbers',
-                                        'OpenGL.arrays.numeric',
-                                        'OpenGL.arrays.numericnames',
                                         'OpenGL.arrays.numpymodule',
-                                        #'OpenGL.arrays.strings',	# gives runtime error
+                                        'OpenGL.arrays.strings',
                                         'OpenGL.arrays.vbo'],
                             'excludes':['Carbon', 'tcl', 'Tkinter', 'mx', 'socket', 'urllib', 'webbrowser',
                                         'curses', 'distutils', 'doctest', 'email', 'hotshot', 'inspect', 'pdb', 'setuptools', 'win32',	# Python2.5
                                         'Numeric', 'dotblas', 'numarray', 'scipy', 'nose'],	# Old Numeric stuff
-                            'packages':['encodings.ascii','encodings.mbcs','encodings.latin_1','encodings.utf_8','encodings.cp437'],
+                            'packages':['encodings.ascii','encodings.mbcs','encodings.latin_1','encodings.utf_8','encodings.utf_16','encodings.cp437'],
                             'optimize':2,
                             },
                  'py2app': {'argv_emulation':False,

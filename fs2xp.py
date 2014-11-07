@@ -38,11 +38,6 @@ import sys	# for path
 from sys import exit, argv, platform, version
 from traceback import print_exc
 
-if platform=='darwin':
-    mypath=sys.path[0]
-    for f in listdir(mypath):
-        if f.endswith('-py%s.egg' % version[:3]): sys.path.insert(0, join(mypath,f))
-
 from convmain import Output
 from convutil import FS2XError, viewer
 
@@ -147,6 +142,7 @@ try:
     status(-1, 'Done.')
 
 except FS2XError, e:
+    if __debug__: print_exc()
     exit('Error:\t%s\n' % e.msg)
 
 except:
