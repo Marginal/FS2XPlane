@@ -537,7 +537,7 @@ class ProcScen:
 
     def makekey(self, dotex=True):
         # Return a key suitable for indexing self.objdat
-        if self.t==None:
+        if self.t is None:
             tex=None
             if __debug__:
                 if self.debug and not tex: self.debug.write("No texture\n")
@@ -546,7 +546,7 @@ class ProcScen:
             if self.haze and tex.d: self.output.haze[tex.d]=self.haze
             if self.haze and tex.e: self.output.haze[tex.e]=self.haze
 
-        if self.m==None:
+        if self.m is None:
             mat=Material(self.output.xpver, (0,0,0))
             if __debug__:
                 if self.debug and not mat: self.debug.write("No material\n")
@@ -1854,7 +1854,7 @@ class ProcScen:
             if __debug__:
                 if self.debug and self.t>=len(self.tex): self.debug.write("Bad texture %d/%d\n" %(self.t,len(self.tex)))
         if __debug__:
-            if self.debug: self.debug.write("%s: %s\t%s: %s\n" % (self.m, self.m!=None and self.mat[self.m], self.t, self.t!=None and self.tex[self.t]))
+            if self.debug: self.debug.write("%s: %s\t%s: %s\n" % (self.m, self.m is not None and self.mat[self.m], self.t, self.t is not None and self.tex[self.t]))
         
     def DrawTriList(self):	# b9
         idx=[]
@@ -2015,7 +2015,7 @@ class ProcScen:
 
     # Try to make a draped polygon
     def makepoly(self, haveuv, vtx, idx=None):
-        if self.t==None: return False	# Only care about textured polygons
+        if self.t is None: return False	# Only care about textured polygons
         if not self.loc: return False	# Not for library objects
         if __debug__:
             if self.debug: self.debug.write("Poly: %s %s %s %d " % (self.tex[self.t], self.alt, self.layer, self.zbias))

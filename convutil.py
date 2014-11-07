@@ -477,7 +477,7 @@ class Object:
             # Palette
             (tex,lit)=maketexs(output.palettetex, None, output)
         elif self.vt:
-            assert self.tex.d!=None	# self.tex should just be None instead
+            assert self.tex.d is not None  # self.tex should just be None instead
             (tex,lit)=maketexs(self.tex.d, self.tex.e, output)
         else:
             tex=lit=None
@@ -674,7 +674,7 @@ class Polygon:
             else:
                 objfile.write("TEXTURE\t\n")
             objfile.write("SCALE\t\t%.1f %.1f\n" % (self.scale, self.scale))
-            if self.layer!=None:
+            if self.layer is not None:
                 objfile.write("LAYER_GROUP\t%s\n" % fslayers[self.layer])
             if self.paging:
                 (lat, lon, pixels)=self.paging

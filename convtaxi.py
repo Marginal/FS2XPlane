@@ -111,7 +111,7 @@ class Node:
                 self.startuptype='misc'
                 self.startuptraffic='jets|helos'
 
-        if self.startup!=None:
+        if self.startup is not None:
             self.heading=float(point.heading)
             if point.name in Node.gates:
                 self.startup="%s%s" % (self.startup, point.name[-1])
@@ -334,7 +334,7 @@ def tesscombine(coords, vertex, weight, data):
         (loc1, cnt1, blank1, dummy1, code1)=vertex[0]
         (loc2, cnt2, blank2, dummy2, code2)=vertex[1]
         #if __debug__: print "Join", Point(coords[2], coords[0]), cnt1, cnt2, blank1, blank2, '"%s" "%s"' % (code1, code2)
-        if code1==None or code2==None:
+        if code1 is None or code2 is None:
             code=''	# override
         else:
             code=code1 or code2
