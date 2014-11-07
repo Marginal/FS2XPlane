@@ -636,7 +636,7 @@ class Polygon:
         self.nowrap=nowrap
         self.scale=scale
         self.layer=layer
-        self.surface=(layer!=None and layer>4)
+        self.surface=(layer is not None and layer>4)
         self.paging=paging
 
     def __eq__(self, o):
