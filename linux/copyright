@@ -1,0 +1,10 @@
+Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Source: https://github.com/Marginal/FS2XPlane
+
+Files: *
+Copyright: 2005-2014 Jonathan Harris <x-plane@marginal.org.uk>
+License: GPL-2
+
+Files: Resources/*
+Copyright: 2005-2014 Jonathan Harris <x-plane@marginal.org.uk>
+License: CC-BY-SA-3.0

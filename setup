@@ -13,8 +13,8 @@ rm -f ${APPNAME}_${VER}_mac.zip
 rm -rf ${APPNAME}.app
 
 PY='fs2xp.py FS2XPlane.py convatc.py convbgl.py convmain.py convmdl.py convobjs.py convphoto.py convtaxi.py convutil.py convxml.py MessageBox.py version.py'
-DATA='FS2XPlane.html bglxml.copying.txt Squish_license.txt'
-RSRC='Resources/*.bgl Resources/*.dds Resources/*.fac Resources/*.for Resources/*.lin Resources/*.obj Resources/*.png Resources/*.pol Resources/objects.txt Resources/opensceneryx_library.txt Resources/Rwy12.xml Resources/substitutions.txt'
+RSRC=`ls Resources/*.{bgl,dds,fac,for,html,lin,obj,png,pol,txt,xml}`
+HELP='DSFTool bglunzip bglxml bmp2dds bmp2png fake2004 winever'
 
 # linux
 RPM=/tmp/${APPLINUX}
@@ -38,9 +38,9 @@ cp -p linux/${APPLINUX}.desktop $RPMRT/usr/local/share/applications/
 cp -p Resources/${APPNAME}.png $RPMRT/usr/local/share/icons/hicolor/48x48/apps/${APPLINUX}.png
 cp -p linux/${APPNAME}-128.png $RPMRT/usr/local/share/icons/hicolor/128x128/apps/${APPLINUX}.png
 cp -p linux/${APPNAME}-128.png $RPMRT/usr/local/lib/${APPLINUX}/Resources/
-for i in $PY $DATA; do cp -p "$i" $RPMRT/usr/local/lib/${APPLINUX}/; done
+for i in $PY; do cp -p "$i" $RPMRT/usr/local/lib/${APPLINUX}/; done
 for i in $RSRC; do cp -p "$i" $RPMRT/usr/local/lib/${APPLINUX}/Resources/; done
-for i in linux/bglunzip linux/bglxml linux/bmp2dds linux/bmp2png linux/DSFTool linux/fake2004 linux/winever; do cp -p "$i" $RPMRT/usr/local/lib/${APPLINUX}/linux/; done
+for i in $HELP; do cp -p "linux/$i" $RPMRT/usr/local/lib/${APPLINUX}/linux/; done
 for i in win32/bglunzip.exe win32/fake2004.exe; do cp -p "$i" $RPMRT/usr/local/lib/${APPLINUX}/win32/; done
 rpmbuild -bb --buildroot $RPMRT --define "_target_os linux" --define "_target_vendor pc" --define "_topdir $RPM" --define "_unpackaged_files_terminate_build 0" --define "version $VERSION" --define "release $RELEASE" --quiet $RPM/SPECS/${APPLINUX}.spec
 mv $RPM/RPMS/noarch/${APPLINUX}-$VERSION-$RELEASE.noarch.rpm .
@@ -50,21 +50,23 @@ mkdir -p $RPMRT/DEBIAN
 echo Version: $VERSION-$RELEASE> $RPMRT/DEBIAN/control
 cat   linux/control >> $RPMRT/DEBIAN/control
 cp -p linux/postinst $RPMRT/DEBIAN/
+mkdir -p $RPMRT/usr/local/share/doc/${APPLINUX}/
+cp -p linux/copyright  $RPMRT/usr/local/share/doc/${APPLINUX}/
 fakeroot "dpkg-deb -b $RPMRT ."	# requires gnu-tar
 
 # mac
+mkdir -p ${APPNAME}.app/Contents
+sed s/appversion/${VERSION}/ <MacOS/Info.plist >${APPNAME}.app/Contents/Info.plist
 mkdir -p ${APPNAME}.app/Contents/MacOS
-cp -p MacOS/* ${APPNAME}.app/Contents/MacOS/
-rm -f ${APPNAME}.app/Contents/MacOS/Info.plist
-rm -f ${APPNAME}.app/Contents/MacOS/*.bak
+cp -p MacOS/${APPNAME} ${APPNAME}.app/Contents/MacOS/
 for i in $PY; do cp -p "$i" ${APPNAME}.app/Contents/MacOS/; done
+for i in $HELP; do cp -p "MacOS/$i" ${APPNAME}.app/Contents/MacOS/; done
 mkdir -p ${APPNAME}.app/Contents/MacOS/win32
 for i in win32/bglunzip.exe win32/fake2004.exe; do cp -p "$i" ${APPNAME}.app/Contents/MacOS/win32/; done
 mkdir -p ${APPNAME}.app/Contents/Resources
-for i in $DATA; do cp -p "$i" ${APPNAME}.app/Contents/; done
 for i in $RSRC; do cp -p "$i" ${APPNAME}.app/Contents/Resources/; done
-sed s/appversion/$VERSION/ <MacOS/Info.plist >${APPNAME}.app/Contents/Info.plist
-mv ${APPNAME}.app/Contents/MacOS/${APPNAME}.icns ${APPNAME}.app/Contents/Resources/
-mv -f ${APPNAME}.app/Contents/MacOS/${APPNAME}.png ${APPNAME}.app/Contents/Resources/	# overwrite with higher res
-codesign -s "Developer ID Application: Jonathan Harris" ${APPNAME}.app
-zip -r ${APPNAME}_${VER}_mac.zip ${APPNAME}.app
+cp -p MacOS/*.icns MacOS/*.png ${APPNAME}.app/Contents/Resources/	# overwrite with Mac versions
+python2.5 -OO ./bundledeps.py -x wx -o ${APPNAME}.app ${APPNAME}.py	# exclude wx - included with 10.5 and 10.6
+python2.7 -OO ./bundledeps.py -o ${APPNAME}.app ${APPNAME}.py
+codesign --deep -s "Developer ID Application: Jonathan Harris" ${APPNAME}.app
+ditto -ck --keepParent --sequesterRsrc ${APPNAME}.app ${APPNAME}_${VER}_mac.zip

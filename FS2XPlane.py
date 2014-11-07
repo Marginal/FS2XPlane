@@ -35,16 +35,12 @@ import os	# for startfile
 from os import chdir, getenv, listdir, mkdir, makedirs, getcwd
 from os.path import abspath, basename, curdir, dirname, expanduser, exists, isdir, join, normpath, pardir, sep
 import sys	# for path
-from sys import argv, executable, exit, platform, version
+from sys import argv, executable, exit, platform, version_info
 from traceback import print_exc
 
 if platform.lower().startswith('linux') and not getenv("DISPLAY"):
     print "Can't run: DISPLAY is not set"
     exit(1)
-elif platform=='darwin':
-    mypath=sys.path[0]
-    for f in listdir(mypath):
-        if f.endswith('-py%s.egg' % version[:3]): sys.path.insert(0, join(mypath,f))
 
 try:
     import wx
@@ -85,17 +81,16 @@ else:
     pad=0
     browse="Browse..."
 
+# Path validation
+mypath = sys.path[0]
+if platform=='win32' and mypath.lower().endswith('.exe'):
+    mypath = dirname(mypath)		# py2exe
+elif platform=='darwin' and basename(mypath)=='MacOS':
+    mypath = dirname(mypath)		# App starts in MacOS folder
+    sys.path.insert(0, join(mypath, 'MacOS', '%d%d' % version_info[:2]))
+    argv[0]=basename(argv[0])		# wx doesn't like non-ascii chars in argv[0]
+chdir(mypath)
 
-mypath=dirname(abspath(argv[0]))
-if not isdir(mypath):
-    myMessageBox('"%s" is not a folder' % mypath,
-                  "Can't run", wx.ICON_ERROR|wx.OK)
-    exit(1)
-if basename(mypath)=='MacOS':
-    chdir(normpath(join(mypath,pardir)))	# Starts in MacOS folder
-    argv[0]=basename(argv[0])	# wx doesn't like non-ascii chars in argv[0]
-else:
-    chdir(mypath)
 
 fspath=''
 lbpath=''
@@ -455,7 +450,7 @@ class MainWindow(wx.Frame):
         self.Close()
 
     def onHelp(self, evt):
-        viewer(join(curdir,appname+'.html'))
+        viewer(join(curdir,'Resources',appname+'.html'))
 
     def onAbout(self, evt):
         AboutBox(self)
