@@ -485,7 +485,7 @@ class ProcScen:
                 if __debug__:
                     if self.debug: self.debug.write("%x: cmd %02x %s\n" % (
                         pos, self.cmd, cmds[self.cmd].__name__))
-                cmds[self.cmd]()
+                cmds[self.cmd]
             elif self.donight():
                 bgl.seek(self.start)
                 continue
@@ -2617,7 +2617,7 @@ class ProcMisc:
             elif cmd in cmds:
                 if __debug__:
                     if self.debug: self.debug.write("%x: cmd %02x %s\n" % (pos, cmd, cmds[cmd].__name__))
-                cmds[cmd]()
+                cmds[cmd]
             else:
                 if __debug__:
                     if self.debug: self.debug.write("!Unknown s16 cmd %x at %x\n" %(cmd,pos))
