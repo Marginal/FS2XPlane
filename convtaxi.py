@@ -137,18 +137,18 @@ class Node:
             if cb: cb(n,l)
             o=l.othernode(n)
             if o==self or len(o.links)!=2:
-                return (o,l)
+                return o,l
             # Next link
             if o.links[0].othernode(o)==n:
                 nextl=o.links[1]
             else:
                 nextl=o.links[0]
             if nextl.type!=l.type:
-                return (o,l)
+                return o,l
             depth-=1
             n=o
             l=nextl
-        return (None,None)
+        return None,None
 
     def runwaylinks(self, origin, hotness, searchspace, distance):
         # Follow links until we hit a runway matching numbers,
@@ -338,7 +338,7 @@ def tesscombine(coords, vertex, weight, data):
             code=''	# override
         else:
             code=code1 or code2
-        return (loc1, cnt1 and cnt2, blank1|blank2, 0, code)
+        return loc1, cnt1 and cnt2, blank1|blank2, 0, code
     #if __debug__:
     #    print "Combine", Point(coords[2], coords[0])
     #    for i in range(len(weight)):
@@ -357,7 +357,7 @@ def tesscombine(coords, vertex, weight, data):
                 code=code1
                 break
     debez.append(loc)
-    return (loc, None, 0, 0, code)
+    return loc, None, 0, 0, code
 
 
 # --------------------------------------------------------------------------
@@ -617,7 +617,7 @@ def taxilayout(allnodes, alllinks, surfaceheading, output, aptdat=None, ident="u
                     if output.debug: output.debug.write("node@ %s #links=%d %s %s)\n" % (node.loc, n,t,surface))
                 for i in range(n):
                     (n1,h1,link1,end1)=elinks[i]	# this one
-                    if (link1.type!=t and (link1.type=='VEHICLE' or t=='VEHICLE')):
+                    if link1.type!=t and (link1.type=='VEHICLE' or t=='VEHICLE'):
                         continue
                     for j in range(-1,-len(elinks),-1):
                         (n0,h0,link0,end0)=elinks[(i+j)%n]

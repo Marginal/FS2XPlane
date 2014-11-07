@@ -117,7 +117,7 @@ def myMessageBox(message, caption, style=wx.OK, parent=None):
     #grid.Add([0,8],  (2,3))
     grid.Add(text,    (3,3), (1,4), flag=wx.ALIGN_TOP|wx.ALIGN_LEFT)
     grid.Add([24,15], (4,0))
-    if (style&wx.YES_NO):
+    if style&wx.YES_NO:
         grid.Add(wx.Button(panel0, wx.ID_NO), (5,3), flag=wx.ALIGN_LEFT)
     if (style&wx.YES_NO) and (style&wx.CANCEL):
         grid.Add(wx.Button(panel0, wx.ID_CANCEL), (5,5), flag=wx.ALIGN_RIGHT|wx.RIGHT, border=4)

@@ -87,7 +87,7 @@ class Parse:
         for section in [42,54,58,102,114]:
             bgl.seek(section)
             (secbase,)=unpack('<I',bgl.read(4))
-            if (secbase):
+            if secbase:
                 bgl.seek(secbase)
                 if section==42:
                     output.log('Skipping traffic data in file %s' % name)
@@ -554,7 +554,7 @@ class ProcScen:
             mat=self.mat[self.m].clone()
         mat.dblsided=bool(self.billboard)
 
-        return ((self.name,self.loc,self.layer,self.alt,self.altmsl,self.matrix[-1],self.scale,tex), mat)
+        return (self.name,self.loc,self.layer,self.alt,self.altmsl,self.matrix[-1],self.scale,tex), mat
 
     def makename(self):
         # make a unique base filename
@@ -1956,7 +1956,7 @@ class ProcScen:
 
         if __debug__:
             self.debug.write("New location: %s %.3f\n" % (Point(lat,lon), alt))
-        return (lat,lon,alt)
+        return lat,lon,alt
 
 
     # Stack return data prior to a call
@@ -2011,7 +2011,7 @@ class ProcScen:
                     newtu+=tu
                     newtv+=tv
                     cumw +=weight[i]
-        return (Point(float(coords[2]), float(coords[0])), newtu/cumw, newtv/cumw)
+        return Point(float(coords[2]), float(coords[0])), newtu/cumw, newtv/cumw
 
     # Try to make a draped polygon
     def makepoly(self, haveuv, vtx, idx=None):
@@ -2582,9 +2582,9 @@ class ProcScen:
               0xF034: (196, 196, 196)}
         if c in cols:
             (r,g,b)=cols[c]
-            return (r/255.0, g/255.0, b/255.0)
+            return r/255.0, g/255.0, b/255.0
         else:
-            return (0,0,0)
+            return 0,0,0
 
 
 # Handle miscellaneous section 16
@@ -2740,7 +2740,7 @@ def subdivide(vtx):
         gluDeleteTess(tessObj)
         raise GLUerror
     gluDeleteTess(tessObj)        
-    return (points,idx)
+    return points,idx
 
 def tessedge(flag):
     pass	# dummy
@@ -2771,7 +2771,7 @@ def maketexdict(texdir):
         if aname not in d:
             d[aname]=name
     
-    return (texdir, d)
+    return texdir, d
 
 
 # Helper to return fully-qualified case-sensitive texture filename

@@ -215,10 +215,10 @@ class Matrix:
         y1=m[0][1]*x + m[1][1]*y + m[2][1]*z
         z1=m[0][2]*x + m[1][2]*y + m[2][2]*z
         if x1==y1==z1==0:
-            return (0, 0, 0)
+            return 0, 0, 0
         else:
             hyp=1/sqrt(x1*x1 + y1*y1 + z1*z1)
-            return (x1*hyp, y1*hyp, z1*hyp)
+            return x1*hyp, y1*hyp, z1*hyp
 
 
     # Matrix adjoint/adjugate for obtaining normals - see
@@ -704,9 +704,9 @@ def maketexs(fstex, fslit, output, substituteblank=False):
         if fslit in output.haze:
             palno=output.haze[fslit]
         lit=maketex(fslit, path, output, palno)
-        return (tex,lit)
+        return tex,lit
     else:
-        return (tex,None)
+        return tex,None
 
 
 # Assumes src filename has correct case
@@ -818,7 +818,7 @@ def rgb2uv(rgb):
     r=(round(r*15,0)+0.5)/64
     g=(round(g*15,0)+0.5)/64
     b=(round(b*15,0)+0.5)
-    return (int(b%4)/4.0 + r, int(b/4)/4.0 + g)
+    return int(b%4)/4.0 + r, int(b/4)/4.0 + g
 
 
 # Run helper app and return stderr
@@ -897,7 +897,7 @@ def normalize(s):
 def cross(a, b):
     (ax,ay,az)=a
     (bx,by,bz)=b
-    return (ay*bz-az*by, az*bx-ax*bz, ax*by-ay*bx)
+    return ay*bz-az*by, az*bx-ax*bz, ax*by-ay*bx
 
 # dot product of two triples
 def dot(a, b):
