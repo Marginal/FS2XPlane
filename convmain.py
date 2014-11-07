@@ -646,7 +646,7 @@ class Output:
                 if mdlformat==10:
                     p=convmdl.ProcScen(bgl, offset+size, libscale, name, bglname, lasttexdir, self)
                 else:
-                    p=convbgl.ProcScen(bgl, offset+size, libscale, name, bglname, lasttexdir, self, scen, tran)
+                    p=convbgl.ProcScen(bgl, offset+size, name, bglname, lasttexdir, self, scen, tran)
                 if p.anim:
                     self.log("Skipping animation in object %s in file %s" % (name, filename))
                     if self.debug: self.debug.write("Animation\n")

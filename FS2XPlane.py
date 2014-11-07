@@ -418,7 +418,7 @@ class MainWindow(wx.Frame):
         if newfsroot: myMessageBox('Install MSFS sceneries under: \n%s ' % newfsroot, 'Created a fake MSFS installation.', wx.ICON_INFORMATION|wx.OK, self)
 
 
-    def onDump(self, evt):
+    def onDump(self):
         if self.dumplib.GetValue():
             self.fspath.Disable()
             self.fsbrowse.Disable()
@@ -426,7 +426,7 @@ class MainWindow(wx.Frame):
             self.fspath.Enable()
             self.fsbrowse.Enable()
 
-    def onFSbrowse(self, evt):
+    def onFSbrowse(self):
         style=wx.DEFAULT_DIALOG_STYLE|wx.RESIZE_BORDER
         if 'DD_DIR_MUST_EXIST' in dir(wx): style|=wx.DD_DIR_MUST_EXIST
         dlg=wx.DirDialog(self, "Location of MSFS scenery package:",
@@ -435,7 +435,7 @@ class MainWindow(wx.Frame):
         self.fspath.SetValue(dlg.GetPath())
         dlg.Destroy()
 
-    def onLBbrowse(self, evt):
+    def onLBbrowse(self):
         style=wx.DEFAULT_DIALOG_STYLE|wx.RESIZE_BORDER
         if 'DD_DIR_MUST_EXIST' in dir(wx): style|=wx.DD_DIR_MUST_EXIST
         dlg=wx.DirDialog(self,"Location of additional MSFS scenery libraries:",
@@ -444,23 +444,23 @@ class MainWindow(wx.Frame):
         self.lbpath.SetValue(dlg.GetPath())
         dlg.Destroy()
 
-    def onXPbrowse(self, evt):
+    def onXPbrowse(self):
         dlg=wx.DirDialog(self, "Location for new X-Plane scenery package:",
                          self.xppath.GetValue(), wx.DD_DEFAULT_STYLE|wx.DD_NEW_DIR_BUTTON)
         dlg.ShowModal()
         self.xppath.SetValue(dlg.GetPath())
         dlg.Destroy()
 
-    def onClose(self, evt):
+    def onClose(self):
         self.Close()
 
-    def onHelp(self, evt):
+    def onHelp(self):
         viewer(join(curdir,appname+'.html'))
 
-    def onAbout(self, evt):
+    def onAbout(self):
         AboutBox(self)
 
-    def onConvert(self, evt):
+    def onConvert(self):
         dumplib=self.dumplib.GetValue()
         fspath=self.fspath.GetValue().strip()
         lbpath=self.lbpath.GetValue().strip()

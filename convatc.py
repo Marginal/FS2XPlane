@@ -1,6 +1,6 @@
 from convutil import AptNav, D, T, E
 
-def atclayout(allnodes, alllinks, runways, helipads, coms, output, aptdat, ident):
+def atclayout(allnodes, alllinks, runways, helipads, coms, aptdat, ident):
 
     if not runways: return	# no runways!
 

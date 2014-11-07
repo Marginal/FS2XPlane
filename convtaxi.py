@@ -1167,7 +1167,7 @@ def taxilayout(allnodes, alllinks, surfaceheading, output, aptdat=None, ident="u
 
 # --------------------------------------------------------------------------
 
-def aproncombine(coords, vertex, weight):
+def aproncombine(coords):
     return Point(coords[2], coords[0])
 
 def apronlayout(points, surface, surfaceheading, output, aptdat=None, ident="unknown"):
