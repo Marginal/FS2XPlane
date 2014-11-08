@@ -82,8 +82,8 @@ except getopt.GetoptError, e:
 
 for o, a in opts:
     if o == '-h':
-        printhelp();
-        exit(0);
+        printhelp()
+        exit(0)
     elif o == '-d':
         debug += 1
     elif o == '-n':

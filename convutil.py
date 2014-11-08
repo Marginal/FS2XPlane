@@ -151,8 +151,8 @@ class Point:
         return atan2(to.lon-self.lon, to.lat-self.lat)
 
     def within(self, bl, tr):
-        return (self.lat>=bl.lat and self.lat<=tr.lat and
-                self.lon>=bl.lon and self.lon<=tr.lon)
+        return (bl.lat <= self.lat <= tr.lat and
+                bl.lon <= self.lon <= tr.lon)
     
     def __str__(self):
         return "%12.8f %13.8f" % (self.lat, self.lon)
@@ -216,10 +216,10 @@ class Matrix:
         y1=m[0][1]*x + m[1][1]*y + m[2][1]*z
         z1=m[0][2]*x + m[1][2]*y + m[2][2]*z
         if x1==y1==z1==0:
-            return (0, 0, 0)
+            return 0, 0, 0
         else:
             hyp=1/sqrt(x1*x1 + y1*y1 + z1*z1)
-            return (x1*hyp, y1*hyp, z1*hyp)
+            return x1*hyp, y1*hyp, z1*hyp
 
 
     # Matrix adjoint/adjugate for obtaining normals - see
@@ -300,14 +300,14 @@ class Matrix:
             for j in range(4):
                 x=0
                 for k in range(4):
-                    x=x+a[i][k]*b[k][j]
+                    x += a[i][k] * b[k][j]
                 n.m[i][j]=x
         return n
 
     def __str__(self):
         s=''
         for i in range(4):
-            s=s+' [%8.3f %8.3f %8.3f %8.3f]\n' % (self.m[i][0], self.m[i][1], self.m[i][2], self.m[i][3])
+            s += ' [%8.3f %8.3f %8.3f %8.3f]\n' % (self.m[i][0], self.m[i][1], self.m[i][2], self.m[i][3])
         s='['+s[1:-1]+']'
         return s
 
@@ -460,7 +460,7 @@ class Object:
         if scale!=1:
             filename="%s_%02d%02d.obj" % (filename, int(scale), round(scale*100,0)%100)
         else:
-            filename=filename+'.obj'
+            filename += '.obj'
         return filename
         
     def export(self, scale, output, fslayers):
@@ -478,7 +478,7 @@ class Object:
             # Palette
             (tex,lit)=maketexs(output.palettetex, None, output)
         elif self.vt:
-            assert self.tex.d!=None	# self.tex should just be None instead
+            assert self.tex.d is not None  # self.tex should just be None instead
             (tex,lit)=maketexs(self.tex.d, self.tex.e, output)
         else:
             tex=lit=None
@@ -637,7 +637,7 @@ class Polygon:
         self.nowrap=nowrap
         self.scale=scale
         self.layer=layer
-        self.surface=(layer!=None and layer>4)
+        self.surface=(layer is not None and layer>4)
         self.paging=paging
 
     def __eq__(self, o):
@@ -675,7 +675,7 @@ class Polygon:
             else:
                 objfile.write("TEXTURE\t\n")
             objfile.write("SCALE\t\t%.1f %.1f\n" % (self.scale, self.scale))
-            if self.layer!=None:
+            if self.layer is not None:
                 objfile.write("LAYER_GROUP\t%s\n" % fslayers[self.layer])
             if self.paging:
                 (lat, lon, pixels)=self.paging
@@ -705,9 +705,9 @@ def maketexs(fstex, fslit, output, substituteblank=False):
         if fslit in output.haze:
             palno=output.haze[fslit]
         lit=maketex(fslit, path, output, palno)
-        return (tex,lit)
+        return tex,lit
     else:
-        return (tex,None)
+        return tex,None
 
 
 # Assumes src filename has correct case
@@ -733,9 +733,9 @@ def maketex(src, dstdir, output, palno, substituteblank=False):
 
     if not exists(src):
         if output.dds:
-            tex=tex+'.dds'
+            tex += '.dds'
         else:
-            tex=tex+'.png'
+            tex += '.png'
         for f in listdir('Resources'):
             if f.lower()==tex.lower():
                 copy2(join(os.getcwdu(),'Resources',tex), dstdir)
@@ -770,7 +770,7 @@ def maketex(src, dstdir, output, palno, substituteblank=False):
     dst=join(dstdir,tex)
     try:
         newsrc=src
-        if stat(src).st_size>=65536 and stat(src).st_size<65600:
+        if 65536 <= stat(src).st_size < 65600:
             # Fucking nl2000 guys append crud to eof
             f=file(src, 'rb')
             c=f.read(4)
@@ -819,7 +819,7 @@ def rgb2uv(rgb):
     r=(round(r*15,0)+0.5)/64
     g=(round(g*15,0)+0.5)/64
     b=(round(b*15,0)+0.5)
-    return (int(b%4)/4.0 + r, int(b/4)/4.0 + g)
+    return int(b%4)/4.0 + r, int(b/4)/4.0 + g
 
 
 # Run helper app and return stderr
@@ -872,13 +872,13 @@ def asciify(s, forfilename=True):
     a=''
     for c in s:
         if ord(c)<32 or ord(c)>255:
-            a=a+'_'
+            a += '_'
         elif c in ' \\/:*?"<>|"' and forfilename:
-            a=a+'_'
+            a += '_'
         elif ord(c)<0x7b:
-            a=a+chr(ord(c))	# convert from unicode string
+            a += chr(ord(c))  # convert from unicode string
         else:			# X-Plane won't show {|}~ either
-            a=a+asciitbl[ord(c)-0x7b]
+            a += asciitbl[ord(c) - 0x7b]
     return a
 
 
@@ -898,7 +898,7 @@ def normalize(s):
 def cross(a, b):
     (ax,ay,az)=a
     (bx,by,bz)=b
-    return (ay*bz-az*by, az*bx-ax*bz, ax*by-ay*bx)
+    return ay*bz-az*by, az*bx-ax*bz, ax*by-ay*bx
 
 # dot product of two triples
 def dot(a, b):

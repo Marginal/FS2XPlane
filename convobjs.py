@@ -473,10 +473,10 @@ def genrgb(story, idx):
         tbl=genwall
 
     if idx>=len(tbl):
-        return (1,1,1)
+        return 1,1,1
     
     (b,g,r)=tbl[idx]
-    return (r/255.0, g/255.0, b/255.0)
+    return r/255.0, g/255.0, b/255.0
 
         
 # read EZ-Scenery UID mappings

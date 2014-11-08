@@ -87,7 +87,7 @@ class Parse:
         for section in [42,46,54,58,102,114]:
             bgl.seek(section)
             (secbase,)=unpack('<I',bgl.read(4))
-            if (secbase):
+            if secbase:
                 bgl.seek(secbase)
                 if section==42 or section==46:
                     output.log('Skipping traffic data in file %s' % name)
@@ -485,7 +485,7 @@ class ProcScen:
                 if __debug__:
                     if self.debug: self.debug.write("%x: cmd %02x %s\n" % (
                         pos, self.cmd, cmds[self.cmd].__name__))
-                cmds[self.cmd]()
+                cmds[self.cmd]
             elif self.donight():
                 bgl.seek(self.start)
                 continue
@@ -537,7 +537,7 @@ class ProcScen:
 
     def makekey(self, dotex=True):
         # Return a key suitable for indexing self.objdat
-        if self.t==None:
+        if self.t is None:
             tex=None
             if __debug__:
                 if self.debug and not tex: self.debug.write("No texture\n")
@@ -546,7 +546,7 @@ class ProcScen:
             if self.haze and tex.d: self.output.haze[tex.d]=self.haze
             if self.haze and tex.e: self.output.haze[tex.e]=self.haze
 
-        if self.m==None:
+        if self.m is None:
             mat=Material(self.output.xpver, (0,0,0))
             if __debug__:
                 if self.debug and not mat: self.debug.write("No material\n")
@@ -554,7 +554,7 @@ class ProcScen:
             mat=self.mat[self.m].clone()
         mat.dblsided=bool(self.billboard)
 
-        return ((self.name,self.loc,self.layer,self.alt,self.altmsl,self.matrix[-1],self.scale,tex), mat)
+        return (self.name,self.loc,self.layer,self.alt,self.altmsl,self.matrix[-1],self.scale,tex), mat
 
     def makename(self):
         # make a unique base filename
@@ -692,9 +692,9 @@ class ProcScen:
     def FaceTTMap(self):	# 20:FaceTTMap, 7a:GFaceTTMap
         (count,fnx,fny,fnz,)=unpack('<H3h', self.bgl.read(8))
         if count<=4: self.concave=False	# Don't bother
-        fnx=fnx/32767.0
-        fny=fny/32767.0
-        fnz=fnz/32767.0
+        fnx /= 32767.0
+        fny /= 32767.0
+        fnz /= 32767.0
         self.bgl.read(4)
         vtx=[]
         maxy=-maxint
@@ -808,9 +808,9 @@ class ProcScen:
         if self.cmd==0x1d: self.bgl.read(6)	# point
         (fnx,fny,fnz)=unpack('<3h', self.bgl.read(6))
         if count<=4: self.concave=False	# Don't bother
-        fnx=fnx/32767.0
-        fny=fny/32767.0
-        fnz=fnz/32767.0
+        fnx /= 32767.0
+        fny /= 32767.0
+        fnz /= 32767.0
         if self.cmd!=0x1d: self.bgl.read(4)	# dot_ref
         vtx=[]
         maxy=-maxint
@@ -858,7 +858,7 @@ class ProcScen:
         if a==0xf0:	# unicol
             self.mat=[Material(self.output.xpver, self.unicol(0xf000+r))]
             self.m=0
-        elif (a>=0xb0 and a<=0xb7) or (a>=0xe0 and a<=0xe7):
+        elif (0xb0 <= a <= 0xb7) or (0xe0 <= a <= 0xe7):
             # E0 = transparent ... EF=opaque. Same for B?
             # Treat semi-transparent as fully transparent
             self.mat=[]
@@ -871,7 +871,7 @@ class ProcScen:
         (r,a,g,b)=unpack('4B', self.bgl.read(4))
         if a==0xf0:	# unicol
             self.lightcol=self.unicol(0xf000+r)
-        elif (a>=0xb0 and a<=0xb7) or (a>=0xe0 and a<=0xe7):
+        elif (0xb0 <= a <= 0xb7) or (0xe0 <= a <= 0xe7):
             # E0 = transparent ... EF=opaque. Same for B?
             # Treat semi-transparent as fully transparent
             self.lightcol=None
@@ -887,7 +887,7 @@ class ProcScen:
         self.alt=0
         if __debug__:
             if self.debug: self.debug.write("AltMSL %.3f\n" % self.altmsl)
-        if lat>=-90 and lat<=90 and lon>=-180 and lon<=180:
+        if -90 <= lat <= 90 and -180 <= lon <= 180:
             self.loc=Point(lat,lon)
             if lat<0 and not self.output.hemi:
                 self.output.hemi=1
@@ -998,7 +998,7 @@ class ProcScen:
         self.alt=0
         if __debug__:
             if self.debug: self.debug.write("Position %s\n" % self.altmsl)
-        if lat>=-90 and lat<=90 and lon>=-180 and lon<=180:
+        if -90 <= lat <= 90 and -180 <= lon <= 180:
             pt=Point(lat,lon)
             if self.loc:
                 (x,y,z)=Matrix().headed(self.loc.headingto(pt)).rotate(0,0,self.loc.distanceto(pt))
@@ -1030,12 +1030,12 @@ class ProcScen:
         # sometimes used to put back lights on an excluded runway
         (lat,lon,alt)=self.LLA()
         cloc=Point(lat,lon)
-        if not (lat>=-90 and lat<=90 and lon>=-180 and lon<=180):
+        if not (-90 <= lat <= 90 and -180 <= lon <= 180):
             if __debug__:
                 if self.debug: self.debug.write("!Bogus Runway location %s\n"%cloc)
             raise struct.error
         (heading, length, width, markers, identifiers, surface_lights, specials, surface_type, threshold_flags, base_threshold, base_blast_pad, recip_threshold, recip_blast_pad)=unpack('<HHHBBBBBBHHHH', self.bgl.read(20))
-        heading=heading*(360.0/65536)
+        heading *= 360.0 / 65536
         length=length/m2f	# includes displaced threshold
         width=width/m2f
         displaced=[base_threshold/m2f, recip_threshold/m2f]
@@ -1067,8 +1067,8 @@ class ProcScen:
         number=["%02d" % (identifiers&63), "%02d" % (((identifiers&63)+18)%36)]
         if number[0]=='00': number[0]='36'
         if number[1]=='00': number[1]='36'
-        number[0]=number[0]+[' ','L','R','C'][identifiers/64]
-        number[1]=number[1]+[' ','R','L','C'][identifiers/64]
+        number[0] += [' ', 'L', 'R', 'C'][identifiers / 64]
+        number[1] += [' ', 'R', 'L', 'C'][identifiers / 64]
         angle=[3,3]
         if markers&0x44:	# precision or touchdown
             markings=[3,3]
@@ -1099,7 +1099,7 @@ class ProcScen:
                 lights[end]=[0,11,9,8,6,5,1,1,12,3,4][system]
             # UK-style markings if Calvert approach lights
             if lights[end] in [3,4] and markings[end] in [2,3]:
-                markings[end]=markings[end]+2
+                markings[end] += 2
 
         # Recalculate centre ignoring displaced thresholds
         clen=(displaced[0]+length-displaced[1])/2
@@ -1107,7 +1107,9 @@ class ProcScen:
                            cos(radians(heading))*clen)
         txt="%5.2f %02d %02d %4.2f %d %d %d" % (width, surface, shoulder, smoothing, centrelights, edgelights, distance)
         for end in [0,1]:
-            txt=txt+(" %-3s %12.8f %13.8f %5.1f %5.1f %02d %02d %d %d" % (number[end], loc[end].lat, loc[end].lon, displaced[end], overrun[end], markings[end], lights[end], tdzl[end], reil[end]))
+            txt += " %-3s %12.8f %13.8f %5.1f %5.1f %02d %02d %d %d" % (
+            number[end], loc[end].lat, loc[end].lon, displaced[end], overrun[end], markings[end], lights[end],
+            tdzl[end], reil[end])
         self.output.misc.append((100, cloc, [AptNav(100, txt)]))
 
     def Texture2(self):		# 43
@@ -1359,7 +1361,7 @@ class ProcScen:
         self.altmsl=0
         if __debug__:
             if self.alt and self.debug: self.debug.write("!Altitude %.3f\n" % self.altmsl)	# docs say alt should be 0
-        if lat>=-90 and lat<=90 and lon>=-180 and lon<=180:
+        if -90 <= lat <= 90 and -180 <= lon <= 180:
             self.loc=Point(lat,lon)
             if lat<0 and not self.output.hemi:
                 self.output.hemi=1
@@ -1617,12 +1619,12 @@ class ProcScen:
         endop=self.bgl.tell()+size-5
         (lat,lon,alt)=self.LLA()
         cloc=Point(lat,lon)
-        if not (lat>=-90 and lat<=90 and lon>=-180 and lon<=180):
+        if not (-90 <= lat <= 90 and -180 <= lon <= 180):
             if __debug__:
                 if self.debug: self.debug.write("!Bogus Runway location %s\n"%cloc)
             raise struct.error
         (heading, length, width, markers, surface_type, surface_lights, identifiers)=unpack('<HHHHBBB', self.bgl.read(11))
-        heading=heading*(360.0/65536)
+        heading *= 360.0 / 65536
         length=length/m2f	# includes displaced threshold
         width=width/m2f
         displaced=[0,0]
@@ -1657,8 +1659,8 @@ class ProcScen:
         number=["%02d" % (identifiers&63), "%02d" % (((identifiers&63)+18)%36)]
         if number[0]=='00': number[0]='36'
         if number[1]=='00': number[1]='36'
-        number[0]=number[0]+[' ','L','R','C'][identifiers/64]
-        number[1]=number[1]+[' ','R','L','C'][identifiers/64]
+        number[0] += [' ', 'L', 'R', 'C'][identifiers / 64]
+        number[1] += [' ', 'R', 'L', 'C'][identifiers / 64]
         angle=[3,3]
         if markers&0x44:	# precision or touchdown
             markings=[3,3]
@@ -1711,7 +1713,7 @@ class ProcScen:
         # UK-style markings if Calvert approach lights
         for end in [0,1]:
             if lights[end] in [3,4] and markings[end] in [2,3]:
-                markings[end]=markings[end]+2
+                markings[end] += 2
 
         # Recalculate centre ignoring displaced thresholds
         clen=(displaced[0]+length-displaced[1])/2
@@ -1719,7 +1721,9 @@ class ProcScen:
                            cos(radians(heading))*clen)
         txt="%5.2f %02d %02d %4.2f %d %d %d" % (width, surface, shoulder, smoothing, centrelights, edgelights, distance)
         for end in [0,1]:
-            txt=txt+(" %-3s %12.8f %13.8f %5.1f %5.1f %02d %02d %d %d" % (number[end], loc[end].lat, loc[end].lon, displaced[end], overrun[end], markings[end], lights[end], tdzl[end], reil[end]))
+            txt += " %-3s %12.8f %13.8f %5.1f %5.1f %02d %02d %d %d" % (
+            number[end], loc[end].lat, loc[end].lon, displaced[end], overrun[end], markings[end], lights[end],
+            tdzl[end], reil[end])
         self.output.misc.append((100, cloc, [AptNav(100, txt)]))
 
     def ZBias(self):	# ac
@@ -1774,7 +1778,7 @@ class ProcScen:
         (typ,x,y,z,intens,i,i,b,g,r,a,i,i,i)=unpack('<HfffIffBBBBfff', self.bgl.read(42))
         # Typical intensities are 20 and 40 - so say 40=max
         if intens<40:
-            intens=intens/(40.0*255.0)
+            intens /= 40.0 * 255.0
         else:
             intens=1/255.0
         (key,mat)=self.makekey(False)
@@ -1854,7 +1858,7 @@ class ProcScen:
             if __debug__:
                 if self.debug and self.t>=len(self.tex): self.debug.write("Bad texture %d/%d\n" %(self.t,len(self.tex)))
         if __debug__:
-            if self.debug: self.debug.write("%s: %s\t%s: %s\n" % (self.m, self.m!=None and self.mat[self.m], self.t, self.t!=None and self.tex[self.t]))
+            if self.debug: self.debug.write("%s: %s\t%s: %s\n" % (self.m, self.m is not None and self.mat[self.m], self.t, self.t is not None and self.tex[self.t]))
         
     def DrawTriList(self):	# b9
         idx=[]
@@ -1956,7 +1960,7 @@ class ProcScen:
 
         if __debug__:
             self.debug.write("New location: %s %.3f\n" % (Point(lat,lon), alt))
-        return (lat,lon,alt)
+        return lat,lon,alt
 
 
     # Stack return data prior to a call
@@ -2011,11 +2015,11 @@ class ProcScen:
                     newtu+=tu
                     newtv+=tv
                     cumw +=weight[i]
-        return (Point(float(coords[2]), float(coords[0])), newtu/cumw, newtv/cumw)
+        return Point(float(coords[2]), float(coords[0])), newtu/cumw, newtv/cumw
 
     # Try to make a draped polygon
     def makepoly(self, haveuv, vtx, idx=None):
-        if self.t==None: return False	# Only care about textured polygons
+        if self.t is None: return False	# Only care about textured polygons
         if not self.loc: return False	# Not for library objects
         if __debug__:
             if self.debug: self.debug.write("Poly: %s %s %s %d " % (self.tex[self.t], self.alt, self.layer, self.zbias))
@@ -2582,9 +2586,9 @@ class ProcScen:
               0xF034: (196, 196, 196)}
         if c in cols:
             (r,g,b)=cols[c]
-            return (r/255.0, g/255.0, b/255.0)
+            return r/255.0, g/255.0, b/255.0
         else:
-            return (0,0,0)
+            return 0,0,0
 
 
 # Handle miscellaneous section 16
@@ -2613,7 +2617,7 @@ class ProcMisc:
             elif cmd in cmds:
                 if __debug__:
                     if self.debug: self.debug.write("%x: cmd %02x %s\n" % (pos, cmd, cmds[cmd].__name__))
-                cmds[cmd]()
+                cmds[cmd]
             else:
                 if __debug__:
                     if self.debug: self.debug.write("!Unknown s16 cmd %x at %x\n" %(cmd,pos))
@@ -2740,7 +2744,7 @@ def subdivide(vtx):
         gluDeleteTess(tessObj)
         raise GLUerror
     gluDeleteTess(tessObj)        
-    return (points,idx)
+    return points,idx
 
 def tessedge(flag):
     pass	# dummy
@@ -2771,7 +2775,7 @@ def maketexdict(texdir):
         if aname not in d:
             d[aname]=name
     
-    return (texdir, d)
+    return texdir, d
 
 
 # Helper to return fully-qualified case-sensitive texture filename

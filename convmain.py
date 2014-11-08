@@ -316,7 +316,7 @@ class Output:
                                 name=None
                                 if hdsize>42:
                                     # Use "friendly" name instead of id
-                                    name=asciify(bgl.read(hdsize-(41)).rstrip(' \0'))
+                                    name=asciify(bgl.read(hdsize- 41).rstrip(' \0'))
                                 if uid in self.friendly:
                                     name=self.friendly[uid]
                                 elif not name and asciify(splitext(filename)[0]) not in self.names:
@@ -652,7 +652,7 @@ class Output:
                 if mdlformat==10:
                     p=convmdl.ProcScen(bgl, offset+size, libscale, name, bglname, lasttexdir, self)
                 else:
-                    p=convbgl.ProcScen(bgl, offset+size, libscale, name, bglname, lasttexdir, self, scen, tran)
+                    p=convbgl.ProcScen(bgl, offset+size, name, bglname, lasttexdir, self, scen, tran)
                 if p.anim:
                     self.log("Skipping animation in object %s in file %s" % (name, filename))
                     if self.debug: self.debug.write("Animation\n")
@@ -762,7 +762,10 @@ class Output:
                                 base=end
                             # Dimensions from XML.
                             # Lights from either, BGL takes precedence
-                            txt=txt+(" %-3s %12.8f %13.8f %5.1f %5.1f %02d %02d %d %d" % (c[end+7], float(c[end+8]), float(c[end+9]), float(c[end+10]), float(c[end+11]), int(d[base+12]), int(d[base+13]) or int(c[end+13]), int(d[base+14]) or int(c[end+14]), int(d[base+15]) or int(c[end+15])))
+                            txt += " %-3s %12.8f %13.8f %5.1f %5.1f %02d %02d %d %d" % (
+                            c[end + 7], float(c[end + 8]), float(c[end + 9]), float(c[end + 10]), float(c[end + 11]),
+                            int(d[base + 12]), int(d[base + 13]) or int(c[end + 13]),
+                            int(d[base + 14]) or int(c[end + 14]), int(d[base + 15]) or int(c[end + 15]))
                         lines[i].text=txt
                         break
                     else:
@@ -838,7 +841,7 @@ class Output:
                                     l.code=17
                                 f.write("%s\n" % l)
                             doneheader=True
-                        elif l.code in [110,120,130,1000,1200,1300] or (l.code<110 and last>=110):
+                        elif l.code in [110,120,130,1000,1200,1300] or (l.code<110 <= last):
                             f.write("\n%s\n" % l)	# Hack - insert CR
                         elif l.code in [14,15] and last>=110:
                             f.write("\n%s\n" % l)	# Hack - insert CR
@@ -978,7 +981,7 @@ class Output:
             key=(name,scale)
             if not cmplx.has_key(tile):
                 cmplx[tile]={}
-            if (not cmplx[tile].has_key(key) or cmplx[tile][key]>complexity):
+            if not cmplx[tile].has_key(key) or cmplx[tile][key]>complexity:
                 cmplx[tile][key]=complexity
 
         #expand names & create indices & create per-complexity placements
@@ -1136,7 +1139,7 @@ class Output:
     # Should taxiway node be suppressed?
     def excluded(self, p):
         for (typ, sw, ne) in self.excfac:
-            if p.lat>=sw.lat and p.lat<=ne.lat and p.lon>=sw.lon and p.lon<=ne.lon:
+            if sw.lat <= p.lat <= ne.lat and sw.lon <= p.lon <= ne.lon:
                 self.needfull=True
                 if self.debug: self.debug.write("Excluded: %s\n" % p)
                 return self.doexcfac

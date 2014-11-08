@@ -1,6 +1,5 @@
 dist
 build
-
 *.app
 *.exe
 *.bak
@@ -9,6 +8,6 @@ build
 *.zip
 *.rpm
 *.deb
-
 .DS_Store
 Thumbs.db
+.idea

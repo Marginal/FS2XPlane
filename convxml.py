@@ -98,7 +98,7 @@ class SceneryObject:
             if D(bias, 'biasX') and D(bias, 'biasZ'):
                 loc=loc.biased(float(bias.biasX), float(bias.biasZ))
             if D(bias, 'biasY'):
-                alt=alt+float(bias.biasY)
+                alt += float(bias.biasY)
 
         # Unattached beacon
         for b in self.beacon:
@@ -258,7 +258,7 @@ class ExclusionRectangle:
         for k, v in attrs.iteritems():
             exec("self.%s=v" % k)
     
-    def export(self, parser, output):
+    def export(self, output):
         bl=Point(float(self.latitudeMinimum), float(self.longitudeMinimum))
         tr=Point(float(self.latitudeMaximum), float(self.longitudeMaximum))
         if (T(self, 'excludeAllObjects') or
@@ -273,7 +273,7 @@ class Ndb:
             exec("self.%s=v" % k)
 
     # Export to nav.dat
-    def export(self, parser, output):
+    def export(self, output):
         if D(self, 'name'):
             name=asciify(self.name, False)
             if name[-3:].upper()!='NDB': name+=' NDB'
@@ -735,8 +735,8 @@ class Airport:
             if runway.surface=='WATER':
                 txt="%5.2f %d" %(width, distance or markings[0] or markings[1])
                 for end in [0,1]:
-                    txt=txt+(" %-3s %12.8f %13.8f" % (
-                        runway.numbers[end], loc[end].lat, loc[end].lon))
+                    txt += " %-3s %12.8f %13.8f" % (
+                        runway.numbers[end], loc[end].lat, loc[end].lon)
                 aptdat.append(AptNav(101, txt))
             else:
                 if output.excluded(cloc):
@@ -746,7 +746,9 @@ class Airport:
                 
                 txt="%5.2f %2d %d %4.2f %d %d %d" % (width, surface, shoulder, smoothing, centrelights, edgelights, distance)
                 for end in [0,1]:
-                    txt=txt+(" %-3s %12.8f %13.8f %5.1f %5.1f %d %2d %d %d" % (runway.numbers[end], loc[end].lat, loc[end].lon, displaced[end], overrun[end], markings[end], lights[end], tdzl[end], reil[end]))
+                    txt += " %-3s %12.8f %13.8f %5.1f %5.1f %d %2d %d %d" % (
+                    runway.numbers[end], loc[end].lat, loc[end].lon, displaced[end], overrun[end], markings[end],
+                    lights[end], tdzl[end], reil[end])
                 aptdat.append(AptNav(100, txt))
                 
             # VASIs
@@ -771,10 +773,10 @@ class Airport:
                 z=float(vasi.biasZ)
                 # location in MSFS is of rear innermost light
                 if vtype==1:
-                    z=z+75
-                    x=x+1
+                    z += 75
+                    x += 1
                 else:
-                    x=x+12
+                    x += 12
                 if vasi.side=='RIGHT': x=-x
                 h=radians(vheading)
                 vloc=cloc.biased(-cos(h)*x-sin(h)*z, sin(h)*x-cos(h)*z)
@@ -1180,7 +1182,7 @@ class Airport:
 
         # Doit
         if output.doatc and havetwr:
-            atclayout(allnodes, alllinks, self.runway, self.helipad, self.com, output, aptdat, ident)
+            atclayout(allnodes, alllinks, self.runway, self.helipad, self.com, aptdat, ident)
 
         # Doit
         taxilayout(allnodes, alllinks, surfaceheading, output, aptdat, ident)
@@ -1235,7 +1237,7 @@ class Vor:
                 exec("self.%s=v" % k)
 
     # Export to nav.dat
-    def export(self, parser, output):
+    def export(self, output):
         if self.dme:
             dtype='VOR-DME'
         else:
@@ -1274,7 +1276,7 @@ class Marker:
             exec("self.%s=v" % k)
 
     # Export to nav.dat
-    def export(self, parser, output):
+    def export(self, output):
         if self.type=='INNER':
             mtype='IM'
             code=9
@@ -1302,7 +1304,7 @@ class ModelData:
         for k, v in attrs.iteritems():
             exec("self.%s=v" % k)
 
-    def export(self, parser, output):
+    def export(self):
         # Just clean up MDL files in %TMP%
         if D(self, 'sourceFile'):
             tmp=join(gettempdir(), self.sourceFile)
@@ -1343,7 +1345,7 @@ class Parse:
                 self.output.debug.write("Skipping %s%s(%s)\n" % ('.'*len(self.parents), name, attrs))
             self.parents.append(None)
             
-    def end_element(self, name):
+    def end_element(self):
         if self.parents:
             elem=self.parents.pop()
             if elem and not self.parents:

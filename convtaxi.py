@@ -111,7 +111,7 @@ class Node:
                 self.startuptype='misc'
                 self.startuptraffic='jets|helos'
 
-        if self.startup!=None:
+        if self.startup is not None:
             self.heading=float(point.heading)
             if point.name in Node.gates:
                 self.startup="%s%s" % (self.startup, point.name[-1])
@@ -137,18 +137,18 @@ class Node:
             if cb: cb(n,l)
             o=l.othernode(n)
             if o==self or len(o.links)!=2:
-                return (o,l)
+                return o,l
             # Next link
             if o.links[0].othernode(o)==n:
                 nextl=o.links[1]
             else:
                 nextl=o.links[0]
             if nextl.type!=l.type:
-                return (o,l)
+                return o,l
             depth-=1
             n=o
             l=nextl
-        return (None,None)
+        return None,None
 
     def runwaylinks(self, origin, hotness, searchspace, distance):
         # Follow links until we hit a runway matching numbers,
@@ -301,7 +301,7 @@ def edgefeature(link1, side1, link2=None, side2=None):
             code='21'	# Displayed as chequerboard in MSFS
     if link1.lights[side1] or link2.lights[side2]:
         if code:
-            code=code+' 102'
+            code += ' 102'
         else:
             code='102'
     return code
@@ -334,11 +334,11 @@ def tesscombine(coords, vertex, weight, data):
         (loc1, cnt1, blank1, dummy1, code1)=vertex[0]
         (loc2, cnt2, blank2, dummy2, code2)=vertex[1]
         #if __debug__: print "Join", Point(coords[2], coords[0]), cnt1, cnt2, blank1, blank2, '"%s" "%s"' % (code1, code2)
-        if code1==None or code2==None:
+        if code1 is None or code2 is None:
             code=''	# override
         else:
             code=code1 or code2
-        return (loc1, cnt1 and cnt2, blank1|blank2, 0, code)
+        return loc1, cnt1 and cnt2, blank1|blank2, 0, code
     #if __debug__:
     #    print "Combine", Point(coords[2], coords[0])
     #    for i in range(len(weight)):
@@ -357,7 +357,7 @@ def tesscombine(coords, vertex, weight, data):
                 code=code1
                 break
     debez.append(loc)
-    return (loc, None, 0, 0, code)
+    return loc, None, 0, 0, code
 
 
 # --------------------------------------------------------------------------
@@ -464,7 +464,7 @@ def taxilayout(allnodes, alllinks, surfaceheading, output, aptdat=None, ident="u
             else:
                 a=((loc2.lon-p3.lon)*(p1.lat-p3.lat)-(loc2.lat-p3.lat)*(p1.lon-p3.lon))/d
                 b=((loc1.lon-p1.lon)*(p1.lat-p3.lat)-(loc1.lat-p1.lat)*(p1.lon-p3.lon))/d
-            if a>=0 and a<=1 and b>=0 and b<=1:
+            if 0 <= a <= 1 and 0 <= b <= 1:
                 # link is too small and intersection points cross so beziers
                 # will loop weirdly. Just let tessellator sort it out.
                 # Also make other links' intersections with this link not bez.
@@ -617,7 +617,7 @@ def taxilayout(allnodes, alllinks, surfaceheading, output, aptdat=None, ident="u
                     if output.debug: output.debug.write("node@ %s #links=%d %s %s)\n" % (node.loc, n,t,surface))
                 for i in range(n):
                     (n1,h1,link1,end1)=elinks[i]	# this one
-                    if (link1.type!=t and (link1.type=='VEHICLE' or t=='VEHICLE')):
+                    if link1.type!=t and (link1.type=='VEHICLE' or t=='VEHICLE'):
                         continue
                     for j in range(-1,-len(elinks),-1):
                         (n0,h0,link0,end0)=elinks[(i+j)%n]
@@ -926,7 +926,7 @@ def taxilayout(allnodes, alllinks, surfaceheading, output, aptdat=None, ident="u
             else:
                 code="51"
             if link.centrelights:
-                code=code+" 101"
+                code += " 101"
         else:
             out=[AptNav(120,"Centrelights for %s"%link.name)]
             code="101"
@@ -1061,7 +1061,7 @@ def taxilayout(allnodes, alllinks, surfaceheading, output, aptdat=None, ident="u
                     else:
                         code="22"
                     if n.links[i].centrelights or n.links[j].centrelights:
-                        code=code+" 101"
+                        code += " 101"
                 else:
                     name="Centrelights"
                     code="101"
@@ -1167,7 +1167,7 @@ def taxilayout(allnodes, alllinks, surfaceheading, output, aptdat=None, ident="u
 
 # --------------------------------------------------------------------------
 
-def aproncombine(coords, vertex, weight):
+def aproncombine(coords):
     return Point(coords[2], coords[0])
 
 def apronlayout(points, surface, surfaceheading, output, aptdat=None, ident="unknown"):
