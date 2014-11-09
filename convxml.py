@@ -258,7 +258,7 @@ class ExclusionRectangle:
         for k, v in attrs.iteritems():
             exec("self.%s=v" % k)
     
-    def export(self, output):
+    def export(self, parser, output):
         bl=Point(float(self.latitudeMinimum), float(self.longitudeMinimum))
         tr=Point(float(self.latitudeMaximum), float(self.longitudeMaximum))
         if (T(self, 'excludeAllObjects') or
@@ -273,7 +273,7 @@ class Ndb:
             exec("self.%s=v" % k)
 
     # Export to nav.dat
-    def export(self, output):
+    def export(self, parser, output):
         if D(self, 'name'):
             name=asciify(self.name, False)
             if name[-3:].upper()!='NDB': name+=' NDB'
@@ -1182,7 +1182,7 @@ class Airport:
 
         # Doit
         if output.doatc and havetwr:
-            atclayout(allnodes, alllinks, self.runway, self.helipad, self.com, aptdat, ident)
+            atclayout(allnodes, alllinks, self.runway, self.helipad, self.com, output, aptdat, ident)
 
         # Doit
         taxilayout(allnodes, alllinks, surfaceheading, output, aptdat, ident)
@@ -1237,7 +1237,7 @@ class Vor:
                 exec("self.%s=v" % k)
 
     # Export to nav.dat
-    def export(self, output):
+    def export(self, parser, output):
         if self.dme:
             dtype='VOR-DME'
         else:
@@ -1276,7 +1276,7 @@ class Marker:
             exec("self.%s=v" % k)
 
     # Export to nav.dat
-    def export(self, output):
+    def export(self, parser, output):
         if self.type=='INNER':
             mtype='IM'
             code=9
@@ -1304,7 +1304,7 @@ class ModelData:
         for k, v in attrs.iteritems():
             exec("self.%s=v" % k)
 
-    def export(self):
+    def export(self, parser, output):
         # Just clean up MDL files in %TMP%
         if D(self, 'sourceFile'):
             tmp=join(gettempdir(), self.sourceFile)
@@ -1345,7 +1345,7 @@ class Parse:
                 self.output.debug.write("Skipping %s%s(%s)\n" % ('.'*len(self.parents), name, attrs))
             self.parents.append(None)
             
-    def end_element(self):
+    def end_element(self, name):
         if self.parents:
             elem=self.parents.pop()
             if elem and not self.parents:
